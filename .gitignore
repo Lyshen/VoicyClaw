@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+coverage
+*.tsbuildinfo
+.DS_Store
+.env
+.env.local
+apps/server/prisma/voicyclaw.db
+apps/server/prisma/voicyclaw.db-journal
+apps/server/.data
