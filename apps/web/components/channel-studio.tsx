@@ -364,7 +364,7 @@ export function ChannelStudio() {
 
     if (!started) return
 
-    outputRef.current?.reset()
+    outputRef.current?.beginTurn(utteranceId)
 
     activeUtteranceRef.current = utteranceId
     setIsRecording(true)
@@ -419,7 +419,7 @@ export function ChannelStudio() {
         text
       })
     ) {
-      outputRef.current?.reset()
+      outputRef.current?.beginTurn(utteranceId)
       setDraftText("")
     }
   }, [appendSystemMessage, sendControl])

@@ -1,12 +1,16 @@
-import { PcmStreamPlayer } from "./audio"
-
 interface OutputTurnCoordinatorLogger {
   info: (message: string, payload: Record<string, unknown>) => void
   warn: (message: string, payload: Record<string, unknown>) => void
 }
 
+interface OutputTurnPlayer {
+  enqueueBase64: (audioBase64: string, sampleRate?: number) => Promise<void>
+  reset: () => void
+  cancel: () => void
+}
+
 interface OutputTurnCoordinatorOptions {
-  player: PcmStreamPlayer
+  player: OutputTurnPlayer
   getSpeechSynthesis?: () => SpeechSynthesis | null
   logger?: OutputTurnCoordinatorLogger
 }
@@ -26,6 +30,17 @@ export class OutputTurnCoordinator {
     this.options.getSpeechSynthesis?.()?.cancel()
   }
 
+  beginTurn(utteranceId: string) {
+    if (this.currentTurnId === utteranceId) {
+      return
+    }
+
+    if (this.currentTurnId !== null) {
+      this.reset()
+    }
+    this.currentTurnId = utteranceId
+  }
+
   queueClientSpeech(utteranceId: string, text: string, language: string) {
     const trimmed = text.trim()
     if (!trimmed) return
@@ -39,7 +54,8 @@ export class OutputTurnCoordinator {
       text: clipTextForLog(trimmed)
     })
 
-    const generation = this.activateTurn(utteranceId)
+    const generation = this.ensureActiveTurn(utteranceId)
+    if (generation === null) return
 
     this.speechQueue = this.speechQueue.then(
       () =>
@@ -92,8 +108,8 @@ export class OutputTurnCoordinator {
   }
 
   async enqueueServerAudio(utteranceId: string, audioBase64: string, sampleRate: number) {
-    const generation = this.activateTurn(utteranceId)
-    if (!this.isActiveTurn(utteranceId, generation)) return
+    const generation = this.ensureActiveTurn(utteranceId)
+    if (generation === null || !this.isActiveTurn(utteranceId, generation)) return
 
     await this.options.player.enqueueBase64(audioBase64, sampleRate)
   }
@@ -103,13 +119,20 @@ export class OutputTurnCoordinator {
     this.options.player.reset()
   }
 
-  private activateTurn(utteranceId: string) {
-    if (this.currentTurnId === utteranceId) {
+  private ensureActiveTurn(utteranceId: string) {
+    if (this.currentTurnId === null) {
+      this.currentTurnId = utteranceId
       return this.speechGeneration
     }
 
-    this.reset()
-    this.currentTurnId = utteranceId
+    if (this.currentTurnId !== utteranceId) {
+      this.options.logger?.info("drop-stale", {
+        activeUtteranceId: this.currentTurnId,
+        staleUtteranceId: utteranceId
+      })
+      return null
+    }
+
     return this.speechGeneration
   }
 

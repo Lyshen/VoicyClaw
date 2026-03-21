@@ -79,6 +79,19 @@ This keeps `client provider` and `server provider` modes behaviorally consistent
 
 ---
 
+## Quality Gates
+
+The repo now includes a baseline GitHub CI workflow and a lightweight automated test suite for the current runnable demo.
+
+- `pnpm test` - runs unit tests for protocol helpers, demo providers, settings normalization, and shared output-turn coordination
+- `pnpm typecheck` - runs TypeScript checks across `apps/server`, `apps/web`, and `apps/mock-bot`
+- `pnpm build` - validates production builds for the server, web app, and mock bot
+- `pnpm ci:check` - runs the same database bootstrap, tests, typecheck, and build sequence used in GitHub Actions
+
+The CI workflow lives in `.github/workflows/ci.yml` and runs on pushes to `main` / `codex/**` plus all pull requests.
+
+---
+
 ## Tech Stack (Prototype)
 
 - **Frontend**: Next.js (TypeScript)

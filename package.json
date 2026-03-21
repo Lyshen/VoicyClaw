@@ -10,13 +10,18 @@
     "dev:bot": "pnpm --filter @voicyclaw/mock-bot dev",
     "db:generate": "pnpm --filter @voicyclaw/server db:generate",
     "db:push": "pnpm --filter @voicyclaw/server db:push",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "pnpm db:generate && pnpm --filter @voicyclaw/server build && pnpm --filter @voicyclaw/web build && pnpm --filter @voicyclaw/mock-bot build",
-    "typecheck": "pnpm --filter @voicyclaw/server typecheck && pnpm --filter @voicyclaw/web typecheck && pnpm --filter @voicyclaw/mock-bot typecheck"
+    "typecheck": "pnpm --filter @voicyclaw/server typecheck && pnpm --filter @voicyclaw/web typecheck && pnpm --filter @voicyclaw/mock-bot typecheck",
+    "check": "pnpm test && pnpm typecheck && pnpm build",
+    "ci:check": "pnpm db:generate && pnpm db:push && pnpm check"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "concurrently": "^9.2.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }
