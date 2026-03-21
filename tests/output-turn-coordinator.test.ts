@@ -57,7 +57,7 @@ describe("OutputTurnCoordinator", () => {
     const player = createFakePlayer()
     const coordinator = new OutputTurnCoordinator({
       player,
-      getSpeechSynthesis: () => speech as unknown as SpeechSynthesis
+      getSpeechSynthesis: () => speech as unknown as SpeechSynthesis,
     })
 
     coordinator.beginTurn("turn-1")
@@ -71,20 +71,26 @@ describe("OutputTurnCoordinator", () => {
     coordinator.queueClientSpeech("turn-2", "replacement sentence", "en-US")
     await flushPromises()
 
-    expect(speech.startedTexts).toEqual(["first sentence", "replacement sentence"])
+    expect(speech.startedTexts).toEqual([
+      "first sentence",
+      "replacement sentence",
+    ])
     expect(player.cancelCalls).toBe(1)
 
     speech.completeActive()
     await flushPromises()
 
-    expect(speech.startedTexts).toEqual(["first sentence", "replacement sentence"])
+    expect(speech.startedTexts).toEqual([
+      "first sentence",
+      "replacement sentence",
+    ])
   })
 
   it("ignores stale server audio after a newer turn becomes active", async () => {
     const player = createFakePlayer()
     const coordinator = new OutputTurnCoordinator({
       player,
-      getSpeechSynthesis: () => null
+      getSpeechSynthesis: () => null,
     })
 
     coordinator.beginTurn("turn-1")
@@ -98,7 +104,7 @@ describe("OutputTurnCoordinator", () => {
 
     expect(player.audioCalls).toEqual([
       { audioBase64: "audio-1", sampleRate: 16_000 },
-      { audioBase64: "audio-2", sampleRate: 16_000 }
+      { audioBase64: "audio-2", sampleRate: 16_000 },
     ])
     expect(player.resetCalls).toBe(1)
   })
@@ -117,7 +123,7 @@ function createFakePlayer() {
     },
     cancel() {
       this.cancelCalls += 1
-    }
+    },
   }
 }
 

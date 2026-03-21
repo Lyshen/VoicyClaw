@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer"
 import { setTimeout as delay } from "node:timers/promises"
 
-import { PROTOCOL_VERSION, decodeAudioFrame } from "@voicyclaw/protocol"
+import { decodeAudioFrame, PROTOCOL_VERSION } from "@voicyclaw/protocol"
 import WebSocket from "ws"
 
 const serverUrl = process.env.VOICYCLAW_SERVER_URL ?? "http://localhost:3001"
@@ -28,7 +28,9 @@ async function main() {
       if (isConnectionRefused(error)) {
         console.log("[mock-bot] waiting for the server to come online...")
       } else if (isAlreadyConnected(error)) {
-        console.log("[mock-bot] bot session is already active, waiting before retrying...")
+        console.log(
+          "[mock-bot] bot session is already active, waiting before retrying...",
+        )
       } else {
         console.error("[mock-bot]", error)
       }
@@ -45,12 +47,12 @@ async function getApiKey() {
   const response = await fetch(new URL("/api/keys", serverUrl), {
     method: "POST",
     headers: {
-      "content-type": "application/json"
+      "content-type": "application/json",
     },
     body: JSON.stringify({
       channelId,
-      label: `${botName} bootstrap`
-    })
+      label: `${botName} bootstrap`,
+    }),
   })
 
   if (!response.ok) {
@@ -65,14 +67,14 @@ async function registerBot(apiKey: string) {
   const response = await fetch(new URL("/api/bot/register", serverUrl), {
     method: "POST",
     headers: {
-      "content-type": "application/json"
+      "content-type": "application/json",
     },
     body: JSON.stringify({
       apiKey,
       botId,
       botName,
-      channelId
-    })
+      channelId,
+    }),
   })
 
   if (!response.ok) {
@@ -98,8 +100,8 @@ async function connectBot(apiKey: string, wsUrl: string) {
           api_key: apiKey,
           bot_id: botId,
           channel_id: channelId,
-          protocol_version: PROTOCOL_VERSION
-        })
+          protocol_version: PROTOCOL_VERSION,
+        }),
       )
     })
 
@@ -137,12 +139,12 @@ async function connectBot(apiKey: string, wsUrl: string) {
         case "STT_RESULT": {
           if (!message.is_final || !sessionId || !message.utterance_id) return
           console.log(
-            `[mock-bot] STT_RESULT final ${message.utterance_id}: ${clipTextForLog(message.text ?? "")}`
+            `[mock-bot] STT_RESULT final ${message.utterance_id}: ${clipTextForLog(message.text ?? "")}`,
           )
           await streamReply(socket, {
             sessionId,
             utteranceId: message.utterance_id,
-            userText: message.text ?? ""
+            userText: message.text ?? "",
           })
           break
         }
@@ -190,7 +192,7 @@ async function streamReply(
     sessionId: string
     utteranceId: string
     userText: string
-  }
+  },
 ) {
   const reply = composeReply(options.userText)
   const previews = buildPreviewFrames(reply)
@@ -199,7 +201,7 @@ async function streamReply(
   for (const [index, preview] of previews.entries()) {
     await delay(120)
     console.log(
-      `[mock-bot] BOT_PREVIEW ${index + 1}/${previews.length} ${options.utteranceId}: ${clipTextForLog(preview)}`
+      `[mock-bot] BOT_PREVIEW ${index + 1}/${previews.length} ${options.utteranceId}: ${clipTextForLog(preview)}`,
     )
     socket.send(
       JSON.stringify({
@@ -207,15 +209,15 @@ async function streamReply(
         session_id: options.sessionId,
         utterance_id: options.utteranceId,
         text: preview,
-        is_final: index === previews.length - 1
-      })
+        is_final: index === previews.length - 1,
+      }),
     )
   }
 
   for (const [index, part] of parts.entries()) {
     await delay(170)
     console.log(
-      `[mock-bot] TTS_TEXT ${index + 1}/${parts.length} ${options.utteranceId}${index === parts.length - 1 ? " final" : ""}: ${clipTextForLog(part)}`
+      `[mock-bot] TTS_TEXT ${index + 1}/${parts.length} ${options.utteranceId}${index === parts.length - 1 ? " final" : ""}: ${clipTextForLog(part)}`,
     )
     socket.send(
       JSON.stringify({
@@ -223,8 +225,8 @@ async function streamReply(
         session_id: options.sessionId,
         utterance_id: options.utteranceId,
         text: part,
-        is_final: index === parts.length - 1
-      })
+        is_final: index === parts.length - 1,
+      }),
     )
   }
 }
@@ -239,8 +241,8 @@ function buildPreviewFrames(reply: string) {
     new Set([
       Math.max(3, Math.floor(words.length * 0.28)),
       Math.max(5, Math.floor(words.length * 0.58)),
-      words.length
-    ])
+      words.length,
+    ]),
   ).filter((count) => count <= words.length)
 
   return checkpoints.map((count, index) => {
@@ -274,9 +276,16 @@ function splitReply(reply: string) {
 function isConnectionRefused(error: unknown) {
   if (!(error instanceof Error)) return false
 
-  const cause = (error as Error & { cause?: { code?: string; errors?: Array<{ code?: string }> } }).cause
+  const cause = (
+    error as Error & {
+      cause?: { code?: string; errors?: Array<{ code?: string }> }
+    }
+  ).cause
   if (cause?.code === "ECONNREFUSED") return true
-  if (Array.isArray(cause?.errors) && cause.errors.some((item) => item.code === "ECONNREFUSED")) {
+  if (
+    Array.isArray(cause?.errors) &&
+    cause.errors.some((item) => item.code === "ECONNREFUSED")
+  ) {
     return true
   }
 
@@ -284,7 +293,9 @@ function isConnectionRefused(error: unknown) {
 }
 
 function isAlreadyConnected(error: unknown) {
-  return error instanceof Error && error.message.includes("BOT_ALREADY_CONNECTED")
+  return (
+    error instanceof Error && error.message.includes("BOT_ALREADY_CONNECTED")
+  )
 }
 
 void main()

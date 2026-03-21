@@ -14,7 +14,7 @@ const metrics = [
   createMetric("Lines", total.lines),
   createMetric("Statements", total.statements),
   createMetric("Functions", total.functions),
-  createMetric("Branches", total.branches)
+  createMetric("Branches", total.branches),
 ]
 
 const lineCoverage = total.lines?.pct ?? 0
@@ -22,7 +22,7 @@ const badge = makeBadge({
   label: "coverage",
   message: `${formatPercent(lineCoverage)}%`,
   color: coverageColor(lineCoverage),
-  style: "flat"
+  style: "flat",
 })
 
 const markdown = [
@@ -32,11 +32,11 @@ const markdown = [
   "| --- | ---: | ---: |",
   ...metrics.map(
     (metric) =>
-      `| ${metric.label} | ${metric.percent}% | ${metric.covered} / ${metric.total} |`
+      `| ${metric.label} | ${metric.percent}% | ${metric.covered} / ${metric.total} |`,
   ),
   "",
   `Line coverage badge updated at \`${toTimestamp(new Date())}\`.`,
-  ""
+  "",
 ].join("\n")
 
 await mkdir(resolve(process.cwd(), "docs", "badges"), { recursive: true })
@@ -52,7 +52,7 @@ function createMetric(label, metric = { pct: 0, covered: 0, total: 0 }) {
     label,
     percent: formatPercent(metric.pct ?? 0),
     covered: metric.covered ?? 0,
-    total: metric.total ?? 0
+    total: metric.total ?? 0,
   }
 }
 
@@ -70,5 +70,8 @@ function coverageColor(value) {
 }
 
 function toTimestamp(date) {
-  return date.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, " UTC")
+  return date
+    .toISOString()
+    .replace("T", " ")
+    .replace(/\.\d{3}Z$/, " UTC")
 }

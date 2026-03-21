@@ -1,5 +1,7 @@
 import { defineConfig } from "@playwright/test"
 
+const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000"
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
@@ -9,15 +11,15 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   outputDir: "test-results/playwright",
   use: {
-    baseURL: "http://127.0.0.1:3000",
-    trace: "retain-on-failure"
+    baseURL: baseUrl,
+    trace: "retain-on-failure",
   },
   webServer: {
     command: "pnpm start:demo",
-    url: "http://127.0.0.1:3000",
+    url: baseUrl,
     reuseExistingServer: !process.env.CI,
     stdout: "pipe",
     stderr: "pipe",
-    timeout: 120_000
-  }
+    timeout: 120_000,
+  },
 })

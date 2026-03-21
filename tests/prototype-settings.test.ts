@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest"
 
 import {
-  SETTINGS_STORAGE_KEY,
   buildWsUrl,
   defaultSettings,
   loadPrototypeSettings,
   normalizeServerUrl,
   persistPrototypeSettings,
-  sanitizeChannelId
+  SETTINGS_STORAGE_KEY,
+  sanitizeChannelId,
 } from "../apps/web/lib/prototype-settings"
 
 type MemoryStorage = {
@@ -30,11 +30,17 @@ afterEach(() => {
 
 describe("prototype settings helpers", () => {
   it("normalizes server urls and sanitizes channel ids", () => {
-    expect(normalizeServerUrl("https://demo.example.com/path")).toBe("https://demo.example.com")
-    expect(sanitizeChannelId(" Demo Room! 42 ")).toBe("demo-room-42")
-    expect(buildWsUrl({ ...defaultSettings, serverUrl: "https://demo.example.com/app", channelId: "Demo Room" })).toBe(
-      "wss://demo.example.com/ws/client?channelId=demo-room"
+    expect(normalizeServerUrl("https://demo.example.com/path")).toBe(
+      "https://demo.example.com",
     )
+    expect(sanitizeChannelId(" Demo Room! 42 ")).toBe("demo-room-42")
+    expect(
+      buildWsUrl({
+        ...defaultSettings,
+        serverUrl: "https://demo.example.com/app",
+        channelId: "Demo Room",
+      }),
+    ).toBe("wss://demo.example.com/ws/client?channelId=demo-room")
   })
 
   it("migrates legacy browser toggles from local storage", () => {
@@ -45,8 +51,8 @@ describe("prototype settings helpers", () => {
         serverUrl: "http://localhost:3001/path",
         channelId: "Alpha Room",
         browserSpeechEnabled: false,
-        browserVoiceEnabled: false
-      })
+        browserVoiceEnabled: false,
+      }),
     )
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
@@ -54,7 +60,7 @@ describe("prototype settings helpers", () => {
       serverUrl: "http://localhost:3001",
       channelId: "alpha-room",
       asrProvider: "demo",
-      ttsProvider: "demo"
+      ttsProvider: "demo",
     })
   })
 
@@ -65,14 +71,16 @@ describe("prototype settings helpers", () => {
     persistPrototypeSettings({
       ...defaultSettings,
       serverUrl: "http://localhost:3001/path",
-      channelId: "Team Demo"
+      channelId: "Team Demo",
     })
 
-    expect(JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? "")).toMatchObject({
+    expect(
+      JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? ""),
+    ).toMatchObject({
       serverUrl: "http://localhost:3001",
       channelId: "team-demo",
       asrProvider: "browser",
-      ttsProvider: "browser"
+      ttsProvider: "browser",
     })
   })
 })
@@ -92,6 +100,6 @@ function createMemoryStorage(): MemoryStorage {
     },
     clear() {
       store.clear()
-    }
+    },
   }
 }

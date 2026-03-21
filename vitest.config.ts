@@ -29,8 +29,8 @@ export default defineConfig({
         "playwright.config.ts",
         "test-results/**",
         "tests/**",
-        "**/*.d.ts"
-      ]
-    }
-  }
+        "**/*.d.ts",
+      ],
+    },
+  },
 })

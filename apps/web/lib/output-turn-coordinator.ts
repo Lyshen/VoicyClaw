@@ -51,7 +51,7 @@ export class OutputTurnCoordinator {
     this.options.logger?.info("queue", {
       utteranceId,
       language,
-      text: clipTextForLog(trimmed)
+      text: clipTextForLog(trimmed),
     })
 
     const generation = this.ensureActiveTurn(utteranceId)
@@ -73,7 +73,7 @@ export class OutputTurnCoordinator {
             this.options.logger?.info("start", {
               utteranceId,
               language: utterance.lang,
-              text: clipTextForLog(trimmed)
+              text: clipTextForLog(trimmed),
             })
           }
           utterance.onend = () => {
@@ -84,7 +84,7 @@ export class OutputTurnCoordinator {
 
             this.options.logger?.info("end", {
               utteranceId,
-              text: clipTextForLog(trimmed)
+              text: clipTextForLog(trimmed),
             })
             resolve()
           }
@@ -97,19 +97,24 @@ export class OutputTurnCoordinator {
             this.options.logger?.warn("error", {
               utteranceId,
               error: event.error,
-              text: clipTextForLog(trimmed)
+              text: clipTextForLog(trimmed),
             })
             resolve()
           }
 
           speech.speak(utterance)
-        })
+        }),
     )
   }
 
-  async enqueueServerAudio(utteranceId: string, audioBase64: string, sampleRate: number) {
+  async enqueueServerAudio(
+    utteranceId: string,
+    audioBase64: string,
+    sampleRate: number,
+  ) {
     const generation = this.ensureActiveTurn(utteranceId)
-    if (generation === null || !this.isActiveTurn(utteranceId, generation)) return
+    if (generation === null || !this.isActiveTurn(utteranceId, generation))
+      return
 
     await this.options.player.enqueueBase64(audioBase64, sampleRate)
   }
@@ -128,7 +133,7 @@ export class OutputTurnCoordinator {
     if (this.currentTurnId !== utteranceId) {
       this.options.logger?.info("drop-stale", {
         activeUtteranceId: this.currentTurnId,
-        staleUtteranceId: utteranceId
+        staleUtteranceId: utteranceId,
       })
       return null
     }
@@ -137,7 +142,9 @@ export class OutputTurnCoordinator {
   }
 
   private isActiveTurn(utteranceId: string, generation: number) {
-    return this.currentTurnId === utteranceId && this.speechGeneration === generation
+    return (
+      this.currentTurnId === utteranceId && this.speechGeneration === generation
+    )
   }
 }
 

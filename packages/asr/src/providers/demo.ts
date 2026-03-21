@@ -18,7 +18,7 @@ export class DemoASRProvider implements ASRAdapter {
 
   async *transcribe(
     audio: AsyncIterable<AudioChunk>,
-    _config?: ASRConfig
+    _config?: ASRConfig,
   ): AsyncGenerator<ASRChunk> {
     let audioBytes = 0
     let chunkCount = 0
@@ -34,7 +34,7 @@ export class DemoASRProvider implements ASRAdapter {
 
     const hint = await this.options.resolveTranscript?.({
       audioBytes,
-      chunkCount
+      chunkCount,
     })
 
     const fallback = chunkCount
@@ -43,7 +43,7 @@ export class DemoASRProvider implements ASRAdapter {
 
     yield {
       text: hint?.trim() || fallback,
-      isFinal: true
+      isFinal: true,
     }
   }
 }

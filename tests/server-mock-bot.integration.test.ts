@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto"
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 
-import { RuntimeClient, startDemoRuntime } from "./support/demo-runtime"
+import { type RuntimeClient, startDemoRuntime } from "./support/demo-runtime"
 
 const defaultClientSettings = {
   asrMode: "client" as const,
   asrProvider: "browser",
   ttsMode: "client" as const,
   ttsProvider: "browser",
-  language: "en-US"
+  language: "en-US",
 }
 
 describe.sequential("server + mock-bot integration", () => {
@@ -36,16 +36,20 @@ describe.sequential("server + mock-bot integration", () => {
     client.send({
       type: "TEXT_UTTERANCE",
       utteranceId,
-      text: "hello"
+      text: "hello",
     })
 
     const preview = await client.waitForMessage(
       (message) =>
-        message.type === "BOT_PREVIEW" && message.utteranceId === utteranceId && message.isFinal
+        message.type === "BOT_PREVIEW" &&
+        message.utteranceId === utteranceId &&
+        message.isFinal,
     )
     const finalText = await client.waitForMessage(
       (message) =>
-        message.type === "BOT_TEXT" && message.utteranceId === utteranceId && message.isFinal
+        message.type === "BOT_TEXT" &&
+        message.utteranceId === utteranceId &&
+        message.isFinal,
     )
 
     expect(preview.text).toMatch(/Hello from Integration Bot/i)
@@ -56,25 +60,29 @@ describe.sequential("server + mock-bot integration", () => {
     client = await runtime.connectClient({
       ...defaultClientSettings,
       ttsMode: "server",
-      ttsProvider: "demo"
+      ttsProvider: "demo",
     })
 
     const utteranceId = randomUUID()
     client.send({
       type: "TEXT_UTTERANCE",
       utteranceId,
-      text: "design prototype"
+      text: "design prototype",
     })
 
     const audioChunk = await client.waitForMessage(
-      (message) => message.type === "AUDIO_CHUNK" && message.utteranceId === utteranceId
+      (message) =>
+        message.type === "AUDIO_CHUNK" && message.utteranceId === utteranceId,
     )
     const audioEnd = await client.waitForMessage(
-      (message) => message.type === "AUDIO_END" && message.utteranceId === utteranceId
+      (message) =>
+        message.type === "AUDIO_END" && message.utteranceId === utteranceId,
     )
     const finalText = await client.waitForMessage(
       (message) =>
-        message.type === "BOT_TEXT" && message.utteranceId === utteranceId && message.isFinal
+        message.type === "BOT_TEXT" &&
+        message.utteranceId === utteranceId &&
+        message.isFinal,
     )
 
     expect(audioChunk.audioBase64.length).toBeGreaterThan(0)

@@ -165,8 +165,9 @@ This keeps provider implementations simple. Client providers only speak text. Se
 
 The runnable prototype is now guarded by three complementary test layers so the current demo loop does not regress while ASR / TTS providers keep evolving:
 
+- **Lint gate** — Biome blocks obvious code quality regressions before build and runtime checks start
 - **Unit coverage** — protocol helpers, provider selection, demo ASR/TTS adapters, and the shared output-turn coordinator are covered by Vitest
-- **Integration coverage** — the Fastify / WebSocket server and the local mock bot are exercised together in-process through a real OpenClaw text round-trip
+- **Integration coverage** — the Fastify / WebSocket server and the local mock bot are exercised together in-process through both real OpenClaw happy-path round-trips and protocol failure-path checks
 - **Smoke E2E coverage** — Playwright boots the full local demo stack, drives the settings UI, and verifies the browser can send a text utterance and receive streamed bot output
 
 GitHub Actions runs the same `pnpm ci:check` pipeline used locally, uploads the coverage reports, and writes the current coverage summary into the job report.

@@ -33,16 +33,20 @@ export const ASR_PROVIDER_OPTIONS: ProviderOption<AsrProviderId>[] = [
     id: "browser",
     mode: "client",
     label: "Browser SpeechRecognition",
-    summary: "Fastest zero-setup ASR path. Uses the browser or OS speech stack directly.",
-    runtimeHint: "Best for the current English-first demo when Chrome exposes Web Speech."
+    summary:
+      "Fastest zero-setup ASR path. Uses the browser or OS speech stack directly.",
+    runtimeHint:
+      "Best for the current English-first demo when Chrome exposes Web Speech.",
   },
   {
     id: "demo",
     mode: "server",
     label: "Demo Server ASR",
-    summary: "Routes microphone audio through the VoicyClaw server and keeps a browser transcript assist while true server ASR is still being wired.",
-    runtimeHint: "Use this when you want to exercise the server-owned path without waiting for a real vendor adapter."
-  }
+    summary:
+      "Routes microphone audio through the VoicyClaw server and keeps a browser transcript assist while true server ASR is still being wired.",
+    runtimeHint:
+      "Use this when you want to exercise the server-owned path without waiting for a real vendor adapter.",
+  },
 ]
 
 export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
@@ -50,16 +54,20 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
     id: "browser",
     mode: "client",
     label: "Browser SpeechSynthesis",
-    summary: "Speaks the bot reply locally in the browser for the most human-readable prototype output.",
-    runtimeHint: "Recommended when you want the answer read aloud immediately without server audio playback."
+    summary:
+      "Speaks the bot reply locally in the browser for the most human-readable prototype output.",
+    runtimeHint:
+      "Recommended when you want the answer read aloud immediately without server audio playback.",
   },
   {
     id: "demo",
     mode: "server",
     label: "Demo Server TTS",
-    summary: "Streams demo PCM frames from the server so the OpenClaw media pipeline stays visible end to end.",
-    runtimeHint: "Best when you want to verify the server-side audio path instead of browser speech synthesis."
-  }
+    summary:
+      "Streams demo PCM frames from the server so the OpenClaw media pipeline stays visible end to end.",
+    runtimeHint:
+      "Best when you want to verify the server-side audio path instead of browser speech synthesis.",
+  },
 ]
 
 export const ASR_PROVIDER_GUIDE: ProviderGuide[] = [
@@ -67,30 +75,36 @@ export const ASR_PROVIDER_GUIDE: ProviderGuide[] = [
     id: "openai-whisper",
     label: "OpenAI Whisper",
     status: "next",
-    summary: "Primary server ASR target for a production-grade hosted transcript pipeline.",
-    keyHint: "Stage an OpenAI ASR key below; server wiring is the next adapter to land."
+    summary:
+      "Primary server ASR target for a production-grade hosted transcript pipeline.",
+    keyHint:
+      "Stage an OpenAI ASR key below; server wiring is the next adapter to land.",
   },
   {
     id: "azure-speech",
     label: "Azure Speech",
     status: "planned",
-    summary: "Enterprise speech stack with wide language coverage and strong regional options.",
-    keyHint: "Will require Azure speech credentials once the adapter is added."
+    summary:
+      "Enterprise speech stack with wide language coverage and strong regional options.",
+    keyHint: "Will require Azure speech credentials once the adapter is added.",
   },
   {
     id: "volcengine-asr",
     label: "Volcengine ASR",
     status: "planned",
-    summary: "Priority CN server provider for lower-latency regional speech recognition.",
-    keyHint: "Will use server-side credentials managed in VoicyClaw settings."
+    summary:
+      "Priority CN server provider for lower-latency regional speech recognition.",
+    keyHint: "Will use server-side credentials managed in VoicyClaw settings.",
   },
   {
     id: "alibaba-nls",
     label: "Alibaba Cloud NLS",
     status: "planned",
-    summary: "Additional CN server ASR provider for deployments that stay inside Alibaba Cloud.",
-    keyHint: "Will require Alibaba Cloud key material once the adapter is wired."
-  }
+    summary:
+      "Additional CN server ASR provider for deployments that stay inside Alibaba Cloud.",
+    keyHint:
+      "Will require Alibaba Cloud key material once the adapter is wired.",
+  },
 ]
 
 export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
@@ -99,41 +113,45 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
     label: "OpenAI TTS",
     status: "next",
     summary: "Primary server TTS target for natural hosted voice output.",
-    keyHint: "Stage an OpenAI TTS key below; server synthesis wiring is queued next."
+    keyHint:
+      "Stage an OpenAI TTS key below; server synthesis wiring is queued next.",
   },
   {
     id: "azure-tts",
     label: "Azure Speech TTS",
     status: "planned",
-    summary: "High-quality neural voices with enterprise routing and regional controls.",
-    keyHint: "Will require Azure speech credentials once the adapter is added."
+    summary:
+      "High-quality neural voices with enterprise routing and regional controls.",
+    keyHint: "Will require Azure speech credentials once the adapter is added.",
   },
   {
     id: "volcengine-tts",
     label: "Volcengine TTS",
     status: "planned",
     summary: "Priority CN server TTS target for local-market voice output.",
-    keyHint: "Will use server-side credentials managed in VoicyClaw settings."
+    keyHint: "Will use server-side credentials managed in VoicyClaw settings.",
   },
   {
     id: "alibaba-tts",
     label: "Alibaba Cloud TTS",
     status: "planned",
     summary: "Additional CN server TTS provider for Alibaba Cloud deployments.",
-    keyHint: "Will require Alibaba Cloud key material once the adapter is wired."
-  }
+    keyHint:
+      "Will require Alibaba Cloud key material once the adapter is wired.",
+  },
 ]
 
 export const SETTINGS_STORAGE_KEY = "voicyclaw.prototype.settings"
 
 export const defaultSettings: PrototypeSettings = {
-  serverUrl: process.env.NEXT_PUBLIC_VOICYCLAW_SERVER_URL ?? "http://localhost:3001",
+  serverUrl:
+    process.env.NEXT_PUBLIC_VOICYCLAW_SERVER_URL ?? "http://localhost:3001",
   channelId: "demo-room",
   language: "en-US",
   asrProvider: "browser",
   ttsProvider: "browser",
   openAiAsrKey: "",
-  openAiTtsKey: ""
+  openAiTtsKey: "",
 }
 
 export function getProviderModeLabel(mode: ProviderMode) {
@@ -141,11 +159,17 @@ export function getProviderModeLabel(mode: ProviderMode) {
 }
 
 export function getAsrProviderOption(providerId: string | undefined) {
-  return ASR_PROVIDER_OPTIONS.find((option) => option.id === providerId) ?? ASR_PROVIDER_OPTIONS[0]
+  return (
+    ASR_PROVIDER_OPTIONS.find((option) => option.id === providerId) ??
+    ASR_PROVIDER_OPTIONS[0]
+  )
 }
 
 export function getTtsProviderOption(providerId: string | undefined) {
-  return TTS_PROVIDER_OPTIONS.find((option) => option.id === providerId) ?? TTS_PROVIDER_OPTIONS[0]
+  return (
+    TTS_PROVIDER_OPTIONS.find((option) => option.id === providerId) ??
+    TTS_PROVIDER_OPTIONS[0]
+  )
 }
 
 export function normalizeServerUrl(input: string) {
@@ -179,20 +203,24 @@ export function buildApiUrl(settings: PrototypeSettings, pathname: string) {
 
 function normalizeAsrProvider(
   providerId: string | undefined,
-  legacyBrowserSpeechEnabled?: boolean
+  legacyBrowserSpeechEnabled?: boolean,
 ): AsrProviderId {
   if (providerId === "demo") return "demo"
   if (providerId === "browser") return "browser"
-  return legacyBrowserSpeechEnabled === false ? "demo" : defaultSettings.asrProvider
+  return legacyBrowserSpeechEnabled === false
+    ? "demo"
+    : defaultSettings.asrProvider
 }
 
 function normalizeTtsProvider(
   providerId: string | undefined,
-  legacyBrowserVoiceEnabled?: boolean
+  legacyBrowserVoiceEnabled?: boolean,
 ): TtsProviderId {
   if (providerId === "demo") return "demo"
   if (providerId === "browser") return "browser"
-  return legacyBrowserVoiceEnabled === false ? "demo" : defaultSettings.ttsProvider
+  return legacyBrowserVoiceEnabled === false
+    ? "demo"
+    : defaultSettings.ttsProvider
 }
 
 export function loadPrototypeSettings() {
@@ -212,10 +240,20 @@ export function loadPrototypeSettings() {
     return {
       ...defaultSettings,
       ...parsed,
-      serverUrl: normalizeServerUrl(parsed.serverUrl ?? defaultSettings.serverUrl),
-      channelId: sanitizeChannelId(parsed.channelId ?? defaultSettings.channelId),
-      asrProvider: normalizeAsrProvider(parsed.asrProvider, parsed.browserSpeechEnabled),
-      ttsProvider: normalizeTtsProvider(parsed.ttsProvider, parsed.browserVoiceEnabled)
+      serverUrl: normalizeServerUrl(
+        parsed.serverUrl ?? defaultSettings.serverUrl,
+      ),
+      channelId: sanitizeChannelId(
+        parsed.channelId ?? defaultSettings.channelId,
+      ),
+      asrProvider: normalizeAsrProvider(
+        parsed.asrProvider,
+        parsed.browserSpeechEnabled,
+      ),
+      ttsProvider: normalizeTtsProvider(
+        parsed.ttsProvider,
+        parsed.browserVoiceEnabled,
+      ),
     }
   } catch {
     return defaultSettings
@@ -232,7 +270,7 @@ export function persistPrototypeSettings(settings: PrototypeSettings) {
       serverUrl: normalizeServerUrl(settings.serverUrl),
       channelId: sanitizeChannelId(settings.channelId),
       asrProvider: getAsrProviderOption(settings.asrProvider).id,
-      ttsProvider: getTtsProviderOption(settings.ttsProvider).id
-    })
+      ttsProvider: getTtsProviderOption(settings.ttsProvider).id,
+    }),
   )
 }

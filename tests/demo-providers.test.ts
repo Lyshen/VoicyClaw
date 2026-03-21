@@ -6,10 +6,12 @@ import { DemoTTSProvider } from "../packages/tts/src/providers/demo"
 describe("demo providers", () => {
   it("uses the resolved transcript hint when demo ASR receives one", async () => {
     const provider = new DemoASRProvider({
-      resolveTranscript: () => "hello from test"
+      resolveTranscript: () => "hello from test",
     })
 
-    const chunks = await collect(provider.transcribe(singleChunk(Buffer.from([1, 2, 3, 4]))))
+    const chunks = await collect(
+      provider.transcribe(singleChunk(Buffer.from([1, 2, 3, 4]))),
+    )
 
     expect(chunks).toEqual([{ text: "hello from test", isFinal: true }])
   })
@@ -22,8 +24,8 @@ describe("demo providers", () => {
     expect(chunks).toEqual([
       {
         text: "Prototype ASR did not receive a transcript hint, so the utterance stayed silent.",
-        isFinal: true
-      }
+        isFinal: true,
+      },
     ])
   })
 
@@ -31,7 +33,9 @@ describe("demo providers", () => {
     const provider = new DemoTTSProvider()
 
     const chunks = await collect(
-      provider.synthesize(textChunks(["Hello from Studio Claw.", "", "Streaming demo output."]))
+      provider.synthesize(
+        textChunks(["Hello from Studio Claw.", "", "Streaming demo output."]),
+      ),
     )
 
     expect(chunks).toHaveLength(2)

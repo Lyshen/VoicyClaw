@@ -84,9 +84,10 @@ This keeps `client provider` and `server provider` modes behaviorally consistent
 
 ## Quality Gates
 
-The repo now includes a standard GitHub CI workflow, repo-level coverage reporting, smoke E2E coverage, and a server/mock-bot integration baseline for the current runnable demo.
+The repo now includes a standard GitHub CI workflow, a repo-wide lint gate, coverage reporting, smoke E2E coverage, and integration coverage for both the happy path and key protocol failure paths.
 
-- `pnpm test` - runs unit and integration tests for protocol helpers, demo providers, settings normalization, output-turn coordination, and the local server/mock-bot relay
+- `pnpm lint` - runs Biome across the monorepo so obvious code quality issues are blocked before merge
+- `pnpm test` - runs unit and integration tests for protocol helpers, demo providers, settings normalization, output-turn coordination, the local server/mock-bot relay, and protocol failure handling
 - `pnpm test:coverage` - runs the same Vitest suite with V8 coverage, writes `coverage/summary.md`, and refreshes `docs/badges/coverage.svg`
 - `pnpm typecheck` - runs TypeScript checks across `apps/server`, `apps/web`, and `apps/mock-bot`
 - `pnpm build` - validates production builds for the server, web app, and mock bot

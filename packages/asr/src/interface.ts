@@ -5,6 +5,6 @@ export interface ASRAdapter {
 
   transcribe(
     audio: AsyncIterable<AudioChunk>,
-    config?: ASRConfig
+    config?: ASRConfig,
   ): AsyncGenerator<ASRChunk>
 }

@@ -1,6 +1,6 @@
-import { dirname, resolve } from "node:path"
-import { mkdirSync } from "node:fs"
 import { randomUUID } from "node:crypto"
+import { mkdirSync } from "node:fs"
+import { dirname, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 
 export interface PlatformKeyRecord {
@@ -13,7 +13,8 @@ export interface PlatformKeyRecord {
 }
 
 const databaseFile =
-  process.env.VOICYCLAW_SQLITE_FILE?.trim() || resolve(process.cwd(), ".data", "voicyclaw.sqlite")
+  process.env.VOICYCLAW_SQLITE_FILE?.trim() ||
+  resolve(process.cwd(), ".data", "voicyclaw.sqlite")
 
 mkdirSync(dirname(databaseFile), { recursive: true })
 
@@ -118,7 +119,7 @@ export function createPlatformKey(channelId: string, label?: string | null) {
     label: label?.trim() || "Prototype key",
     channelId,
     createdAt: now,
-    lastUsedAt: null
+    lastUsedAt: null,
   }
 
   insertPlatformKeyStatement.run(
@@ -127,14 +128,16 @@ export function createPlatformKey(channelId: string, label?: string | null) {
     record.label,
     record.channelId,
     record.createdAt,
-    record.lastUsedAt
+    record.lastUsedAt,
   )
 
   return record
 }
 
 export function findPlatformKeyByToken(token: string) {
-  return selectPlatformKeyByTokenStatement.get(token) as PlatformKeyRecord | undefined
+  return selectPlatformKeyByTokenStatement.get(token) as
+    | PlatformKeyRecord
+    | undefined
 }
 
 export function touchPlatformKey(id: string) {
@@ -157,7 +160,7 @@ export function upsertBotRegistration(input: {
     input.platformKeyId,
     now,
     now,
-    input.lastConnectedAt ?? null
+    input.lastConnectedAt ?? null,
   )
 }
 

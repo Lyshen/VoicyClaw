@@ -3,10 +3,10 @@ import { Buffer } from "node:buffer"
 import { describe, expect, it } from "vitest"
 
 import {
-  PROTOCOL_VERSION,
   decodeAudioFrame,
   encodeAudioFrame,
-  isSupportedProtocolVersion
+  isSupportedProtocolVersion,
+  PROTOCOL_VERSION,
 } from "../packages/protocol/src/openclaw"
 
 describe("openclaw protocol helpers", () => {
@@ -28,7 +28,7 @@ describe("openclaw protocol helpers", () => {
 
   it("rejects truncated audio frames", () => {
     expect(() => decodeAudioFrame(Buffer.from([1, 2, 3]))).toThrow(
-      "Invalid frame: header is shorter than 8 bytes"
+      "Invalid frame: header is shorter than 8 bytes",
     )
   })
 })
