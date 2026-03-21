@@ -2,6 +2,9 @@
 
 ### *Talk to claws easily.*
 
+[![CI](https://github.com/Lyshen/VoicyClaw/actions/workflows/ci.yml/badge.svg)](https://github.com/Lyshen/VoicyClaw/actions/workflows/ci.yml)
+![Coverage](docs/badges/coverage.svg)
+
 ---
 
 VoicyClaw is an open-source voice platform that connects you to AI agents (ClawBots) through a real-time voice channel. Speak — your voice is transcribed, routed to a ClawBot via the OpenClaw protocol, and the response streams back as synthesized speech. End-to-end streaming, bring-your-own API keys, no lock-in.
@@ -81,14 +84,16 @@ This keeps `client provider` and `server provider` modes behaviorally consistent
 
 ## Quality Gates
 
-The repo now includes a baseline GitHub CI workflow and a lightweight automated test suite for the current runnable demo.
+The repo now includes a standard GitHub CI workflow, repo-level coverage reporting, smoke E2E coverage, and a server/mock-bot integration baseline for the current runnable demo.
 
-- `pnpm test` - runs unit tests for protocol helpers, demo providers, settings normalization, and shared output-turn coordination
+- `pnpm test` - runs unit and integration tests for protocol helpers, demo providers, settings normalization, output-turn coordination, and the local server/mock-bot relay
+- `pnpm test:coverage` - runs the same Vitest suite with V8 coverage, writes `coverage/summary.md`, and refreshes `docs/badges/coverage.svg`
 - `pnpm typecheck` - runs TypeScript checks across `apps/server`, `apps/web`, and `apps/mock-bot`
 - `pnpm build` - validates production builds for the server, web app, and mock bot
-- `pnpm ci:check` - runs the same database bootstrap, tests, typecheck, and build sequence used in GitHub Actions
+- `pnpm test:e2e` - builds the monorepo and runs Playwright smoke tests against the full local demo stack
+- `pnpm ci:check` - runs the database bootstrap, coverage suite, typecheck, and Playwright smoke flow used in GitHub Actions
 
-The CI workflow lives in `.github/workflows/ci.yml` and runs on pushes to `main` / `codex/**` plus all pull requests.
+The CI workflow in `.github/workflows/ci.yml` runs on pushes to `main` / `codex/**` plus all pull requests, publishes the coverage artifacts, and writes the latest coverage summary into the GitHub Actions job report.
 
 ---
 

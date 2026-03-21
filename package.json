@@ -8,20 +8,28 @@
     "dev:web": "pnpm --filter @voicyclaw/web dev",
     "dev:server": "pnpm --filter @voicyclaw/server dev",
     "dev:bot": "pnpm --filter @voicyclaw/mock-bot dev",
+    "start:demo": "concurrently -k -c blue,green,magenta \"VOICYCLAW_SQLITE_FILE=./apps/server/.data/voicyclaw.sqlite node ./node_modules/tsx/dist/cli.mjs apps/server/src/index.ts\" \"pnpm --filter @voicyclaw/web start\" \"node ./node_modules/tsx/dist/cli.mjs apps/mock-bot/src/index.ts\"",
     "db:generate": "pnpm --filter @voicyclaw/server db:generate",
     "db:push": "pnpm --filter @voicyclaw/server db:push",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage.enabled true && node scripts/report-coverage.mjs",
+    "test:e2e": "pnpm build && playwright test",
     "build": "pnpm db:generate && pnpm --filter @voicyclaw/server build && pnpm --filter @voicyclaw/web build && pnpm --filter @voicyclaw/mock-bot build",
     "typecheck": "pnpm --filter @voicyclaw/server typecheck && pnpm --filter @voicyclaw/web typecheck && pnpm --filter @voicyclaw/mock-bot typecheck",
     "check": "pnpm test && pnpm typecheck && pnpm build",
-    "ci:check": "pnpm db:generate && pnpm db:push && pnpm check"
+    "ci:check": "pnpm db:generate && pnpm db:push && pnpm test:coverage && pnpm typecheck && pnpm test:e2e"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^25.5.0",
+    "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "badge-maker": "^5.0.2",
     "concurrently": "^9.2.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "ws": "^8.19.0"
   }
 }

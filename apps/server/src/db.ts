@@ -1,5 +1,5 @@
+import { dirname, resolve } from "node:path"
 import { mkdirSync } from "node:fs"
-import { resolve } from "node:path"
 import { randomUUID } from "node:crypto"
 import { DatabaseSync } from "node:sqlite"
 
@@ -12,9 +12,10 @@ export interface PlatformKeyRecord {
   lastUsedAt: string | null
 }
 
-const databaseFile = resolve(process.cwd(), ".data", "voicyclaw.sqlite")
+const databaseFile =
+  process.env.VOICYCLAW_SQLITE_FILE?.trim() || resolve(process.cwd(), ".data", "voicyclaw.sqlite")
 
-mkdirSync(resolve(process.cwd(), ".data"), { recursive: true })
+mkdirSync(dirname(databaseFile), { recursive: true })
 
 const db = new DatabaseSync(databaseFile)
 

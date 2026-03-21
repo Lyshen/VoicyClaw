@@ -27,6 +27,8 @@ async function main() {
     } catch (error) {
       if (isConnectionRefused(error)) {
         console.log("[mock-bot] waiting for the server to come online...")
+      } else if (isAlreadyConnected(error)) {
+        console.log("[mock-bot] bot session is already active, waiting before retrying...")
       } else {
         console.error("[mock-bot]", error)
       }
@@ -279,6 +281,10 @@ function isConnectionRefused(error: unknown) {
   }
 
   return false
+}
+
+function isAlreadyConnected(error: unknown) {
+  return error instanceof Error && error.message.includes("BOT_ALREADY_CONNECTED")
 }
 
 void main()
