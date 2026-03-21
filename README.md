@@ -116,6 +116,7 @@ The CI workflow in `.github/workflows/ci.yml` runs on pushes to `main` / `codex/
 | [`doc/03-adapter-interface.md`](doc/03-adapter-interface.md) | ASR / TTS adapter interface definitions |
 | [`doc/04-openclaw-gateway-bridge.md`](doc/04-openclaw-gateway-bridge.md) | Design for the minimal OpenClaw Gateway bridge that lets VoicyClaw interoperate with a real OpenClaw deployment |
 | [`doc/05-conversation-backend-abstraction.md`](doc/05-conversation-backend-abstraction.md) | The stable backend contract that keeps voice business logic independent from local-bot vs Gateway transport details |
+| [`doc/06-openclaw-voicyclaw-channel-plugin.md`](doc/06-openclaw-voicyclaw-channel-plugin.md) | Detailed design for the long-term OpenClaw `voicyclaw` channel plugin that actively connects to the VoicyClaw service |
 
 ---
 

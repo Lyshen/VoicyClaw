@@ -154,6 +154,14 @@ This is intentionally smaller than a native OpenClaw extension and gives us the 
 See `doc/04-openclaw-gateway-bridge.md` for the detailed design.
 See `doc/05-conversation-backend-abstraction.md` for the backend contract that keeps transport-specific logic below the main voice pipeline.
 
+Longer term, the preferred product shape is the reverse connection model:
+
+- VoicyClaw exposes the stable hosted service endpoint
+- OpenClaw installs a `voicyclaw` channel plugin
+- the plugin actively connects to VoicyClaw instead of VoicyClaw dialing a remote Gateway
+
+See `doc/06-openclaw-voicyclaw-channel-plugin.md` for that detailed design.
+
 ---
 
 ## 5. Tech Stack
