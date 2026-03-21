@@ -21,7 +21,12 @@ import type { FastifyRequest } from "fastify"
 import Fastify from "fastify"
 import type { RawData } from "ws"
 import WebSocket, { WebSocketServer } from "ws"
-
+import type {
+  ConversationBackend,
+  ConversationTurnInput,
+} from "./backends/conversation-backend"
+import { getConversationBackendId } from "./backends/conversation-backend"
+import { OpenClawGatewayConversationBackend } from "./backends/openclaw-gateway"
 import {
   createPlatformKey,
   ensureChannel,
@@ -224,6 +229,23 @@ function getPrimaryBot(channelId: string) {
   return runtime.bots.values().next().value as BotConnection | undefined
 }
 
+class LocalBotConversationBackend implements ConversationBackend {
+  readonly kind = "local-bot" as const
+
+  constructor(
+    private readonly bot: BotConnection,
+    private readonly client: ClientSession,
+  ) {}
+
+  get botId() {
+    return this.bot.botId
+  }
+
+  sendTurn(input: ConversationTurnInput) {
+    return this.bot.send(this.client, input.utteranceId, input.text)
+  }
+}
+
 function getRequestBaseUrl(request: FastifyRequest) {
   const host = request.headers.host ?? `localhost:${DEFAULT_PORT}`
   return `${request.protocol}://${host}`
@@ -343,7 +365,7 @@ async function* bufferIterable(chunks: Buffer[]) {
 
 async function* forwardBotText(
   client: ClientSession,
-  bot: BotConnection,
+  backend: ConversationBackend,
   utteranceId: string,
   source: AsyncGenerator<BotChannelMessage>,
 ) {
@@ -351,7 +373,8 @@ async function* forwardBotText(
     logPipeline("BOT_TEXT_FORWARD", {
       channelId: client.channelId,
       clientId: client.id,
-      botId: bot.botId,
+      botId: backend.botId,
+      backend: backend.kind,
       utteranceId,
       isFinal: message.isFinal,
       text: clipTextForLog(message.text),
@@ -360,13 +383,36 @@ async function* forwardBotText(
     sendJson(client.ws, {
       type: "BOT_TEXT",
       utteranceId,
-      botId: bot.botId,
+      botId: backend.botId,
       text: message.text,
       isFinal: message.isFinal,
     })
 
     yield message.text
   }
+}
+
+function getConversationBackendForClient(client: ClientSession) {
+  const backendId = getConversationBackendId(client.settings)
+  if (backendId === "openclaw-gateway") {
+    return new OpenClawGatewayConversationBackend(
+      client.settings ?? {
+        conversationBackend: "openclaw-gateway",
+        asrMode: "client",
+        asrProvider: "browser",
+        ttsMode: "client",
+        ttsProvider: "browser",
+        language: "en-US",
+      },
+    )
+  }
+
+  const bot = getPrimaryBot(client.channelId)
+  if (!bot) {
+    return null
+  }
+
+  return new LocalBotConversationBackend(bot, client)
 }
 
 async function resolveTranscript(
@@ -450,8 +496,8 @@ async function processUtterance(
     return
   }
 
-  const bot = getPrimaryBot(client.channelId)
-  if (!bot) {
+  const backend = getConversationBackendForClient(client)
+  if (!backend) {
     sendNotice(
       client,
       "error",
@@ -461,10 +507,33 @@ async function processUtterance(
   }
 
   try {
-    const botStream = bot.send(client, utterance.utteranceId, transcript)
+    logPipeline("BACKEND_REQUEST_SENT", {
+      channelId: client.channelId,
+      clientId: client.id,
+      utteranceId: utterance.utteranceId,
+      backend: backend.kind,
+      botId: backend.botId,
+      text: clipTextForLog(transcript),
+    })
+
+    const botStream = backend.sendTurn({
+      channelId: client.channelId,
+      clientId: client.id,
+      utteranceId: utterance.utteranceId,
+      text: transcript,
+      language: client.settings?.language ?? "en-US",
+      settings: client.settings ?? {
+        conversationBackend: "local-bot",
+        asrMode: "client",
+        asrProvider: "browser",
+        ttsMode: "client",
+        ttsProvider: "browser",
+        language: "en-US",
+      },
+    })
     const textStream = forwardBotText(
       client,
-      bot,
+      backend,
       utterance.utteranceId,
       botStream,
     )
@@ -474,6 +543,7 @@ async function processUtterance(
         channelId: client.channelId,
         clientId: client.id,
         utteranceId: utterance.utteranceId,
+        backend: backend.kind,
         ttsProvider: client.settings.ttsProvider,
       })
 
@@ -528,6 +598,14 @@ async function processUtterance(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown bot pipeline failure"
+    logPipeline("BACKEND_REQUEST_FAILED", {
+      channelId: client.channelId,
+      clientId: client.id,
+      utteranceId: utterance.utteranceId,
+      backend: backend.kind,
+      botId: backend.botId,
+      message,
+    })
     sendNotice(client, "error", message)
   }
 }
@@ -565,11 +643,14 @@ async function handleClientMessage(
       logPipeline("CLIENT_HELLO", {
         channelId: client.channelId,
         clientId: client.id,
+        conversationBackend: message.settings.conversationBackend,
         asrMode: message.settings.asrMode,
         asrProvider: message.settings.asrProvider,
         ttsMode: message.settings.ttsMode,
         ttsProvider: message.settings.ttsProvider,
         language: message.settings.language,
+        openClawGatewayUrl:
+          message.settings.openClawGateway?.url && backendLooksRemote(message),
       })
 
       sendJson(client.ws, {
@@ -652,6 +733,12 @@ async function handleClientMessage(
       break
     }
   }
+}
+
+function backendLooksRemote(message: ClientHelloMessage) {
+  return message.settings.conversationBackend === "openclaw-gateway"
+    ? message.settings.openClawGateway?.url
+    : undefined
 }
 
 async function handleBotConnection(ws: WebSocket, _request: Request) {

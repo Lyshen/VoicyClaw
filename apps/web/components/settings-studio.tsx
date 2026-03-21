@@ -6,9 +6,12 @@ import {
   ASR_PROVIDER_GUIDE,
   ASR_PROVIDER_OPTIONS,
   buildApiUrl,
+  CONVERSATION_BACKEND_OPTIONS,
   getAsrProviderOption,
+  getConversationBackendOption,
   getProviderModeLabel,
   getTtsProviderOption,
+  normalizeOpenClawGatewayUrl,
   normalizeServerUrl,
   type ProviderGuide,
   type ProviderMode,
@@ -28,6 +31,9 @@ export function SettingsStudio() {
 
   const activeAsrProvider = getAsrProviderOption(settings.asrProvider)
   const activeTtsProvider = getTtsProviderOption(settings.ttsProvider)
+  const activeBackend = getConversationBackendOption(
+    settings.conversationBackend,
+  )
   const openAiAsrReady = settings.openAiAsrKey.trim().length > 0
   const openAiTtsReady = settings.openAiTtsKey.trim().length > 0
   const hasPreparedKey = openAiAsrReady || openAiTtsReady
@@ -119,10 +125,46 @@ export function SettingsStudio() {
           >
             TTS {getProviderModeLabel(activeTtsProvider.mode)}
           </span>
+          <span className="status-pill neutral">{activeBackend.label}</span>
         </div>
       </section>
 
       <div className="settings-grid">
+        <section className="card stack-card">
+          <div className="card-heading compact">
+            <div>
+              <p className="card-kicker">Conversation backend</p>
+              <h2>Agent bridge mode</h2>
+            </div>
+          </div>
+          <p className="support-copy">
+            Active backend: <strong>{activeBackend.label}</strong>.{" "}
+            {activeBackend.runtimeHint}
+          </p>
+          <div className="provider-option-grid">
+            {CONVERSATION_BACKEND_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={`provider-option ${settings.conversationBackend === option.id ? "active" : ""}`}
+                onClick={() => updateSetting("conversationBackend", option.id)}
+              >
+                <div className="provider-pill-row">
+                  <span className="status-pill neutral">
+                    {option.id === "local-bot" ? "Inbound bot" : "Gateway WS"}
+                  </span>
+                </div>
+                <strong>{option.label}</strong>
+                <p>{option.summary}</p>
+              </button>
+            ))}
+          </div>
+          <p className="support-copy">
+            This switch changes how VoicyClaw reaches the agent runtime. The ASR
+            and TTS cards below still decide where speech processing happens.
+          </p>
+        </section>
+
         <section className="card stack-card">
           <div className="card-heading compact">
             <div>
@@ -172,6 +214,61 @@ export function SettingsStudio() {
             The channel view reconnects automatically after you switch an ASR or
             TTS path here, so the runtime follows the latest selection without a
             manual refresh.
+          </p>
+        </section>
+
+        <section className="card stack-card">
+          <div className="card-heading compact">
+            <div>
+              <p className="card-kicker">OpenClaw bridge</p>
+              <h2>Gateway connection</h2>
+            </div>
+            <span
+              className={`status-pill ${settings.conversationBackend === "openclaw-gateway" ? "warn" : "neutral"}`}
+            >
+              {settings.conversationBackend === "openclaw-gateway"
+                ? "Active"
+                : "Optional"}
+            </span>
+          </div>
+          <div className="form-grid">
+            <label className="field">
+              <span>Gateway URL</span>
+              <input
+                value={settings.openClawGatewayUrl}
+                onChange={(event) =>
+                  updateSetting(
+                    "openClawGatewayUrl",
+                    normalizeOpenClawGatewayUrl(event.target.value),
+                  )
+                }
+                placeholder="ws://127.0.0.1:18789"
+              />
+              <small className="field-note">
+                The MVP bridge connects here when you select OpenClaw Gateway
+                mode.
+              </small>
+            </label>
+            <label className="field">
+              <span>Gateway token</span>
+              <input
+                type="password"
+                value={settings.openClawGatewayToken}
+                onChange={(event) =>
+                  updateSetting("openClawGatewayToken", event.target.value)
+                }
+                placeholder="openclaw gateway token"
+              />
+              <small className="field-note">
+                Stored in browser local storage for this prototype and sent to
+                the VoicyClaw server only when the runtime connects.
+              </small>
+            </label>
+          </div>
+          <p className="support-copy">
+            For the first local test, run OpenClaw on the same machine and use
+            the local Gateway WebSocket plus a manually configured Gateway
+            token.
           </p>
         </section>
 
@@ -274,12 +371,14 @@ export function SettingsStudio() {
               dev` script.
             </li>
             <li>
-              Use this key flow to verify `/api/keys`, `/api/bot/register`, and
-              the HELLO handshake.
+              Use this key flow when you are testing the inbound local-bot path,
+              including `/api/keys`, `/api/bot/register`, and the HELLO
+              handshake.
             </li>
             <li>
-              The client/runtime cards above make it clear which side currently
-              owns ASR and TTS.
+              The backend switch above decides how VoicyClaw reaches the agent,
+              while the provider cards make it clear which side owns ASR and
+              TTS.
             </li>
           </ul>
         </aside>

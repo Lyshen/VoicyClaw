@@ -8,6 +8,7 @@ import {
 import { startServerRuntime } from "./support/demo-runtime"
 
 const defaultClientSettings = {
+  conversationBackend: "local-bot" as const,
   asrMode: "client" as const,
   asrProvider: "browser",
   ttsMode: "client" as const,

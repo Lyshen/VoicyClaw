@@ -4,6 +4,7 @@ import {
   buildWsUrl,
   defaultSettings,
   loadPrototypeSettings,
+  normalizeOpenClawGatewayUrl,
   normalizeServerUrl,
   persistPrototypeSettings,
   SETTINGS_STORAGE_KEY,
@@ -33,6 +34,9 @@ describe("prototype settings helpers", () => {
     expect(normalizeServerUrl("https://demo.example.com/path")).toBe(
       "https://demo.example.com",
     )
+    expect(
+      normalizeOpenClawGatewayUrl("https://gateway.example.com/socket"),
+    ).toBe("wss://gateway.example.com/socket")
     expect(sanitizeChannelId(" Demo Room! 42 ")).toBe("demo-room-42")
     expect(
       buildWsUrl({
@@ -79,8 +83,10 @@ describe("prototype settings helpers", () => {
     ).toMatchObject({
       serverUrl: "http://localhost:3001",
       channelId: "team-demo",
+      conversationBackend: "local-bot",
       asrProvider: "browser",
       ttsProvider: "browser",
+      openClawGatewayUrl: "ws://127.0.0.1:18789",
     })
   })
 })

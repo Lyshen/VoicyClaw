@@ -5,17 +5,23 @@ export interface RuntimeBotInfo {
 }
 
 export type ProviderMode = "client" | "server"
+export type ConversationBackendId = "local-bot" | "openclaw-gateway"
 
 export interface ClientHelloMessage {
   type: "CLIENT_HELLO"
   clientId: string
   channelId: string
   settings: {
+    conversationBackend: ConversationBackendId
     asrMode: ProviderMode
     asrProvider: string
     ttsMode: ProviderMode
     ttsProvider: string
     language: string
+    openClawGateway?: {
+      url: string
+      token: string
+    }
   }
 }
 

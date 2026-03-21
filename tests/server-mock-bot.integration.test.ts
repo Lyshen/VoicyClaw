@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import { type RuntimeClient, startDemoRuntime } from "./support/demo-runtime"
 
 const defaultClientSettings = {
+  conversationBackend: "local-bot" as const,
   asrMode: "client" as const,
   asrProvider: "browser",
   ttsMode: "client" as const,
