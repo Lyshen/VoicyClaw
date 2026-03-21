@@ -5,14 +5,20 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { ChannelStateMessage, ServerToClientMessage } from "@voicyclaw/protocol"
 
 import { MicrophoneStreamer, PcmStreamPlayer } from "../lib/audio"
-import { buildWsUrl } from "../lib/prototype-settings"
+import { OutputTurnCoordinator } from "../lib/output-turn-coordinator"
+import {
+  buildWsUrl,
+  getAsrProviderOption,
+  getProviderModeLabel,
+  getTtsProviderOption
+} from "../lib/prototype-settings"
 import { usePrototypeSettings } from "../lib/use-prototype-settings"
 
 type ConnectionState = "connecting" | "connected" | "disconnected" | "error"
 
 type TimelineEntry = {
   id: string
-  role: "user" | "bot" | "system"
+  role: "user" | "bot" | "system" | "preview"
   title: string
   text: string
   meta: string
@@ -31,6 +37,7 @@ export function ChannelStudio() {
 
   const wsRef = useRef<WebSocket | null>(null)
   const playerRef = useRef<PcmStreamPlayer | null>(null)
+  const outputRef = useRef<OutputTurnCoordinator | null>(null)
   const micRef = useRef<MicrophoneStreamer | null>(null)
   const recognitionRef = useRef<any>(null)
   const activeUtteranceRef = useRef<string | null>(null)
@@ -39,6 +46,13 @@ export function ChannelStudio() {
   const botSpeechBufferRef = useRef<Record<string, string>>({})
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const introShownRef = useRef(false)
+  const demoAssistNoticeRef = useRef(false)
+
+  const asrProvider = getAsrProviderOption(settings.asrProvider)
+  const ttsProvider = getTtsProviderOption(settings.ttsProvider)
+  const browserAsrEnabled = asrProvider.mode === "client"
+  const browserTtsEnabled = ttsProvider.mode === "client"
+  const canUseRecognitionAssist = speechSupported && (browserAsrEnabled || asrProvider.id === "demo")
 
   if (!clientIdRef.current) {
     clientIdRef.current = typeof crypto !== "undefined" ? crypto.randomUUID() : "web-client"
@@ -60,6 +74,22 @@ export function ChannelStudio() {
       playerRef.current = new PcmStreamPlayer()
     }
 
+    if (!outputRef.current && playerRef.current) {
+      outputRef.current = new OutputTurnCoordinator({
+        player: playerRef.current,
+        getSpeechSynthesis: () =>
+          typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis : null,
+        logger: {
+          info: (message, payload) => {
+            console.info(`[voicyclaw][output-turn] ${message}`, payload)
+          },
+          warn: (message, payload) => {
+            console.warn(`[voicyclaw][output-turn] ${message}`, payload)
+          }
+        }
+      })
+    }
+
     if (!micRef.current) {
       micRef.current = new MicrophoneStreamer({
         onChunk: (chunk) => {
@@ -74,15 +104,17 @@ export function ChannelStudio() {
 
     return () => {
       micRef.current?.stop()
-      playerRef.current?.reset()
+      outputRef.current?.reset()
       recognitionRef.current?.stop?.()
     }
   }, [])
 
+  useEffect(() => {
+    outputRef.current?.reset()
+  }, [ttsProvider.id, ttsProvider.mode])
+
   const appendSystemMessage = useCallback((text: string) => {
-    setTimeline((current) =>
-      [...current, createEntry("system", "Runtime", text)].slice(-40)
-    )
+    setTimeline((current) => [...current, createEntry("system", "Runtime", text)].slice(-40))
   }, [])
 
   const upsertEntry = useCallback((entry: TimelineEntry) => {
@@ -97,19 +129,6 @@ export function ChannelStudio() {
       return next
     })
   }, [])
-
-  const speakResponse = useCallback(
-    (text: string) => {
-      if (!settings.browserVoiceEnabled) return
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) return
-
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = settings.language
-      window.speechSynthesis.cancel()
-      window.speechSynthesis.speak(utterance)
-    },
-    [settings.browserVoiceEnabled, settings.language]
-  )
 
   const handleServerMessage = useCallback(
     (message: ServerToClientMessage) => {
@@ -126,6 +145,16 @@ export function ChannelStudio() {
           appendSystemMessage(message.message)
           break
         }
+        case "BOT_PREVIEW": {
+          upsertEntry({
+            id: `preview-${message.utteranceId}`,
+            role: "preview",
+            title: `${message.botId} preview`,
+            text: message.text,
+            meta: message.isFinal ? "preview locked" : "preview streaming"
+          })
+          break
+        }
         case "TRANSCRIPT": {
           upsertEntry({
             id: `user-${message.utteranceId}`,
@@ -138,7 +167,12 @@ export function ChannelStudio() {
         }
         case "BOT_TEXT": {
           const previous = botSpeechBufferRef.current[message.utteranceId] ?? ""
-          const combined = [previous, message.text].filter(Boolean).join(" ").replace(/\s+/g, " ").trim()
+          const combined = [previous, message.text]
+            .filter(Boolean)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim()
+
           botSpeechBufferRef.current[message.utteranceId] = combined
 
           upsertEntry({
@@ -146,25 +180,33 @@ export function ChannelStudio() {
             role: "bot",
             title: message.botId,
             text: combined,
-            meta: message.isFinal ? "bot stream complete" : "bot streaming"
+            meta: message.isFinal ? "bot stream complete" : "bot block streaming"
           })
 
-          if (message.isFinal) {
-            speakResponse(combined)
+          if (browserTtsEnabled) {
+            outputRef.current?.queueClientSpeech(message.utteranceId, message.text, settings.language)
           }
           break
         }
         case "AUDIO_CHUNK": {
-          void playerRef.current?.enqueueBase64(message.audioBase64, message.sampleRate)
+          if (ttsProvider.mode === "server") {
+            void outputRef.current?.enqueueServerAudio(
+              message.utteranceId,
+              message.audioBase64,
+              message.sampleRate
+            )
+          }
           break
         }
         case "AUDIO_END": {
-          playerRef.current?.reset()
+          if (ttsProvider.mode === "server") {
+            outputRef.current?.completeServerAudio(message.utteranceId)
+          }
           break
         }
       }
     },
-    [appendSystemMessage, speakResponse, upsertEntry]
+    [appendSystemMessage, browserTtsEnabled, settings.language, ttsProvider.mode, upsertEntry]
   )
 
   useEffect(() => {
@@ -196,10 +238,10 @@ export function ChannelStudio() {
           clientId: clientIdRef.current,
           channelId: settings.channelId,
           settings: {
-            asrProvider: settings.openAiAsrKey ? "openai" : "demo",
-            ttsProvider: settings.openAiTtsKey ? "openai" : "demo",
-            browserSpeechEnabled: settings.browserSpeechEnabled,
-            browserVoiceEnabled: settings.browserVoiceEnabled,
+            asrMode: asrProvider.mode,
+            asrProvider: asrProvider.id,
+            ttsMode: ttsProvider.mode,
+            ttsProvider: ttsProvider.id,
             language: settings.language
           }
         })
@@ -232,16 +274,16 @@ export function ChannelStudio() {
     }
   }, [
     appendSystemMessage,
+    asrProvider.id,
+    asrProvider.mode,
     handleServerMessage,
     ready,
     reconnectIndex,
-    settings.browserSpeechEnabled,
-    settings.browserVoiceEnabled,
     settings.channelId,
     settings.language,
-    settings.openAiAsrKey,
-    settings.openAiTtsKey,
-    settings.serverUrl
+    settings.serverUrl,
+    ttsProvider.id,
+    ttsProvider.mode
   ])
 
   const sendControl = useCallback(
@@ -259,7 +301,7 @@ export function ChannelStudio() {
   )
 
   const startRecognition = useCallback(() => {
-    if (!settings.browserSpeechEnabled) return
+    if (!canUseRecognitionAssist) return
 
     const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!Recognition) return
@@ -282,7 +324,7 @@ export function ChannelStudio() {
     }
     recognition.start()
     recognitionRef.current = recognition
-  }, [settings.browserSpeechEnabled, settings.language])
+  }, [canUseRecognitionAssist, settings.language])
 
   const stopRecognition = useCallback(() => {
     recognitionRef.current?.stop?.()
@@ -293,6 +335,27 @@ export function ChannelStudio() {
     if (isRecording) return
     if (!micRef.current) return
 
+    if (browserAsrEnabled && !speechSupported) {
+      appendSystemMessage(
+        "Browser SpeechRecognition is unavailable here. Switch ASR to the server demo path or use the text composer."
+      )
+      return
+    }
+
+    if (asrProvider.id === "demo" && !speechSupported) {
+      appendSystemMessage(
+        "Demo Server ASR still relies on browser transcript assist in this prototype. Use the text composer or switch back to Browser SpeechRecognition on this device."
+      )
+      return
+    }
+
+    if (asrProvider.id === "demo" && speechSupported && !demoAssistNoticeRef.current) {
+      appendSystemMessage(
+        "Demo Server ASR is active. Until a real server ASR adapter lands, the browser transcript assist stays on so this path remains runnable."
+      )
+      demoAssistNoticeRef.current = true
+    }
+
     const utteranceId = crypto.randomUUID()
     const started = sendControl({
       type: "START_UTTERANCE",
@@ -301,14 +364,10 @@ export function ChannelStudio() {
 
     if (!started) return
 
+    outputRef.current?.reset()
+
     activeUtteranceRef.current = utteranceId
     setIsRecording(true)
-
-    if (settings.browserSpeechEnabled && !speechSupported) {
-      appendSystemMessage(
-        "This browser does not expose the Web Speech API, so voice input falls back to manual text in the composer."
-      )
-    }
 
     try {
       await micRef.current.start()
@@ -318,7 +377,15 @@ export function ChannelStudio() {
       setIsRecording(false)
       appendSystemMessage("Microphone access was denied. You can still use the text composer below.")
     }
-  }, [appendSystemMessage, isRecording, sendControl, settings.browserSpeechEnabled, speechSupported, startRecognition])
+  }, [
+    appendSystemMessage,
+    asrProvider.id,
+    browserAsrEnabled,
+    isRecording,
+    sendControl,
+    speechSupported,
+    startRecognition
+  ])
 
   const finishCapture = useCallback(() => {
     if (!activeUtteranceRef.current) return
@@ -352,11 +419,14 @@ export function ChannelStudio() {
         text
       })
     ) {
+      outputRef.current?.reset()
       setDraftText("")
     }
   }, [appendSystemMessage, sendControl])
 
   const botDisplayName = channelState?.bots[0]?.displayName ?? "Waiting for bot"
+  const adapterSummary = `${asrProvider.label} / ${ttsProvider.label}`
+  const speechStatus = speechSupported ? "available" : "not available"
 
   return (
     <div className="page-stack">
@@ -365,8 +435,8 @@ export function ChannelStudio() {
           <p className="hero-eyebrow">Runnable prototype</p>
           <h1 className="hero-title">OpenClaw voice channel cockpit</h1>
           <p className="hero-copy">
-            This screen proves the README flow end to end: browser capture, websocket relay,
-            OpenClaw bot streaming, live transcript updates, and audio feedback.
+            This screen now simulates a preview stream plus a final bot text stream, so you can
+            watch the mock bot think, answer in blocks, and hand those blocks to client TTS.
           </p>
         </div>
         <div className="status-row">
@@ -387,7 +457,7 @@ export function ChannelStudio() {
               <p className="card-kicker">Channel</p>
               <h2>Conversation stream</h2>
             </div>
-            <button className="ghost-button" onClick={() => setReconnectIndex((value) => value + 1)}>
+            <button className="ghost-button" type="button" onClick={() => setReconnectIndex((value) => value + 1)}>
               Reconnect
             </button>
           </div>
@@ -420,14 +490,15 @@ export function ChannelStudio() {
                   sendTextUtterance()
                 }
               }}
-              placeholder="Speak or type here. The draft also acts as a transcript fallback if browser speech recognition is unavailable."
+              placeholder="Speak or type here. The draft doubles as a transcript assist for the current prototype."
             />
             <div className="composer-actions">
-              <button className="primary-button" onClick={sendTextUtterance}>
+              <button className="primary-button" type="button" onClick={sendTextUtterance}>
                 Send text
               </button>
               <button
                 className={`record-button ${isRecording ? "active" : ""}`}
+                type="button"
                 onPointerDown={beginCapture}
                 onPointerUp={finishCapture}
                 onPointerLeave={finishCapture}
@@ -437,9 +508,7 @@ export function ChannelStudio() {
               </button>
             </div>
             <p className="composer-hint">
-              Browser speech: {settings.browserSpeechEnabled ? "enabled" : "off"} · browser voice:{" "}
-              {settings.browserVoiceEnabled ? "enabled" : "off"} · speech API:{" "}
-              {speechSupported ? "available" : "not available"}
+              ASR: {asrProvider.label} ({getProviderModeLabel(asrProvider.mode)}) · TTS: {ttsProvider.label} ({getProviderModeLabel(ttsProvider.mode)}) · speech API: {speechStatus}
             </p>
           </div>
         </section>
@@ -474,7 +543,7 @@ export function ChannelStudio() {
               </div>
               <div className="stat">
                 <span className="stat-label">Adapters</span>
-                <strong className="stat-value">demo ASR / demo TTS</strong>
+                <strong className="stat-value">{adapterSummary}</strong>
               </div>
             </div>
           </section>
@@ -487,10 +556,10 @@ export function ChannelStudio() {
               </div>
             </div>
             <ul className="note-list">
-              <li>Client websocket sends control JSON plus binary PCM microphone frames.</li>
-              <li>Server emits `STT_RESULT` over the OpenClaw protocol to a real local bot session.</li>
-              <li>Bot streams `TTS_TEXT` chunks back and the UI paints them live.</li>
-              <li>Server TTS returns PCM tone chunks, while optional browser voice keeps the demo human-readable.</li>
+              <li>Client websocket still sends control JSON plus binary PCM microphone frames.</li>
+              <li>The mock bot now emits a preview stream before it commits final answer blocks.</li>
+              <li>Final bot blocks keep streaming over the channel while client TTS can speak them locally.</li>
+              <li>Settings let you flip the prototype between browser-owned and server-owned media paths.</li>
             </ul>
           </section>
         </aside>

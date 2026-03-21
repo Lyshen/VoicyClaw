@@ -4,15 +4,17 @@ export interface RuntimeBotInfo {
   status: "connected"
 }
 
+export type ProviderMode = "client" | "server"
+
 export interface ClientHelloMessage {
   type: "CLIENT_HELLO"
   clientId: string
   channelId: string
   settings: {
+    asrMode: ProviderMode
     asrProvider: string
+    ttsMode: ProviderMode
     ttsProvider: string
-    browserSpeechEnabled: boolean
-    browserVoiceEnabled: boolean
     language: string
   }
 }
@@ -70,6 +72,14 @@ export interface BotTextMessage {
   isFinal: boolean
 }
 
+export interface BotPreviewMessage {
+  type: "BOT_PREVIEW"
+  utteranceId: string
+  botId: string
+  text: string
+  isFinal: boolean
+}
+
 export interface AudioChunkMessage {
   type: "AUDIO_CHUNK"
   utteranceId: string
@@ -92,6 +102,7 @@ export interface NoticeMessage {
 export type ServerToClientMessage =
   | SessionReadyMessage
   | ChannelStateMessage
+  | BotPreviewMessage
   | TranscriptMessage
   | BotTextMessage
   | AudioChunkMessage

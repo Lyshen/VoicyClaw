@@ -63,6 +63,14 @@ export interface TtsTextMessage {
   is_final: boolean
 }
 
+export interface PreviewTextMessage {
+  type: "BOT_PREVIEW"
+  session_id: string
+  utterance_id: string
+  text: string
+  is_final: boolean
+}
+
 export interface BotChannelMessage {
   utteranceId: string
   text: string
@@ -77,7 +85,7 @@ export interface BotChannel {
   send(utteranceId: string, text: string): AsyncGenerator<BotChannelMessage>
 }
 
-export type OpenClawBotMessage = HelloMessage | TtsTextMessage
+export type OpenClawBotMessage = HelloMessage | TtsTextMessage | PreviewTextMessage
 export type OpenClawServerMessage =
   | WelcomeMessage
   | ErrorMessage

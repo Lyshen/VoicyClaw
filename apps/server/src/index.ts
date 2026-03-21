@@ -58,8 +58,13 @@ interface RuntimeChannel {
   bots: Map<string, BotConnection>
 }
 
+interface PendingBotResponse {
+  client: ClientSession
+  queue: AsyncIterableQueue<BotChannelMessage>
+}
+
 class BotConnection {
-  readonly pending = new Map<string, AsyncIterableQueue<BotChannelMessage>>()
+  readonly pending = new Map<string, PendingBotResponse>()
 
   constructor(
     readonly ws: WebSocket,
@@ -90,13 +95,24 @@ class BotConnection {
     })
   }
 
-  async *send(utteranceId: string, text: string): AsyncGenerator<BotChannelMessage> {
+  async *send(client: ClientSession, utteranceId: string, text: string): AsyncGenerator<BotChannelMessage> {
     const queue = new AsyncIterableQueue<BotChannelMessage>()
     const timeout = globalThis.setTimeout(() => {
       queue.error(new Error(`Bot ${this.botId} did not respond within ${RESPONSE_TIMEOUT_MS}ms`))
     }, RESPONSE_TIMEOUT_MS)
 
-    this.pending.set(utteranceId, queue)
+    logPipeline("BOT_REQUEST_SENT", {
+      channelId: this.channelId,
+      clientId: client.id,
+      botId: this.botId,
+      utteranceId,
+      text: clipTextForLog(text)
+    })
+
+    this.pending.set(utteranceId, {
+      client,
+      queue
+    })
 
     if (
       !sendJson(this.ws, {
@@ -123,23 +139,49 @@ class BotConnection {
   }
 
   handleBotText(message: TtsTextMessage) {
-    const queue = this.pending.get(message.utterance_id)
-    if (!queue) return
+    const pending = this.pending.get(message.utterance_id)
+    if (!pending) return
 
-    queue.push({
+    pending.queue.push({
       utteranceId: message.utterance_id,
       text: message.text,
       isFinal: message.is_final
     })
 
     if (message.is_final) {
-      queue.close()
+      pending.queue.close()
     }
   }
 
+  handleBotPreview(message: {
+    utterance_id: string
+    text: string
+    is_final: boolean
+  }) {
+    const pending = this.pending.get(message.utterance_id)
+    if (!pending) return
+
+    logPipeline("BOT_PREVIEW_FORWARD", {
+      channelId: pending.client.channelId,
+      clientId: pending.client.id,
+      botId: this.botId,
+      utteranceId: message.utterance_id,
+      isFinal: message.is_final,
+      text: clipTextForLog(message.text)
+    })
+
+    sendJson(pending.client.ws, {
+      type: "BOT_PREVIEW",
+      utteranceId: message.utterance_id,
+      botId: this.botId,
+      text: message.text,
+      isFinal: message.is_final
+    })
+  }
+
   disconnect(reason: string) {
-    for (const queue of this.pending.values()) {
-      queue.error(new Error(reason))
+    for (const pending of this.pending.values()) {
+      pending.queue.error(new Error(reason))
     }
     this.pending.clear()
   }
@@ -247,6 +289,26 @@ function sendNotice(client: ClientSession, level: NoticeMessage["level"], messag
   } satisfies NoticeMessage)
 }
 
+function clipTextForLog(text: string, maxLength = 120) {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (normalized.length <= maxLength) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`
+}
+
+function logPipeline(event: string, details: Record<string, unknown>) {
+  fastify.log.info(
+    {
+      scope: "voice-pipeline",
+      event,
+      ...details
+    },
+    event
+  )
+}
+
 function toBuffer(data: RawData) {
   if (Array.isArray(data)) {
     return Buffer.concat(data)
@@ -272,6 +334,15 @@ async function* forwardBotText(
   source: AsyncGenerator<BotChannelMessage>
 ) {
   for await (const message of source) {
+    logPipeline("BOT_TEXT_FORWARD", {
+      channelId: client.channelId,
+      clientId: client.id,
+      botId: bot.botId,
+      utteranceId,
+      isFinal: message.isFinal,
+      text: clipTextForLog(message.text)
+    })
+
     sendJson(client.ws, {
       type: "BOT_TEXT",
       utteranceId,
@@ -284,7 +355,34 @@ async function* forwardBotText(
   }
 }
 
-async function processUtterance(client: ClientSession, utterance: ActiveUtterance) {
+async function resolveTranscript(client: ClientSession, utterance: ActiveUtterance) {
+  const directTranscript = utterance.transcriptHint?.trim()
+  const useClientTranscript =
+    utterance.source === "text" || (client.settings?.asrMode === "client" && Boolean(directTranscript))
+
+  if (useClientTranscript) {
+    if (directTranscript) {
+      logPipeline("ASR_CLIENT_TRANSCRIPT", {
+        channelId: client.channelId,
+        clientId: client.id,
+        utteranceId: utterance.utteranceId,
+        source: utterance.source,
+        asrMode: client.settings?.asrMode ?? "unknown",
+        asrProvider: client.settings?.asrProvider ?? "unknown",
+        text: clipTextForLog(directTranscript)
+      })
+
+      sendJson(client.ws, {
+        type: "TRANSCRIPT",
+        utteranceId: utterance.utteranceId,
+        text: directTranscript,
+        isFinal: true
+      })
+    }
+
+    return directTranscript ?? ""
+  }
+
   const asr = new DemoASRProvider({
     latencyMs: 120,
     resolveTranscript: () => utterance.transcriptHint || ""
@@ -294,6 +392,18 @@ async function processUtterance(client: ClientSession, utterance: ActiveUtteranc
 
   for await (const chunk of asr.transcribe(bufferIterable(utterance.audioChunks))) {
     transcript = chunk.text.trim()
+    logPipeline("ASR_SERVER_TRANSCRIPT", {
+      channelId: client.channelId,
+      clientId: client.id,
+      utteranceId: utterance.utteranceId,
+      source: utterance.source,
+      asrMode: client.settings?.asrMode ?? "unknown",
+      asrProvider: client.settings?.asrProvider ?? "unknown",
+      isFinal: chunk.isFinal,
+      audioChunkCount: utterance.audioChunks.length,
+      text: clipTextForLog(chunk.text)
+    })
+
     sendJson(client.ws, {
       type: "TRANSCRIPT",
       utteranceId: utterance.utteranceId,
@@ -301,6 +411,12 @@ async function processUtterance(client: ClientSession, utterance: ActiveUtteranc
       isFinal: chunk.isFinal
     })
   }
+
+  return transcript
+}
+
+async function processUtterance(client: ClientSession, utterance: ActiveUtterance) {
+  const transcript = await resolveTranscript(client, utterance)
 
   if (!transcript) {
     sendNotice(client, "error", "This utterance ended without a transcript. Try typed text or browser speech recognition.")
@@ -313,13 +429,41 @@ async function processUtterance(client: ClientSession, utterance: ActiveUtteranc
     return
   }
 
-  const tts = new DemoTTSProvider()
-
   try {
-    const botStream = bot.send(utterance.utteranceId, transcript)
+    const botStream = bot.send(client, utterance.utteranceId, transcript)
     const textStream = forwardBotText(client, bot, utterance.utteranceId, botStream)
 
+    if (client.settings?.ttsMode === "client") {
+      logPipeline("TTS_CLIENT_MODE_SELECTED", {
+        channelId: client.channelId,
+        clientId: client.id,
+        utteranceId: utterance.utteranceId,
+        ttsProvider: client.settings.ttsProvider
+      })
+
+      for await (const _text of textStream) {
+        // Final bot text still streams to the browser while client TTS owns playback.
+      }
+      return
+    }
+
+    const tts = new DemoTTSProvider()
+    let audioChunkCount = 0
+    let audioBytes = 0
+
     for await (const audioChunk of tts.synthesize(textStream, { sampleRate: 16_000 })) {
+      audioChunkCount += 1
+      audioBytes += audioChunk.byteLength
+      logPipeline("TTS_AUDIO_CHUNK", {
+        channelId: client.channelId,
+        clientId: client.id,
+        utteranceId: utterance.utteranceId,
+        chunkIndex: audioChunkCount,
+        bytes: audioChunk.byteLength,
+        sampleRate: 16_000,
+        ttsProvider: client.settings?.ttsProvider ?? "demo"
+      })
+
       sendJson(client.ws, {
         type: "AUDIO_CHUNK",
         utteranceId: utterance.utteranceId,
@@ -327,6 +471,16 @@ async function processUtterance(client: ClientSession, utterance: ActiveUtteranc
         sampleRate: 16_000
       })
     }
+
+    logPipeline("TTS_AUDIO_END", {
+      channelId: client.channelId,
+      clientId: client.id,
+      utteranceId: utterance.utteranceId,
+      chunkCount: audioChunkCount,
+      audioBytes,
+      sampleRate: 16_000,
+      ttsProvider: client.settings?.ttsProvider ?? "demo"
+    })
 
     sendJson(client.ws, {
       type: "AUDIO_END",
@@ -365,6 +519,16 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
   switch (message.type) {
     case "CLIENT_HELLO": {
       client.settings = message.settings
+      logPipeline("CLIENT_HELLO", {
+        channelId: client.channelId,
+        clientId: client.id,
+        asrMode: message.settings.asrMode,
+        asrProvider: message.settings.asrProvider,
+        ttsMode: message.settings.ttsMode,
+        ttsProvider: message.settings.ttsProvider,
+        language: message.settings.language
+      })
+
       sendJson(client.ws, {
         type: "SESSION_READY",
         clientId: client.id,
@@ -374,6 +538,12 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
       break
     }
     case "START_UTTERANCE": {
+      logPipeline("UTTERANCE_START", {
+        channelId: client.channelId,
+        clientId: client.id,
+        utteranceId: message.utteranceId
+      })
+
       client.activeUtterance = {
         utteranceId: message.utteranceId,
         audioChunks: [],
@@ -392,6 +562,14 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
         return
       }
 
+      logPipeline("UTTERANCE_COMMIT", {
+        channelId: client.channelId,
+        clientId: client.id,
+        utteranceId: message.utteranceId,
+        source: message.source,
+        transcriptHint: clipTextForLog(message.transcript ?? "")
+      })
+
       current.transcriptHint = message.transcript?.trim()
       current.source = message.source
       client.activeUtterance = undefined
@@ -405,6 +583,13 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
         sendNotice(client, "error", "Type something before sending a text utterance.")
         return
       }
+
+      logPipeline("TEXT_UTTERANCE", {
+        channelId: client.channelId,
+        clientId: client.id,
+        utteranceId: message.utteranceId,
+        text: clipTextForLog(text)
+      })
 
       await processUtterance(client, {
         utteranceId: message.utteranceId,
@@ -532,6 +717,17 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
     if (!bot) return
 
     const botMessage = message as { type?: string }
+    if (botMessage.type === "BOT_PREVIEW") {
+      bot.handleBotPreview(
+        message as {
+          utterance_id: string
+          text: string
+          is_final: boolean
+        }
+      )
+      return
+    }
+
     if (botMessage.type === "TTS_TEXT") {
       bot.handleBotText(message as TtsTextMessage)
     }

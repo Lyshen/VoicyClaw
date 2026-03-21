@@ -2,7 +2,20 @@
 
 import { useEffect, useState } from "react"
 
-import { buildApiUrl, normalizeServerUrl, sanitizeChannelId } from "../lib/prototype-settings"
+import {
+  ASR_PROVIDER_GUIDE,
+  ASR_PROVIDER_OPTIONS,
+  TTS_PROVIDER_GUIDE,
+  TTS_PROVIDER_OPTIONS,
+  type ProviderGuide,
+  type ProviderMode,
+  buildApiUrl,
+  getAsrProviderOption,
+  getProviderModeLabel,
+  getTtsProviderOption,
+  normalizeServerUrl,
+  sanitizeChannelId
+} from "../lib/prototype-settings"
 import { usePrototypeSettings } from "../lib/use-prototype-settings"
 
 export function SettingsStudio() {
@@ -10,6 +23,12 @@ export function SettingsStudio() {
   const [serverStatus, setServerStatus] = useState("Checking server...")
   const [issuedKey, setIssuedKey] = useState("")
   const [keyMessage, setKeyMessage] = useState("Issue a platform key here to test external ClawBots.")
+
+  const activeAsrProvider = getAsrProviderOption(settings.asrProvider)
+  const activeTtsProvider = getTtsProviderOption(settings.ttsProvider)
+  const openAiAsrReady = settings.openAiAsrKey.trim().length > 0
+  const openAiTtsReady = settings.openAiTtsKey.trim().length > 0
+  const hasPreparedKey = openAiAsrReady || openAiTtsReady
 
   useEffect(() => {
     if (!ready) return
@@ -75,17 +94,23 @@ export function SettingsStudio() {
           <p className="hero-eyebrow">Prototype settings</p>
           <h1 className="hero-title">Control the local demo surface</h1>
           <p className="hero-copy">
-            These values stay in local storage. The current prototype keeps vendor keys on the
-            client and defaults to demo adapters so the repo runs without secrets.
+            Configure the current ASR and TTS path explicitly. Client providers run in the
+            browser, while server providers keep the transport inside VoicyClaw.
           </p>
         </div>
         <div className="status-row">
           <span className="status-pill neutral">{serverStatus}</span>
+          <span className={`status-pill ${toneForMode(activeAsrProvider.mode)}`}>
+            ASR {getProviderModeLabel(activeAsrProvider.mode)}
+          </span>
+          <span className={`status-pill ${toneForMode(activeTtsProvider.mode)}`}>
+            TTS {getProviderModeLabel(activeTtsProvider.mode)}
+          </span>
         </div>
       </section>
 
       <div className="settings-grid">
-        <section className="card">
+        <section className="card stack-card">
           <div className="card-heading compact">
             <div>
               <p className="card-kicker">Channel setup</p>
@@ -117,31 +142,48 @@ export function SettingsStudio() {
                 placeholder="en-US"
               />
             </label>
-            <label className="field checkbox-row">
-              <input
-                type="checkbox"
-                checked={settings.browserSpeechEnabled}
-                onChange={(event) => updateSetting("browserSpeechEnabled", event.target.checked)}
-              />
-              <span>Use browser speech recognition when the browser supports it</span>
-            </label>
-            <label className="field checkbox-row">
-              <input
-                type="checkbox"
-                checked={settings.browserVoiceEnabled}
-                onChange={(event) => updateSetting("browserVoiceEnabled", event.target.checked)}
-              />
-              <span>Read final bot text aloud with the browser speech engine</span>
-            </label>
           </div>
+          <p className="support-copy">
+            The channel view reconnects automatically after you switch an ASR or TTS path here, so
+            the runtime follows the latest selection without a manual refresh.
+          </p>
         </section>
 
-        <section className="card">
+        <ProviderConfigurator
+          title="ASR path"
+          kicker="Input pipeline"
+          activeProviderId={settings.asrProvider}
+          activeProviderLabel={activeAsrProvider.label}
+          activeProviderMode={activeAsrProvider.mode}
+          activeRuntimeHint={activeAsrProvider.runtimeHint}
+          options={ASR_PROVIDER_OPTIONS}
+          guides={ASR_PROVIDER_GUIDE}
+          preparedOpenAi={openAiAsrReady}
+          onSelect={(providerId) => updateSetting("asrProvider", providerId)}
+        />
+
+        <ProviderConfigurator
+          title="TTS path"
+          kicker="Output pipeline"
+          activeProviderId={settings.ttsProvider}
+          activeProviderLabel={activeTtsProvider.label}
+          activeProviderMode={activeTtsProvider.mode}
+          activeRuntimeHint={activeTtsProvider.runtimeHint}
+          options={TTS_PROVIDER_OPTIONS}
+          guides={TTS_PROVIDER_GUIDE}
+          preparedOpenAi={openAiTtsReady}
+          onSelect={(providerId) => updateSetting("ttsProvider", providerId)}
+        />
+
+        <section className="card stack-card">
           <div className="card-heading compact">
             <div>
-              <p className="card-kicker">Vendor placeholders</p>
+              <p className="card-kicker">Server-provider prep</p>
               <h2>Bring-your-own keys</h2>
             </div>
+            <span className={`status-pill ${hasPreparedKey ? "live" : "neutral"}`}>
+              {hasPreparedKey ? "Key staged" : "Optional"}
+            </span>
           </div>
           <div className="form-grid">
             <label className="field">
@@ -152,6 +194,10 @@ export function SettingsStudio() {
                 onChange={(event) => updateSetting("openAiAsrKey", event.target.value)}
                 placeholder="sk-..."
               />
+              <small className="field-note">
+                Used for the planned OpenAI Whisper server adapter. Stored only in local storage for
+                now.
+              </small>
             </label>
             <label className="field">
               <span>OpenAI TTS key</span>
@@ -161,21 +207,25 @@ export function SettingsStudio() {
                 onChange={(event) => updateSetting("openAiTtsKey", event.target.value)}
                 placeholder="sk-..."
               />
+              <small className="field-note">
+                Used for the planned OpenAI TTS server adapter. Stored only in local storage for
+                now.
+              </small>
             </label>
           </div>
           <p className="support-copy">
-            The current prototype still runs with demo adapters, but the UI is already shaped around
-            the README requirement that users bring their own ASR and TTS credentials.
+            The current runnable prototype already supports browser client providers and demo server
+            providers. These OpenAI fields are staged so the server adapters can plug in next.
           </p>
         </section>
 
-        <aside className="card">
+        <aside className="card stack-card">
           <div className="card-heading compact">
             <div>
               <p className="card-kicker">Platform keys</p>
               <h2>Bot onboarding</h2>
             </div>
-            <button className="ghost-button" onClick={() => void issueKey()}>
+            <button className="ghost-button" type="button" onClick={() => void issueKey()}>
               Issue key
             </button>
           </div>
@@ -183,11 +233,114 @@ export function SettingsStudio() {
           <div className="code-block">{issuedKey || "No key issued yet."}</div>
           <ul className="note-list compact-list">
             <li>The demo bot auto-registers itself when you run the root `pnpm dev` script.</li>
-            <li>Use this key flow to verify `/api/keys` and `/api/bot/register` against another bot.</li>
-            <li>The websocket handshake still follows the OpenClaw `HELLO → WELCOME` contract.</li>
+            <li>Use this key flow to verify `/api/keys`, `/api/bot/register`, and the HELLO handshake.</li>
+            <li>The client/runtime cards above make it clear which side currently owns ASR and TTS.</li>
           </ul>
         </aside>
       </div>
     </div>
   )
+}
+
+type ProviderConfiguratorProps<T extends string> = {
+  title: string
+  kicker: string
+  activeProviderId: T
+  activeProviderLabel: string
+  activeProviderMode: ProviderMode
+  activeRuntimeHint: string
+  options: Array<{
+    id: T
+    mode: ProviderMode
+    label: string
+    summary: string
+    runtimeHint: string
+  }>
+  guides: ProviderGuide[]
+  preparedOpenAi: boolean
+  onSelect: (providerId: T) => void
+}
+
+function ProviderConfigurator<T extends string>({
+  title,
+  kicker,
+  activeProviderId,
+  activeProviderLabel,
+  activeProviderMode,
+  activeRuntimeHint,
+  options,
+  guides,
+  preparedOpenAi,
+  onSelect
+}: ProviderConfiguratorProps<T>) {
+  return (
+    <section className="card stack-card provider-section">
+      <div className="card-heading compact">
+        <div>
+          <p className="card-kicker">{kicker}</p>
+          <h2>{title}</h2>
+        </div>
+        <span className={`status-pill ${toneForMode(activeProviderMode)}`}>
+          {getProviderModeLabel(activeProviderMode)}
+        </span>
+      </div>
+
+      <p className="support-copy">
+        Active provider: <strong>{activeProviderLabel}</strong>. {activeRuntimeHint}
+      </p>
+
+      <div className="provider-option-grid">
+        {options.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            className={`provider-option ${activeProviderId === option.id ? "active" : ""}`}
+            onClick={() => onSelect(option.id)}
+          >
+            <div className="provider-pill-row">
+              <span className={`status-pill ${toneForMode(option.mode)}`}>
+                {getProviderModeLabel(option.mode)}
+              </span>
+              <span className="provider-meta">
+                {option.mode === "client" ? "Browser / OS" : "VoicyClaw server"}
+              </span>
+            </div>
+            <strong>{option.label}</strong>
+            <p>{option.summary}</p>
+          </button>
+        ))}
+      </div>
+
+      <div className="guide-stack">
+        <div className="card-heading compact provider-guide-heading">
+          <div>
+            <p className="card-kicker">Provider guide</p>
+            <h2>Next adapters</h2>
+          </div>
+        </div>
+        <div className="guide-card-grid">
+          {guides.map((guide) => {
+            const ready = preparedOpenAi && guide.id.startsWith("openai")
+            const tone = ready ? "live" : guide.status === "next" ? "neutral" : "warn"
+            const label = ready ? "Key ready" : guide.status === "next" ? "Next up" : "Planned"
+
+            return (
+              <article key={guide.id} className="guide-card">
+                <div className="provider-pill-row">
+                  <strong>{guide.label}</strong>
+                  <span className={`status-pill ${tone}`}>{label}</span>
+                </div>
+                <p>{guide.summary}</p>
+                <small className="field-note">{guide.keyHint}</small>
+              </article>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function toneForMode(mode: ProviderMode) {
+  return mode === "client" ? "live" : "warn"
 }

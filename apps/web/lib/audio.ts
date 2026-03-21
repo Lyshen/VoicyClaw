@@ -6,6 +6,7 @@ type MicrophoneCallbacks = {
 export class PcmStreamPlayer {
   private context: AudioContext | null = null
   private nextStartTime = 0
+  private sources = new Set<AudioBufferSourceNode>()
 
   async enqueueBase64(base64: string, sampleRate = 16_000) {
     const context = await this.ensureContext()
@@ -22,8 +23,12 @@ export class PcmStreamPlayer {
     const source = context.createBufferSource()
     source.buffer = audioBuffer
     source.connect(context.destination)
+    source.onended = () => {
+      this.sources.delete(source)
+    }
 
     const startTime = Math.max(this.nextStartTime, context.currentTime + 0.02)
+    this.sources.add(source)
     source.start(startTime)
     this.nextStartTime = startTime + audioBuffer.duration
   }
@@ -32,6 +37,21 @@ export class PcmStreamPlayer {
     if (this.context) {
       this.nextStartTime = this.context.currentTime
     }
+  }
+
+  cancel() {
+    if (!this.context) return
+
+    for (const source of this.sources) {
+      try {
+        source.stop()
+      } catch {
+        // Ignore sources that already ended between scheduling and cancellation.
+      }
+    }
+
+    this.sources.clear()
+    this.nextStartTime = this.context.currentTime
   }
 
   private async ensureContext() {

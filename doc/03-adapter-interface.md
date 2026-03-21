@@ -10,6 +10,7 @@
 - **Bidirectional streaming throughout**: audio in -> text out (ASR), text in -> audio out (TTS)
 - **Dual provider modes**: both ASR and TTS may run as client providers or server providers
 - **Provider implementations are thin**: they map browser/OS APIs or vendor SDK streaming APIs onto these interfaces. No business logic lives in providers.
+- **Turn control is shared**: queue ownership, interruption, and stale-chunk dropping live in a runtime coordinator above the providers, not inside each provider implementation.
 - **Interfaces are stable**: once validated, provider contracts do not change. Only provider implementations evolve.
 - **AsyncGenerator as the streaming primitive**: native TypeScript, backpressure-aware, no extra dependencies.
 
@@ -23,6 +24,19 @@ VoicyClaw distinguishes two execution locations:
 - **Server provider** - runs inside the VoicyClaw backend and usually talks to a vendor SDK or API. Example: OpenAI Whisper, Azure Speech, ElevenLabs.
 
 These modes are supported independently for ASR and TTS. A deployment may use client ASR with server TTS, server ASR with client TTS, or run both stages on the same side.
+
+### 2.1 Shared Output-Turn Coordinator
+
+TTS has one more concern beyond provider mode: once bot output starts streaming, the runtime must decide which turn is allowed to keep playing.
+
+VoicyClaw handles this in a shared output-turn coordinator:
+
+- providers emit text or audio, but do not own cross-turn playback policy
+- the coordinator tracks the active `utteranceId`
+- when a newer turn becomes active, the coordinator cancels the older turn and drops any stale queued work
+- browser `speechSynthesis` and streamed PCM playback both use the same coordinator rules
+
+This keeps client and server TTS providers interchangeable while preserving consistent interruption behavior.
 
 ---
 
@@ -289,6 +303,32 @@ In practice, deployments may mix modes. For example:
 - OpenAI TTS as a server TTS provider
 - OpenAI Whisper as a server ASR provider
 - browser `speechSynthesis` as a client TTS provider
+
+### 7.3 Output-turn composition
+
+The coordinator sits above both client and server TTS providers:
+
+```typescript
+class OutputTurnCoordinator {
+  beginTurn(utteranceId: string) {
+    // cancel previous output, mark this turn as active
+  }
+
+  queueClientSpeech(utteranceId: string, text: string) {
+    // speak only if this utterance is still active
+  }
+
+  queueServerAudio(utteranceId: string, chunk: AudioChunk) {
+    // play only if this utterance is still active
+  }
+}
+```
+
+This means:
+
+- `ClientTTSProvider` implementations stay focused on browser / OS speech APIs
+- `ServerTTSAdapter` implementations stay focused on vendor streaming APIs
+- interruption rules are shared once, not reimplemented per provider
 
 ---
 

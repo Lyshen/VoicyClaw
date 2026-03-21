@@ -125,6 +125,18 @@ Key design decisions:
 - **No WebRTC in prototype**: all audio is transported over WebSocket (binary frames, PCM 16kHz mono).
 - **Dual execution modes**: ASR and TTS can independently run as client providers or server providers.
 - **Stateless server adapters**: server-side adapters are self-contained async functions with a standard interface.
+- **Shared output-turn coordinator**: the web runtime owns playback turn state above the providers, so browser speech synthesis and streamed server audio both follow the same interrupt / stale-drop rules.
+
+### 4.1 Shared Output-Turn Coordinator
+
+TTS provider mode changes where voice is produced, but not how a conversation turn should be controlled. To avoid duplicating queue logic in every provider, VoicyClaw defines a shared output-turn coordinator in the client runtime:
+
+- it tracks the active `utteranceId` for outbound bot media
+- it interrupts the previous turn when a newer turn becomes active
+- it drops stale browser speech tasks and stale server audio chunks that arrive after a turn switch
+- it lets browser TTS providers and server audio playback share the same turn-boundary behavior
+
+This keeps provider implementations simple. Client providers only speak text. Server providers only emit audio chunks. The coordinator owns when those outputs are still allowed to play.
 
 ---
 

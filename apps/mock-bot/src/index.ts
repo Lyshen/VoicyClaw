@@ -9,6 +9,15 @@ const channelId = process.env.CHANNEL_ID ?? "demo-room"
 const botId = process.env.BOT_ID ?? "demo-clawbot"
 const botName = process.env.BOT_NAME ?? "Studio Claw"
 
+function clipTextForLog(text: string, maxLength = 120) {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (normalized.length <= maxLength) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`
+}
+
 async function main() {
   while (true) {
     try {
@@ -125,21 +134,14 @@ async function connectBot(apiKey: string, wsUrl: string) {
         }
         case "STT_RESULT": {
           if (!message.is_final || !sessionId || !message.utterance_id) return
-          const reply = composeReply(message.text ?? "")
-          const parts = splitReply(reply)
-
-          for (const [index, part] of parts.entries()) {
-            await delay(160)
-            socket.send(
-              JSON.stringify({
-                type: "TTS_TEXT",
-                session_id: sessionId,
-                utterance_id: message.utterance_id,
-                text: part,
-                is_final: index === parts.length - 1
-              })
-            )
-          }
+          console.log(
+            `[mock-bot] STT_RESULT final ${message.utterance_id}: ${clipTextForLog(message.text ?? "")}`
+          )
+          await streamReply(socket, {
+            sessionId,
+            utteranceId: message.utterance_id,
+            userText: message.text ?? ""
+          })
           break
         }
         default:
@@ -178,6 +180,76 @@ function composeReply(text: string) {
   }
 
   return `${botName} heard: ${input}. The server forwarded your transcript over OpenClaw, and I am answering from a real local bot session.`
+}
+
+async function streamReply(
+  socket: WebSocket,
+  options: {
+    sessionId: string
+    utteranceId: string
+    userText: string
+  }
+) {
+  const reply = composeReply(options.userText)
+  const previews = buildPreviewFrames(reply)
+  const parts = splitReply(reply)
+
+  for (const [index, preview] of previews.entries()) {
+    await delay(120)
+    console.log(
+      `[mock-bot] BOT_PREVIEW ${index + 1}/${previews.length} ${options.utteranceId}: ${clipTextForLog(preview)}`
+    )
+    socket.send(
+      JSON.stringify({
+        type: "BOT_PREVIEW",
+        session_id: options.sessionId,
+        utterance_id: options.utteranceId,
+        text: preview,
+        is_final: index === previews.length - 1
+      })
+    )
+  }
+
+  for (const [index, part] of parts.entries()) {
+    await delay(170)
+    console.log(
+      `[mock-bot] TTS_TEXT ${index + 1}/${parts.length} ${options.utteranceId}${index === parts.length - 1 ? " final" : ""}: ${clipTextForLog(part)}`
+    )
+    socket.send(
+      JSON.stringify({
+        type: "TTS_TEXT",
+        session_id: options.sessionId,
+        utterance_id: options.utteranceId,
+        text: part,
+        is_final: index === parts.length - 1
+      })
+    )
+  }
+}
+
+function buildPreviewFrames(reply: string) {
+  const words = reply.split(/\s+/).filter(Boolean)
+  if (words.length === 0) {
+    return [`${botName} is thinking...`]
+  }
+
+  const checkpoints = Array.from(
+    new Set([
+      Math.max(3, Math.floor(words.length * 0.28)),
+      Math.max(5, Math.floor(words.length * 0.58)),
+      words.length
+    ])
+  ).filter((count) => count <= words.length)
+
+  return checkpoints.map((count, index) => {
+    const snippet = words.slice(0, count).join(" ").trim()
+    const isLast = index === checkpoints.length - 1
+    if (isLast) {
+      return snippet
+    }
+
+    return `${snippet}${/[.?!,;:，。！？；：]$/.test(snippet) ? "" : "..."}`
+  })
 }
 
 function splitReply(reply: string) {

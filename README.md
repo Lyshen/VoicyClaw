@@ -53,6 +53,16 @@ This gives four valid combinations:
 
 For the current runnable prototype, browser speech recognition and browser speech synthesis are already used as client providers, while demo server-side adapters keep the OpenClaw pipeline runnable.
 
+## Shared Output Turn Control
+
+VoicyClaw keeps provider implementations thin and moves playback ownership into a shared output-turn coordinator in the web runtime:
+
+- both browser TTS text playback and server PCM playback are correlated by `utteranceId`
+- when a newer bot turn becomes active, stale queued speech or audio chunks from older turns are cancelled or dropped
+- provider switching does not duplicate queue logic, because the same coordinator owns interruption, reset, and turn-boundary rules
+
+This keeps `client provider` and `server provider` modes behaviorally consistent even though one side emits browser speech calls and the other side emits audio chunks.
+
 ---
 
 ## ASR / TTS Vendor Support
