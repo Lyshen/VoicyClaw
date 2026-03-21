@@ -92,16 +92,7 @@ export class OpenClawGatewayConversationBackend implements ConversationBackend {
     let streamedText = ""
 
     try {
-      logOpenClawBridge("CONNECT_START", {
-        sessionKey,
-        utteranceId: input.utteranceId,
-        url: config.url,
-      })
       await gateway.connect()
-      logOpenClawBridge("CONNECT_OK", {
-        sessionKey,
-        utteranceId: input.utteranceId,
-      })
 
       const result = (await gateway.request("chat.send", {
         sessionKey,
@@ -111,21 +102,8 @@ export class OpenClawGatewayConversationBackend implements ConversationBackend {
       })) as Record<string, unknown> | undefined
 
       runId = extractRunId(result)
-      logOpenClawBridge("CHAT_SEND_OK", {
-        sessionKey,
-        utteranceId: input.utteranceId,
-        runId,
-      })
 
       for await (const event of gateway.chatEvents()) {
-        logOpenClawBridge("CHAT_EVENT_RAW", {
-          sessionKey,
-          utteranceId: input.utteranceId,
-          runId: event.runId,
-          eventSessionKey: event.sessionKey,
-          state: event.state,
-        })
-
         if (runId && event.runId !== runId) {
           continue
         }
@@ -134,12 +112,6 @@ export class OpenClawGatewayConversationBackend implements ConversationBackend {
         }
 
         if (event.state === "error") {
-          logOpenClawBridge("CHAT_EVENT_ERROR", {
-            sessionKey,
-            utteranceId: input.utteranceId,
-            runId: event.runId,
-            errorMessage: event.errorMessage,
-          })
           throw new Error(
             event.errorMessage ||
               "OpenClaw returned a chat error for this turn.",
@@ -160,12 +132,6 @@ export class OpenClawGatewayConversationBackend implements ConversationBackend {
 
           streamedText = text
           emittedText = true
-          logOpenClawBridge("CHAT_EVENT_DELTA", {
-            sessionKey,
-            utteranceId: input.utteranceId,
-            runId: event.runId,
-            text: clipOpenClawLog(chunkText),
-          })
 
           yield {
             utteranceId: input.utteranceId,
@@ -179,12 +145,6 @@ export class OpenClawGatewayConversationBackend implements ConversationBackend {
           streamedText = text
           emittedText = true
         }
-        logOpenClawBridge("CHAT_EVENT_FINAL", {
-          sessionKey,
-          utteranceId: input.utteranceId,
-          runId: event.runId,
-          text: clipOpenClawLog(chunkText),
-        })
 
         yield {
           utteranceId: input.utteranceId,
@@ -195,11 +155,6 @@ export class OpenClawGatewayConversationBackend implements ConversationBackend {
       }
 
       if (!emittedText) {
-        logOpenClawBridge("CHAT_EVENT_EMPTY_FINAL", {
-          sessionKey,
-          utteranceId: input.utteranceId,
-          runId,
-        })
         throw new Error(
           "OpenClaw completed the turn without a readable assistant message.",
         )
@@ -548,9 +503,6 @@ class OpenClawGatewaySocket {
       }
 
       if (result.value.type === "event" && result.value.event === eventName) {
-        logOpenClawBridge("EVENT_RECEIVED", {
-          event: eventName,
-        })
         return result.value.payload
       }
     }
@@ -564,19 +516,6 @@ class OpenClawGatewaySocket {
       pending.reject(error)
     }
   }
-}
-
-function logOpenClawBridge(event: string, details: Record<string, unknown>) {
-  console.info("[voicyclaw][openclaw-gateway]", { event, ...details })
-}
-
-function clipOpenClawLog(text: string, maxLength = 120) {
-  const normalized = text.replace(/\s+/g, " ").trim()
-  if (normalized.length <= maxLength) {
-    return normalized
-  }
-
-  return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`
 }
 
 function buildConnectParams(
