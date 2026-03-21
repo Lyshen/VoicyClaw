@@ -2,6 +2,9 @@
 
 ### *Talk to claws easily.*
 
+[![CI](https://github.com/Lyshen/VoicyClaw/actions/workflows/ci.yml/badge.svg)](https://github.com/Lyshen/VoicyClaw/actions/workflows/ci.yml)
+![Coverage](docs/badges/coverage.svg)
+
 ---
 
 VoicyClaw is an open-source voice platform that connects you to AI agents (ClawBots) through a real-time voice channel. Speak — your voice is transcribed, routed to a ClawBot via the OpenClaw protocol, and the response streams back as synthesized speech. End-to-end streaming, bring-your-own API keys, no lock-in.
@@ -76,6 +79,22 @@ This keeps `client provider` and `server provider` modes behaviorally consistent
 | Alibaba Cloud NLS | ASR + TTS | CN | P0 |
 | ElevenLabs | TTS | Global | P1 |
 | iFlytek | ASR + TTS | CN | P1 |
+
+---
+
+## Quality Gates
+
+The repo now includes a standard GitHub CI workflow, a repo-wide lint gate, coverage reporting, smoke E2E coverage, and integration coverage for both the happy path and key protocol failure paths.
+
+- `pnpm lint` - runs Biome across the monorepo so obvious code quality issues are blocked before merge
+- `pnpm test` - runs unit and integration tests for protocol helpers, demo providers, settings normalization, output-turn coordination, the local server/mock-bot relay, and protocol failure handling
+- `pnpm test:coverage` - runs the same Vitest suite with V8 coverage, writes `coverage/summary.md`, and refreshes `docs/badges/coverage.svg`
+- `pnpm typecheck` - runs TypeScript checks across `apps/server`, `apps/web`, and `apps/mock-bot`
+- `pnpm build` - validates production builds for the server, web app, and mock bot
+- `pnpm test:e2e` - builds the monorepo and runs Playwright smoke tests against the full local demo stack
+- `pnpm ci:check` - runs the database bootstrap, coverage suite, typecheck, and Playwright smoke flow used in GitHub Actions
+
+The CI workflow in `.github/workflows/ci.yml` runs on pushes to `main` / `codex/**` plus all pull requests, publishes the coverage artifacts, and writes the latest coverage summary into the GitHub Actions job report.
 
 ---
 

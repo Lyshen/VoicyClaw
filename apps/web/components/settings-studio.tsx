@@ -5,16 +5,16 @@ import { useEffect, useState } from "react"
 import {
   ASR_PROVIDER_GUIDE,
   ASR_PROVIDER_OPTIONS,
-  TTS_PROVIDER_GUIDE,
-  TTS_PROVIDER_OPTIONS,
-  type ProviderGuide,
-  type ProviderMode,
   buildApiUrl,
   getAsrProviderOption,
   getProviderModeLabel,
   getTtsProviderOption,
   normalizeServerUrl,
-  sanitizeChannelId
+  type ProviderGuide,
+  type ProviderMode,
+  sanitizeChannelId,
+  TTS_PROVIDER_GUIDE,
+  TTS_PROVIDER_OPTIONS,
 } from "../lib/prototype-settings"
 import { usePrototypeSettings } from "../lib/use-prototype-settings"
 
@@ -22,7 +22,9 @@ export function SettingsStudio() {
   const { settings, ready, updateSetting } = usePrototypeSettings()
   const [serverStatus, setServerStatus] = useState("Checking server...")
   const [issuedKey, setIssuedKey] = useState("")
-  const [keyMessage, setKeyMessage] = useState("Issue a platform key here to test external ClawBots.")
+  const [keyMessage, setKeyMessage] = useState(
+    "Issue a platform key here to test external ClawBots.",
+  )
 
   const activeAsrProvider = getAsrProviderOption(settings.asrProvider)
   const activeTtsProvider = getTtsProviderOption(settings.ttsProvider)
@@ -49,10 +51,12 @@ export function SettingsStudio() {
       }
 
       setServerStatus(
-        `Connected to ${normalizeServerUrl(settings.serverUrl)} · protocol ${payload.protocolVersion} · ${payload.connectedBots} bot / ${payload.connectedClients} client`
+        `Connected to ${normalizeServerUrl(settings.serverUrl)} · protocol ${payload.protocolVersion} · ${payload.connectedBots} bot / ${payload.connectedClients} client`,
       )
     } catch {
-      setServerStatus("Server is unreachable right now. Start `pnpm dev` or confirm the server URL.")
+      setServerStatus(
+        "Server is unreachable right now. Start `pnpm dev` or confirm the server URL.",
+      )
     }
   }
 
@@ -63,12 +67,12 @@ export function SettingsStudio() {
       const response = await fetch(buildApiUrl(settings, "/api/keys"), {
         method: "POST",
         headers: {
-          "content-type": "application/json"
+          "content-type": "application/json",
         },
         body: JSON.stringify({
           channelId: settings.channelId,
-          label: "Settings console"
-        })
+          label: "Settings console",
+        }),
       })
 
       if (!response.ok) {
@@ -81,9 +85,13 @@ export function SettingsStudio() {
       }
 
       setIssuedKey(payload.apiKey)
-      setKeyMessage(`Key ready. Connect a bot to ${payload.wsUrl} using the OpenClaw HELLO handshake.`)
+      setKeyMessage(
+        `Key ready. Connect a bot to ${payload.wsUrl} using the OpenClaw HELLO handshake.`,
+      )
     } catch {
-      setKeyMessage("Could not create a platform key. Make sure the server is running and try again.")
+      setKeyMessage(
+        "Could not create a platform key. Make sure the server is running and try again.",
+      )
     }
   }
 
@@ -94,16 +102,21 @@ export function SettingsStudio() {
           <p className="hero-eyebrow">Prototype settings</p>
           <h1 className="hero-title">Control the local demo surface</h1>
           <p className="hero-copy">
-            Configure the current ASR and TTS path explicitly. Client providers run in the
-            browser, while server providers keep the transport inside VoicyClaw.
+            Configure the current ASR and TTS path explicitly. Client providers
+            run in the browser, while server providers keep the transport inside
+            VoicyClaw.
           </p>
         </div>
         <div className="status-row">
           <span className="status-pill neutral">{serverStatus}</span>
-          <span className={`status-pill ${toneForMode(activeAsrProvider.mode)}`}>
+          <span
+            className={`status-pill ${toneForMode(activeAsrProvider.mode)}`}
+          >
             ASR {getProviderModeLabel(activeAsrProvider.mode)}
           </span>
-          <span className={`status-pill ${toneForMode(activeTtsProvider.mode)}`}>
+          <span
+            className={`status-pill ${toneForMode(activeTtsProvider.mode)}`}
+          >
             TTS {getProviderModeLabel(activeTtsProvider.mode)}
           </span>
         </div>
@@ -122,7 +135,12 @@ export function SettingsStudio() {
               <span>Server URL</span>
               <input
                 value={settings.serverUrl}
-                onChange={(event) => updateSetting("serverUrl", normalizeServerUrl(event.target.value))}
+                onChange={(event) =>
+                  updateSetting(
+                    "serverUrl",
+                    normalizeServerUrl(event.target.value),
+                  )
+                }
                 placeholder="http://localhost:3001"
               />
             </label>
@@ -130,7 +148,12 @@ export function SettingsStudio() {
               <span>Channel ID</span>
               <input
                 value={settings.channelId}
-                onChange={(event) => updateSetting("channelId", sanitizeChannelId(event.target.value))}
+                onChange={(event) =>
+                  updateSetting(
+                    "channelId",
+                    sanitizeChannelId(event.target.value),
+                  )
+                }
                 placeholder="demo-room"
               />
             </label>
@@ -138,14 +161,17 @@ export function SettingsStudio() {
               <span>Speech language</span>
               <input
                 value={settings.language}
-                onChange={(event) => updateSetting("language", event.target.value)}
+                onChange={(event) =>
+                  updateSetting("language", event.target.value)
+                }
                 placeholder="en-US"
               />
             </label>
           </div>
           <p className="support-copy">
-            The channel view reconnects automatically after you switch an ASR or TTS path here, so
-            the runtime follows the latest selection without a manual refresh.
+            The channel view reconnects automatically after you switch an ASR or
+            TTS path here, so the runtime follows the latest selection without a
+            manual refresh.
           </p>
         </section>
 
@@ -181,7 +207,9 @@ export function SettingsStudio() {
               <p className="card-kicker">Server-provider prep</p>
               <h2>Bring-your-own keys</h2>
             </div>
-            <span className={`status-pill ${hasPreparedKey ? "live" : "neutral"}`}>
+            <span
+              className={`status-pill ${hasPreparedKey ? "live" : "neutral"}`}
+            >
               {hasPreparedKey ? "Key staged" : "Optional"}
             </span>
           </div>
@@ -191,12 +219,14 @@ export function SettingsStudio() {
               <input
                 type="password"
                 value={settings.openAiAsrKey}
-                onChange={(event) => updateSetting("openAiAsrKey", event.target.value)}
+                onChange={(event) =>
+                  updateSetting("openAiAsrKey", event.target.value)
+                }
                 placeholder="sk-..."
               />
               <small className="field-note">
-                Used for the planned OpenAI Whisper server adapter. Stored only in local storage for
-                now.
+                Used for the planned OpenAI Whisper server adapter. Stored only
+                in local storage for now.
               </small>
             </label>
             <label className="field">
@@ -204,18 +234,21 @@ export function SettingsStudio() {
               <input
                 type="password"
                 value={settings.openAiTtsKey}
-                onChange={(event) => updateSetting("openAiTtsKey", event.target.value)}
+                onChange={(event) =>
+                  updateSetting("openAiTtsKey", event.target.value)
+                }
                 placeholder="sk-..."
               />
               <small className="field-note">
-                Used for the planned OpenAI TTS server adapter. Stored only in local storage for
-                now.
+                Used for the planned OpenAI TTS server adapter. Stored only in
+                local storage for now.
               </small>
             </label>
           </div>
           <p className="support-copy">
-            The current runnable prototype already supports browser client providers and demo server
-            providers. These OpenAI fields are staged so the server adapters can plug in next.
+            The current runnable prototype already supports browser client
+            providers and demo server providers. These OpenAI fields are staged
+            so the server adapters can plug in next.
           </p>
         </section>
 
@@ -225,16 +258,29 @@ export function SettingsStudio() {
               <p className="card-kicker">Platform keys</p>
               <h2>Bot onboarding</h2>
             </div>
-            <button className="ghost-button" type="button" onClick={() => void issueKey()}>
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={() => void issueKey()}
+            >
               Issue key
             </button>
           </div>
           <p className="support-copy">{keyMessage}</p>
           <div className="code-block">{issuedKey || "No key issued yet."}</div>
           <ul className="note-list compact-list">
-            <li>The demo bot auto-registers itself when you run the root `pnpm dev` script.</li>
-            <li>Use this key flow to verify `/api/keys`, `/api/bot/register`, and the HELLO handshake.</li>
-            <li>The client/runtime cards above make it clear which side currently owns ASR and TTS.</li>
+            <li>
+              The demo bot auto-registers itself when you run the root `pnpm
+              dev` script.
+            </li>
+            <li>
+              Use this key flow to verify `/api/keys`, `/api/bot/register`, and
+              the HELLO handshake.
+            </li>
+            <li>
+              The client/runtime cards above make it clear which side currently
+              owns ASR and TTS.
+            </li>
           </ul>
         </aside>
       </div>
@@ -271,7 +317,7 @@ function ProviderConfigurator<T extends string>({
   options,
   guides,
   preparedOpenAi,
-  onSelect
+  onSelect,
 }: ProviderConfiguratorProps<T>) {
   return (
     <section className="card stack-card provider-section">
@@ -286,7 +332,8 @@ function ProviderConfigurator<T extends string>({
       </div>
 
       <p className="support-copy">
-        Active provider: <strong>{activeProviderLabel}</strong>. {activeRuntimeHint}
+        Active provider: <strong>{activeProviderLabel}</strong>.{" "}
+        {activeRuntimeHint}
       </p>
 
       <div className="provider-option-grid">
@@ -321,8 +368,16 @@ function ProviderConfigurator<T extends string>({
         <div className="guide-card-grid">
           {guides.map((guide) => {
             const ready = preparedOpenAi && guide.id.startsWith("openai")
-            const tone = ready ? "live" : guide.status === "next" ? "neutral" : "warn"
-            const label = ready ? "Key ready" : guide.status === "next" ? "Next up" : "Planned"
+            const tone = ready
+              ? "live"
+              : guide.status === "next"
+                ? "neutral"
+                : "warn"
+            const label = ready
+              ? "Key ready"
+              : guide.status === "next"
+                ? "Next up"
+                : "Planned"
 
             return (
               <article key={guide.id} className="guide-card">

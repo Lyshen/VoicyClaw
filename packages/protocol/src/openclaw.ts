@@ -85,7 +85,10 @@ export interface BotChannel {
   send(utteranceId: string, text: string): AsyncGenerator<BotChannelMessage>
 }
 
-export type OpenClawBotMessage = HelloMessage | TtsTextMessage | PreviewTextMessage
+export type OpenClawBotMessage =
+  | HelloMessage
+  | TtsTextMessage
+  | PreviewTextMessage
 export type OpenClawServerMessage =
   | WelcomeMessage
   | ErrorMessage
@@ -95,7 +98,7 @@ export type OpenClawServerMessage =
   | SttResultMessage
 
 export function isSupportedProtocolVersion(
-  version: string
+  version: string,
 ): version is OpenClawProtocolVersion {
   return version === PROTOCOL_VERSION
 }
@@ -126,6 +129,6 @@ export function decodeAudioFrame(frame: Buffer) {
     sequence: frame.readUInt32BE(0),
     streamType: frame.readUInt8(4),
     payloadLength,
-    payload: frame.subarray(8, expectedLength)
+    payload: frame.subarray(8, expectedLength),
   }
 }

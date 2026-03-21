@@ -5,11 +5,11 @@ import "./globals.css"
 
 export const metadata: Metadata = {
   title: "VoicyClaw Prototype",
-  description: "Runnable OpenClaw voice prototype with a local mock bot"
+  description: "Runnable OpenClaw voice prototype with a local mock bot",
 }
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{
   children: React.ReactNode
 }>) {

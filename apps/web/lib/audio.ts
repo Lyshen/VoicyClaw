@@ -83,8 +83,8 @@ export class MicrophoneStreamer {
       audio: {
         channelCount: 1,
         echoCancellation: true,
-        noiseSuppression: true
-      }
+        noiseSuppression: true,
+      },
     })
 
     this.context = new window.AudioContext()
@@ -95,11 +95,15 @@ export class MicrophoneStreamer {
 
     this.processor.onaudioprocess = (event) => {
       const input = event.inputBuffer.getChannelData(0)
-      const downsampled = downsampleFloat32(input, this.context?.sampleRate ?? 48_000, 16_000)
+      const downsampled = downsampleFloat32(
+        input,
+        this.context?.sampleRate ?? 48_000,
+        16_000,
+      )
       const pcm = floatToPcm16(downsampled)
 
       this.callbacks.onChunk(
-        pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength)
+        pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength),
       )
       this.callbacks.onLevel?.(computeLevel(input))
     }
@@ -118,7 +122,9 @@ export class MicrophoneStreamer {
     this.source = null
     this.silence = null
 
-    this.stream?.getTracks().forEach((track) => track.stop())
+    this.stream?.getTracks().forEach((track) => {
+      track.stop()
+    })
     this.stream = null
 
     void this.context?.close()
@@ -138,7 +144,11 @@ function decodeBase64(base64: string) {
   return new Int16Array(bytes.buffer)
 }
 
-function downsampleFloat32(input: Float32Array, sourceRate: number, targetRate: number) {
+function downsampleFloat32(
+  input: Float32Array,
+  sourceRate: number,
+  targetRate: number,
+) {
   if (sourceRate === targetRate) {
     return input
   }
@@ -153,7 +163,11 @@ function downsampleFloat32(input: Float32Array, sourceRate: number, targetRate: 
     let accumulator = 0
     let count = 0
 
-    for (let sample = offset; sample < nextOffset && sample < input.length; sample += 1) {
+    for (
+      let sample = offset;
+      sample < nextOffset && sample < input.length;
+      sample += 1
+    ) {
       accumulator += input[sample]
       count += 1
     }

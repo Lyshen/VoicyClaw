@@ -161,7 +161,25 @@ This keeps provider implementations simple. Client providers only speak text. Se
 
 ---
 
-## 6. ASR / TTS Vendor Support Plan
+## 6. Prototype Quality Strategy
+
+The runnable prototype is now guarded by three complementary test layers so the current demo loop does not regress while ASR / TTS providers keep evolving:
+
+- **Lint gate** — Biome blocks obvious code quality regressions before build and runtime checks start
+- **Unit coverage** — protocol helpers, provider selection, demo ASR/TTS adapters, and the shared output-turn coordinator are covered by Vitest
+- **Integration coverage** — the Fastify / WebSocket server and the local mock bot are exercised together in-process through both real OpenClaw happy-path round-trips and protocol failure-path checks
+- **Smoke E2E coverage** — Playwright boots the full local demo stack, drives the settings UI, and verifies the browser can send a text utterance and receive streamed bot output
+
+GitHub Actions runs the same `pnpm ci:check` pipeline used locally, uploads the coverage reports, and writes the current coverage summary into the job report.
+
+This split keeps the quality model pragmatic:
+- unit tests protect pure logic quickly
+- integration tests protect the server-to-bot contract
+- smoke E2E protects the actual demo experience shown in the browser
+
+---
+
+## 7. ASR / TTS Vendor Support Plan
 
 ### ASR (Speech-to-Text)
 
@@ -207,7 +225,7 @@ Server adapters share a common backend interface (see `doc/03-adapter-interface.
 
 ---
 
-## 7. Platform API Key Flow
+## 8. Platform API Key Flow
 
 ```
 1. User visits VoicyClaw platform
@@ -222,7 +240,7 @@ Server adapters share a common backend interface (see `doc/03-adapter-interface.
 
 ---
 
-## 8. ClawBot Auto-Configuration Flow
+## 9. ClawBot Auto-Configuration Flow
 
 The key insight: **the bot should configure itself with minimal human steps**.
 

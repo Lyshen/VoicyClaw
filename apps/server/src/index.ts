@@ -4,30 +4,30 @@ import type { IncomingMessage } from "node:http"
 import type { Duplex } from "node:stream"
 
 import cors from "@fastify/cors"
-import Fastify from "fastify"
 import { DemoASRProvider } from "@voicyclaw/asr"
 import {
   type BotChannelMessage,
   type ClientControlMessage,
   type ClientHelloMessage,
+  encodeAudioFrame,
+  isSupportedProtocolVersion,
   type NoticeMessage,
   PROTOCOL_VERSION,
   type RuntimeBotInfo,
   type TtsTextMessage,
-  encodeAudioFrame,
-  isSupportedProtocolVersion
 } from "@voicyclaw/protocol"
 import { DemoTTSProvider } from "@voicyclaw/tts"
-import WebSocket, { WebSocketServer } from "ws"
 import type { FastifyRequest } from "fastify"
+import Fastify from "fastify"
 import type { RawData } from "ws"
+import WebSocket, { WebSocketServer } from "ws"
 
 import {
   createPlatformKey,
   ensureChannel,
   findPlatformKeyByToken,
   touchPlatformKey,
-  upsertBotRegistration
+  upsertBotRegistration,
 } from "./db"
 import { AsyncIterableQueue } from "./lib/async-queue"
 
@@ -71,14 +71,14 @@ class BotConnection {
     readonly botId: string,
     readonly displayName: string,
     readonly channelId: string,
-    readonly sessionId: string
+    readonly sessionId: string,
   ) {}
 
   relayAudioStart(utteranceId: string) {
     sendJson(this.ws, {
       type: "AUDIO_START",
       session_id: this.sessionId,
-      utterance_id: utteranceId
+      utterance_id: utteranceId,
     })
   }
 
@@ -91,14 +91,22 @@ class BotConnection {
     sendJson(this.ws, {
       type: "AUDIO_END",
       session_id: this.sessionId,
-      utterance_id: utteranceId
+      utterance_id: utteranceId,
     })
   }
 
-  async *send(client: ClientSession, utteranceId: string, text: string): AsyncGenerator<BotChannelMessage> {
+  async *send(
+    client: ClientSession,
+    utteranceId: string,
+    text: string,
+  ): AsyncGenerator<BotChannelMessage> {
     const queue = new AsyncIterableQueue<BotChannelMessage>()
     const timeout = globalThis.setTimeout(() => {
-      queue.error(new Error(`Bot ${this.botId} did not respond within ${RESPONSE_TIMEOUT_MS}ms`))
+      queue.error(
+        new Error(
+          `Bot ${this.botId} did not respond within ${RESPONSE_TIMEOUT_MS}ms`,
+        ),
+      )
     }, RESPONSE_TIMEOUT_MS)
 
     logPipeline("BOT_REQUEST_SENT", {
@@ -106,12 +114,12 @@ class BotConnection {
       clientId: client.id,
       botId: this.botId,
       utteranceId,
-      text: clipTextForLog(text)
+      text: clipTextForLog(text),
     })
 
     this.pending.set(utteranceId, {
       client,
-      queue
+      queue,
     })
 
     if (
@@ -120,7 +128,7 @@ class BotConnection {
         session_id: this.sessionId,
         utterance_id: utteranceId,
         text,
-        is_final: true
+        is_final: true,
       })
     ) {
       globalThis.clearTimeout(timeout)
@@ -145,7 +153,7 @@ class BotConnection {
     pending.queue.push({
       utteranceId: message.utterance_id,
       text: message.text,
-      isFinal: message.is_final
+      isFinal: message.is_final,
     })
 
     if (message.is_final) {
@@ -167,7 +175,7 @@ class BotConnection {
       botId: this.botId,
       utteranceId: message.utterance_id,
       isFinal: message.is_final,
-      text: clipTextForLog(message.text)
+      text: clipTextForLog(message.text),
     })
 
     sendJson(pending.client.ws, {
@@ -175,7 +183,7 @@ class BotConnection {
       utteranceId: message.utterance_id,
       botId: this.botId,
       text: message.text,
-      isFinal: message.is_final
+      isFinal: message.is_final,
     })
   }
 
@@ -190,7 +198,7 @@ class BotConnection {
     return {
       botId: this.botId,
       displayName: this.displayName,
-      status: "connected"
+      status: "connected",
     }
   }
 }
@@ -203,7 +211,7 @@ function getOrCreateRuntimeChannel(channelId: string): RuntimeChannel {
     runtime = {
       id: channelId,
       clients: new Map<string, ClientSession>(),
-      bots: new Map<string, BotConnection>()
+      bots: new Map<string, BotConnection>(),
     }
     runtimeChannels.set(channelId, runtime)
   }
@@ -247,7 +255,9 @@ function titleFromChannelId(channelId: string) {
 function ensureChannelRecord(channelId: string) {
   ensureChannel(
     channelId,
-    channelId === DEFAULT_CHANNEL_ID ? DEFAULT_CHANNEL_NAME : titleFromChannelId(channelId)
+    channelId === DEFAULT_CHANNEL_ID
+      ? DEFAULT_CHANNEL_NAME
+      : titleFromChannelId(channelId),
   )
 }
 
@@ -267,7 +277,7 @@ function broadcastChannelState(channelId: string) {
     channelId,
     clientCount: runtime.clients.size,
     botCount: runtime.bots.size,
-    bots: Array.from(runtime.bots.values(), (bot) => bot.toRuntimeInfo())
+    bots: Array.from(runtime.bots.values(), (bot) => bot.toRuntimeInfo()),
   } satisfies {
     type: "CHANNEL_STATE"
     channelId: string
@@ -281,11 +291,15 @@ function broadcastChannelState(channelId: string) {
   }
 }
 
-function sendNotice(client: ClientSession, level: NoticeMessage["level"], message: string) {
+function sendNotice(
+  client: ClientSession,
+  level: NoticeMessage["level"],
+  message: string,
+) {
   sendJson(client.ws, {
     type: "NOTICE",
     level,
-    message
+    message,
   } satisfies NoticeMessage)
 }
 
@@ -303,9 +317,9 @@ function logPipeline(event: string, details: Record<string, unknown>) {
     {
       scope: "voice-pipeline",
       event,
-      ...details
+      ...details,
     },
-    event
+    event,
   )
 }
 
@@ -331,7 +345,7 @@ async function* forwardBotText(
   client: ClientSession,
   bot: BotConnection,
   utteranceId: string,
-  source: AsyncGenerator<BotChannelMessage>
+  source: AsyncGenerator<BotChannelMessage>,
 ) {
   for await (const message of source) {
     logPipeline("BOT_TEXT_FORWARD", {
@@ -340,7 +354,7 @@ async function* forwardBotText(
       botId: bot.botId,
       utteranceId,
       isFinal: message.isFinal,
-      text: clipTextForLog(message.text)
+      text: clipTextForLog(message.text),
     })
 
     sendJson(client.ws, {
@@ -348,17 +362,21 @@ async function* forwardBotText(
       utteranceId,
       botId: bot.botId,
       text: message.text,
-      isFinal: message.isFinal
+      isFinal: message.isFinal,
     })
 
     yield message.text
   }
 }
 
-async function resolveTranscript(client: ClientSession, utterance: ActiveUtterance) {
+async function resolveTranscript(
+  client: ClientSession,
+  utterance: ActiveUtterance,
+) {
   const directTranscript = utterance.transcriptHint?.trim()
   const useClientTranscript =
-    utterance.source === "text" || (client.settings?.asrMode === "client" && Boolean(directTranscript))
+    utterance.source === "text" ||
+    (client.settings?.asrMode === "client" && Boolean(directTranscript))
 
   if (useClientTranscript) {
     if (directTranscript) {
@@ -369,14 +387,14 @@ async function resolveTranscript(client: ClientSession, utterance: ActiveUtteran
         source: utterance.source,
         asrMode: client.settings?.asrMode ?? "unknown",
         asrProvider: client.settings?.asrProvider ?? "unknown",
-        text: clipTextForLog(directTranscript)
+        text: clipTextForLog(directTranscript),
       })
 
       sendJson(client.ws, {
         type: "TRANSCRIPT",
         utteranceId: utterance.utteranceId,
         text: directTranscript,
-        isFinal: true
+        isFinal: true,
       })
     }
 
@@ -385,12 +403,14 @@ async function resolveTranscript(client: ClientSession, utterance: ActiveUtteran
 
   const asr = new DemoASRProvider({
     latencyMs: 120,
-    resolveTranscript: () => utterance.transcriptHint || ""
+    resolveTranscript: () => utterance.transcriptHint || "",
   })
 
   let transcript = ""
 
-  for await (const chunk of asr.transcribe(bufferIterable(utterance.audioChunks))) {
+  for await (const chunk of asr.transcribe(
+    bufferIterable(utterance.audioChunks),
+  )) {
     transcript = chunk.text.trim()
     logPipeline("ASR_SERVER_TRANSCRIPT", {
       channelId: client.channelId,
@@ -401,44 +421,60 @@ async function resolveTranscript(client: ClientSession, utterance: ActiveUtteran
       asrProvider: client.settings?.asrProvider ?? "unknown",
       isFinal: chunk.isFinal,
       audioChunkCount: utterance.audioChunks.length,
-      text: clipTextForLog(chunk.text)
+      text: clipTextForLog(chunk.text),
     })
 
     sendJson(client.ws, {
       type: "TRANSCRIPT",
       utteranceId: utterance.utteranceId,
       text: chunk.text,
-      isFinal: chunk.isFinal
+      isFinal: chunk.isFinal,
     })
   }
 
   return transcript
 }
 
-async function processUtterance(client: ClientSession, utterance: ActiveUtterance) {
+async function processUtterance(
+  client: ClientSession,
+  utterance: ActiveUtterance,
+) {
   const transcript = await resolveTranscript(client, utterance)
 
   if (!transcript) {
-    sendNotice(client, "error", "This utterance ended without a transcript. Try typed text or browser speech recognition.")
+    sendNotice(
+      client,
+      "error",
+      "This utterance ended without a transcript. Try typed text or browser speech recognition.",
+    )
     return
   }
 
   const bot = getPrimaryBot(client.channelId)
   if (!bot) {
-    sendNotice(client, "error", "No ClawBot is connected to this channel yet. Start the local bot to complete the loop.")
+    sendNotice(
+      client,
+      "error",
+      "No ClawBot is connected to this channel yet. Start the local bot to complete the loop.",
+    )
     return
   }
 
   try {
     const botStream = bot.send(client, utterance.utteranceId, transcript)
-    const textStream = forwardBotText(client, bot, utterance.utteranceId, botStream)
+    const textStream = forwardBotText(
+      client,
+      bot,
+      utterance.utteranceId,
+      botStream,
+    )
 
     if (client.settings?.ttsMode === "client") {
       logPipeline("TTS_CLIENT_MODE_SELECTED", {
         channelId: client.channelId,
         clientId: client.id,
         utteranceId: utterance.utteranceId,
-        ttsProvider: client.settings.ttsProvider
+        ttsProvider: client.settings.ttsProvider,
       })
 
       for await (const _text of textStream) {
@@ -451,7 +487,9 @@ async function processUtterance(client: ClientSession, utterance: ActiveUtteranc
     let audioChunkCount = 0
     let audioBytes = 0
 
-    for await (const audioChunk of tts.synthesize(textStream, { sampleRate: 16_000 })) {
+    for await (const audioChunk of tts.synthesize(textStream, {
+      sampleRate: 16_000,
+    })) {
       audioChunkCount += 1
       audioBytes += audioChunk.byteLength
       logPipeline("TTS_AUDIO_CHUNK", {
@@ -461,14 +499,14 @@ async function processUtterance(client: ClientSession, utterance: ActiveUtteranc
         chunkIndex: audioChunkCount,
         bytes: audioChunk.byteLength,
         sampleRate: 16_000,
-        ttsProvider: client.settings?.ttsProvider ?? "demo"
+        ttsProvider: client.settings?.ttsProvider ?? "demo",
       })
 
       sendJson(client.ws, {
         type: "AUDIO_CHUNK",
         utteranceId: utterance.utteranceId,
         audioBase64: audioChunk.toString("base64"),
-        sampleRate: 16_000
+        sampleRate: 16_000,
       })
     }
 
@@ -479,21 +517,26 @@ async function processUtterance(client: ClientSession, utterance: ActiveUtteranc
       chunkCount: audioChunkCount,
       audioBytes,
       sampleRate: 16_000,
-      ttsProvider: client.settings?.ttsProvider ?? "demo"
+      ttsProvider: client.settings?.ttsProvider ?? "demo",
     })
 
     sendJson(client.ws, {
       type: "AUDIO_END",
       utteranceId: utterance.utteranceId,
-      sampleRate: 16_000
+      sampleRate: 16_000,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown bot pipeline failure"
+    const message =
+      error instanceof Error ? error.message : "Unknown bot pipeline failure"
     sendNotice(client, "error", message)
   }
 }
 
-async function handleClientMessage(client: ClientSession, raw: RawData, isBinary: boolean) {
+async function handleClientMessage(
+  client: ClientSession,
+  raw: RawData,
+  isBinary: boolean,
+) {
   if (isBinary) {
     if (!client.activeUtterance) return
 
@@ -526,13 +569,13 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
         asrProvider: message.settings.asrProvider,
         ttsMode: message.settings.ttsMode,
         ttsProvider: message.settings.ttsProvider,
-        language: message.settings.language
+        language: message.settings.language,
       })
 
       sendJson(client.ws, {
         type: "SESSION_READY",
         clientId: client.id,
-        channelId: client.channelId
+        channelId: client.channelId,
       })
       broadcastChannelState(client.channelId)
       break
@@ -541,7 +584,7 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
       logPipeline("UTTERANCE_START", {
         channelId: client.channelId,
         clientId: client.id,
-        utteranceId: message.utteranceId
+        utteranceId: message.utteranceId,
       })
 
       client.activeUtterance = {
@@ -549,7 +592,7 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
         audioChunks: [],
         sequence: 0,
         transcriptHint: undefined,
-        source: "microphone"
+        source: "microphone",
       }
 
       getPrimaryBot(client.channelId)?.relayAudioStart(message.utteranceId)
@@ -558,7 +601,11 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
     case "COMMIT_UTTERANCE": {
       const current = client.activeUtterance
       if (!current || current.utteranceId !== message.utteranceId) {
-        sendNotice(client, "error", "The committed utterance does not match the active microphone session.")
+        sendNotice(
+          client,
+          "error",
+          "The committed utterance does not match the active microphone session.",
+        )
         return
       }
 
@@ -567,7 +614,7 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
         clientId: client.id,
         utteranceId: message.utteranceId,
         source: message.source,
-        transcriptHint: clipTextForLog(message.transcript ?? "")
+        transcriptHint: clipTextForLog(message.transcript ?? ""),
       })
 
       current.transcriptHint = message.transcript?.trim()
@@ -580,7 +627,11 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
     case "TEXT_UTTERANCE": {
       const text = message.text.trim()
       if (!text) {
-        sendNotice(client, "error", "Type something before sending a text utterance.")
+        sendNotice(
+          client,
+          "error",
+          "Type something before sending a text utterance.",
+        )
         return
       }
 
@@ -588,7 +639,7 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
         channelId: client.channelId,
         clientId: client.id,
         utteranceId: message.utteranceId,
-        text: clipTextForLog(text)
+        text: clipTextForLog(text),
       })
 
       await processUtterance(client, {
@@ -596,14 +647,14 @@ async function handleClientMessage(client: ClientSession, raw: RawData, isBinary
         audioChunks: [],
         sequence: 0,
         transcriptHint: text,
-        source: "text"
+        source: "text",
       })
       break
     }
   }
 }
 
-async function handleBotConnection(ws: WebSocket, request: Request) {
+async function handleBotConnection(ws: WebSocket, _request: Request) {
   let bot: BotConnection | undefined
   let greeted = false
 
@@ -617,7 +668,7 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
       sendJson(ws, {
         type: "ERROR",
         code: "PROTOCOL_VERSION_UNSUPPORTED",
-        message: "Bot messages must be JSON text frames."
+        message: "Bot messages must be JSON text frames.",
       })
       ws.close()
       return
@@ -636,7 +687,7 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
         sendJson(ws, {
           type: "ERROR",
           code: "PROTOCOL_VERSION_UNSUPPORTED",
-          message: "The first bot message must be HELLO."
+          message: "The first bot message must be HELLO.",
         })
         ws.close()
         return
@@ -646,7 +697,7 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
         sendJson(ws, {
           type: "ERROR",
           code: "PROTOCOL_VERSION_UNSUPPORTED",
-          message: `Expected protocol version ${PROTOCOL_VERSION}.`
+          message: `Expected protocol version ${PROTOCOL_VERSION}.`,
         })
         ws.close()
         return
@@ -658,7 +709,7 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
         sendJson(ws, {
           type: "ERROR",
           code: "AUTH_FAILED",
-          message: "Invalid or expired API key."
+          message: "Invalid or expired API key.",
         })
         ws.close()
         return
@@ -668,7 +719,7 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
         sendJson(ws, {
           type: "ERROR",
           code: "CHANNEL_NOT_FOUND",
-          message: "The provided API key does not match this channel."
+          message: "The provided API key does not match this channel.",
         })
         ws.close()
         return
@@ -679,7 +730,8 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
         sendJson(ws, {
           type: "ERROR",
           code: "BOT_ALREADY_CONNECTED",
-          message: "A bot with the same bot_id is already active in this channel."
+          message:
+            "A bot with the same bot_id is already active in this channel.",
         })
         ws.close()
         return
@@ -697,7 +749,7 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
         botName,
         channelId,
         platformKeyId: apiKey.id,
-        lastConnectedAt: new Date().toISOString()
+        lastConnectedAt: new Date().toISOString(),
       })
 
       bot = new BotConnection(ws, botId, botName, channelId, sessionId)
@@ -708,7 +760,7 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
         type: "WELCOME",
         session_id: sessionId,
         channel_id: channelId,
-        bot_id: botId
+        bot_id: botId,
       })
       broadcastChannelState(channelId)
       return
@@ -723,7 +775,7 @@ async function handleBotConnection(ws: WebSocket, request: Request) {
           utterance_id: string
           text: string
           is_final: boolean
-        }
+        },
       )
       return
     }
@@ -749,29 +801,38 @@ function attachRealtimeGateways(server: ReturnType<typeof Fastify>) {
   server.server.on(
     "upgrade",
     (request: IncomingMessage, socket: Duplex, head: Buffer) => {
-    const url = new URL(request.url ?? "/", `http://${request.headers.host ?? `localhost:${DEFAULT_PORT}`}`)
+      const url = new URL(
+        request.url ?? "/",
+        `http://${request.headers.host ?? `localhost:${DEFAULT_PORT}`}`,
+      )
 
-    if (url.pathname === "/ws/client") {
-      clientGateway.handleUpgrade(request, socket, head, (ws) => {
-        clientGateway.emit("connection", ws, request)
-      })
-      return
-    }
+      if (url.pathname === "/ws/client") {
+        clientGateway.handleUpgrade(request, socket, head, (ws) => {
+          clientGateway.emit("connection", ws, request)
+        })
+        return
+      }
 
-    if (url.pathname === "/bot/connect") {
-      botGateway.handleUpgrade(request, socket, head, (ws) => {
-        botGateway.emit("connection", ws, request)
-      })
-      return
-    }
+      if (url.pathname === "/bot/connect") {
+        botGateway.handleUpgrade(request, socket, head, (ws) => {
+          botGateway.emit("connection", ws, request)
+        })
+        return
+      }
 
-    socket.destroy()
-    }
+      socket.destroy()
+    },
   )
 
   clientGateway.on("connection", (ws, request) => {
-    const url = new URL(request.url ?? "/ws/client", `http://${request.headers.host ?? `localhost:${DEFAULT_PORT}`}`)
-    const channelId = sanitizeId(url.searchParams.get("channelId"), DEFAULT_CHANNEL_ID)
+    const url = new URL(
+      request.url ?? "/ws/client",
+      `http://${request.headers.host ?? `localhost:${DEFAULT_PORT}`}`,
+    )
+    const channelId = sanitizeId(
+      url.searchParams.get("channelId"),
+      DEFAULT_CHANNEL_ID,
+    )
     const clientId = sanitizeId(url.searchParams.get("clientId"), randomUUID())
     const runtime = getOrCreateRuntimeChannel(channelId)
 
@@ -780,14 +841,14 @@ function attachRealtimeGateways(server: ReturnType<typeof Fastify>) {
     const client: ClientSession = {
       id: clientId,
       channelId,
-      ws
+      ws,
     }
 
     runtime.clients.set(clientId, client)
     sendJson(ws, {
       type: "SESSION_READY",
       clientId,
-      channelId
+      channelId,
     })
     broadcastChannelState(channelId)
 
@@ -810,7 +871,7 @@ const fastify = Fastify({ logger: true })
 
 await fastify.register(cors, {
   origin: true,
-  credentials: false
+  credentials: false,
 })
 
 fastify.get("/api/health", async () => {
@@ -820,19 +881,19 @@ fastify.get("/api/health", async () => {
     channels: runtimeChannels.size,
     connectedBots: Array.from(runtimeChannels.values()).reduce(
       (total, runtime) => total + runtime.bots.size,
-      0
+      0,
     ),
     connectedClients: Array.from(runtimeChannels.values()).reduce(
       (total, runtime) => total + runtime.clients.size,
-      0
-    )
+      0,
+    ),
   }
 })
 
 fastify.get("/api/channels/:channelId", async (request) => {
   const channelId = sanitizeId(
     (request.params as { channelId: string }).channelId,
-    DEFAULT_CHANNEL_ID
+    DEFAULT_CHANNEL_ID,
   )
   const runtime = getOrCreateRuntimeChannel(channelId)
 
@@ -840,12 +901,13 @@ fastify.get("/api/channels/:channelId", async (request) => {
     channelId,
     botCount: runtime.bots.size,
     clientCount: runtime.clients.size,
-    bots: Array.from(runtime.bots.values(), (bot) => bot.toRuntimeInfo())
+    bots: Array.from(runtime.bots.values(), (bot) => bot.toRuntimeInfo()),
   }
 })
 
 fastify.post("/api/keys", async (request, reply) => {
-  const body = (request.body as { channelId?: string; label?: string } | null) ?? {}
+  const body =
+    (request.body as { channelId?: string; label?: string } | null) ?? {}
   const channelId = sanitizeId(body.channelId, DEFAULT_CHANNEL_ID)
   ensureChannelRecord(channelId)
   const key = createPlatformKey(channelId, body.label)
@@ -857,7 +919,7 @@ fastify.post("/api/keys", async (request, reply) => {
     channelId,
     channelName: titleFromChannelId(channelId),
     wsUrl: `${toWsUrl(baseUrl)}/bot/connect`,
-    protocolVersion: PROTOCOL_VERSION
+    protocolVersion: PROTOCOL_VERSION,
   }
 })
 
@@ -878,7 +940,7 @@ fastify.post("/api/bot/register", async (request, reply) => {
     reply.code(400)
     return {
       ok: false,
-      message: "apiKey is required"
+      message: "apiKey is required",
     }
   }
 
@@ -888,7 +950,7 @@ fastify.post("/api/bot/register", async (request, reply) => {
     reply.code(401)
     return {
       ok: false,
-      message: "API key is invalid for this channel"
+      message: "API key is invalid for this channel",
     }
   }
 
@@ -899,7 +961,7 @@ fastify.post("/api/bot/register", async (request, reply) => {
     botId,
     botName,
     channelId,
-    platformKeyId: keyRecord.id
+    platformKeyId: keyRecord.id,
   })
 
   return {
@@ -908,7 +970,7 @@ fastify.post("/api/bot/register", async (request, reply) => {
     botName,
     channelId,
     wsUrl: `${toWsUrl(getRequestBaseUrl(request))}/bot/connect`,
-    protocolVersion: PROTOCOL_VERSION
+    protocolVersion: PROTOCOL_VERSION,
   }
 })
 
@@ -917,5 +979,5 @@ ensureChannelRecord(DEFAULT_CHANNEL_ID)
 
 await fastify.listen({
   port: DEFAULT_PORT,
-  host: "0.0.0.0"
+  host: "0.0.0.0",
 })

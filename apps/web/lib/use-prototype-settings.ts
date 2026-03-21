@@ -5,8 +5,8 @@ import { useEffect, useState } from "react"
 import {
   defaultSettings,
   loadPrototypeSettings,
+  type PrototypeSettings,
   persistPrototypeSettings,
-  type PrototypeSettings
 } from "./prototype-settings"
 
 export function usePrototypeSettings() {
@@ -25,11 +25,11 @@ export function usePrototypeSettings() {
 
   function updateSetting<Key extends keyof PrototypeSettings>(
     key: Key,
-    value: PrototypeSettings[Key]
+    value: PrototypeSettings[Key],
   ) {
     setSettings((current) => ({
       ...current,
-      [key]: value
+      [key]: value,
     }))
   }
 
@@ -37,6 +37,6 @@ export function usePrototypeSettings() {
     settings,
     setSettings,
     updateSetting,
-    ready
+    ready,
   }
 }

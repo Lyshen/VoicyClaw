@@ -10,7 +10,7 @@ export class DemoTTSProvider implements TTSAdapter {
 
   async *synthesize(
     text: AsyncIterable<string>,
-    config?: TTSConfig
+    config?: TTSConfig,
   ): AsyncGenerator<AudioChunk> {
     const sampleRate = config?.sampleRate ?? DEFAULT_SAMPLE_RATE
 

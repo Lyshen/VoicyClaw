@@ -1,8 +1,10 @@
 "use client"
 
+import type {
+  ChannelStateMessage,
+  ServerToClientMessage,
+} from "@voicyclaw/protocol"
 import { useCallback, useEffect, useRef, useState } from "react"
-
-import type { ChannelStateMessage, ServerToClientMessage } from "@voicyclaw/protocol"
 
 import { MicrophoneStreamer, PcmStreamPlayer } from "../lib/audio"
 import { OutputTurnCoordinator } from "../lib/output-turn-coordinator"
@@ -10,7 +12,7 @@ import {
   buildWsUrl,
   getAsrProviderOption,
   getProviderModeLabel,
-  getTtsProviderOption
+  getTtsProviderOption,
 } from "../lib/prototype-settings"
 import { usePrototypeSettings } from "../lib/use-prototype-settings"
 
@@ -26,10 +28,13 @@ type TimelineEntry = {
 
 export function ChannelStudio() {
   const { settings, ready } = usePrototypeSettings()
-  const [connectionState, setConnectionState] = useState<ConnectionState>("connecting")
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>("connecting")
   const [timeline, setTimeline] = useState<TimelineEntry[]>([])
   const [draftText, setDraftText] = useState("")
-  const [channelState, setChannelState] = useState<ChannelStateMessage | null>(null)
+  const [channelState, setChannelState] = useState<ChannelStateMessage | null>(
+    null,
+  )
   const [micLevel, setMicLevel] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const [speechSupported, setSpeechSupported] = useState(false)
@@ -52,10 +57,12 @@ export function ChannelStudio() {
   const ttsProvider = getTtsProviderOption(settings.ttsProvider)
   const browserAsrEnabled = asrProvider.mode === "client"
   const browserTtsEnabled = ttsProvider.mode === "client"
-  const canUseRecognitionAssist = speechSupported && (browserAsrEnabled || asrProvider.id === "demo")
+  const canUseRecognitionAssist =
+    speechSupported && (browserAsrEnabled || asrProvider.id === "demo")
 
   if (!clientIdRef.current) {
-    clientIdRef.current = typeof crypto !== "undefined" ? crypto.randomUUID() : "web-client"
+    clientIdRef.current =
+      typeof crypto !== "undefined" ? crypto.randomUUID() : "web-client"
   }
 
   useEffect(() => {
@@ -65,7 +72,10 @@ export function ChannelStudio() {
   useEffect(() => {
     setSpeechSupported(
       typeof window !== "undefined" &&
-        Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+        Boolean(
+          (window as any).SpeechRecognition ||
+            (window as any).webkitSpeechRecognition,
+        ),
     )
   }, [])
 
@@ -78,15 +88,17 @@ export function ChannelStudio() {
       outputRef.current = new OutputTurnCoordinator({
         player: playerRef.current,
         getSpeechSynthesis: () =>
-          typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis : null,
+          typeof window !== "undefined" && "speechSynthesis" in window
+            ? window.speechSynthesis
+            : null,
         logger: {
           info: (message, payload) => {
             console.info(`[voicyclaw][output-turn] ${message}`, payload)
           },
           warn: (message, payload) => {
             console.warn(`[voicyclaw][output-turn] ${message}`, payload)
-          }
-        }
+          },
+        },
       })
     }
 
@@ -98,7 +110,7 @@ export function ChannelStudio() {
             ws.send(chunk)
           }
         },
-        onLevel: setMicLevel
+        onLevel: setMicLevel,
       })
     }
 
@@ -114,7 +126,9 @@ export function ChannelStudio() {
   }, [ttsProvider.id, ttsProvider.mode])
 
   const appendSystemMessage = useCallback((text: string) => {
-    setTimeline((current) => [...current, createEntry("system", "Runtime", text)].slice(-40))
+    setTimeline((current) =>
+      [...current, createEntry("system", "Runtime", text)].slice(-40),
+    )
   }, [])
 
   const upsertEntry = useCallback((entry: TimelineEntry) => {
@@ -151,7 +165,7 @@ export function ChannelStudio() {
             role: "preview",
             title: `${message.botId} preview`,
             text: message.text,
-            meta: message.isFinal ? "preview locked" : "preview streaming"
+            meta: message.isFinal ? "preview locked" : "preview streaming",
           })
           break
         }
@@ -161,7 +175,7 @@ export function ChannelStudio() {
             role: "user",
             title: "You",
             text: message.text,
-            meta: message.isFinal ? "ASR final" : "ASR interim"
+            meta: message.isFinal ? "ASR final" : "ASR interim",
           })
           break
         }
@@ -180,11 +194,17 @@ export function ChannelStudio() {
             role: "bot",
             title: message.botId,
             text: combined,
-            meta: message.isFinal ? "bot stream complete" : "bot block streaming"
+            meta: message.isFinal
+              ? "bot stream complete"
+              : "bot block streaming",
           })
 
           if (browserTtsEnabled) {
-            outputRef.current?.queueClientSpeech(message.utteranceId, message.text, settings.language)
+            outputRef.current?.queueClientSpeech(
+              message.utteranceId,
+              message.text,
+              settings.language,
+            )
           }
           break
         }
@@ -193,7 +213,7 @@ export function ChannelStudio() {
             void outputRef.current?.enqueueServerAudio(
               message.utteranceId,
               message.audioBase64,
-              message.sampleRate
+              message.sampleRate,
             )
           }
           break
@@ -206,13 +226,19 @@ export function ChannelStudio() {
         }
       }
     },
-    [appendSystemMessage, browserTtsEnabled, settings.language, ttsProvider.mode, upsertEntry]
+    [
+      appendSystemMessage,
+      browserTtsEnabled,
+      settings.language,
+      ttsProvider.mode,
+      upsertEntry,
+    ],
   )
 
   useEffect(() => {
     timelineRef.current?.scrollTo({
       top: timelineRef.current.scrollHeight,
-      behavior: "smooth"
+      behavior: "smooth",
     })
   }, [timeline])
 
@@ -221,7 +247,7 @@ export function ChannelStudio() {
 
     if (!introShownRef.current) {
       appendSystemMessage(
-        "Run `pnpm dev` at the repo root to boot the server, the Next.js shell, and the local demo ClawBot together."
+        "Run `pnpm dev` at the repo root to boot the server, the Next.js shell, and the local demo ClawBot together.",
       )
       introShownRef.current = true
     }
@@ -242,9 +268,9 @@ export function ChannelStudio() {
             asrProvider: asrProvider.id,
             ttsMode: ttsProvider.mode,
             ttsProvider: ttsProvider.id,
-            language: settings.language
-          }
-        })
+            language: settings.language,
+          },
+        }),
       )
     }
 
@@ -283,27 +309,31 @@ export function ChannelStudio() {
     settings.language,
     settings.serverUrl,
     ttsProvider.id,
-    ttsProvider.mode
+    ttsProvider.mode,
   ])
 
   const sendControl = useCallback(
     (payload: unknown) => {
       const ws = wsRef.current
       if (!ws || ws.readyState !== WebSocket.OPEN) {
-        appendSystemMessage("WebSocket is offline. Reconnect the channel or start the server first.")
+        appendSystemMessage(
+          "WebSocket is offline. Reconnect the channel or start the server first.",
+        )
         return false
       }
 
       ws.send(JSON.stringify(payload))
       return true
     },
-    [appendSystemMessage]
+    [appendSystemMessage],
   )
 
   const startRecognition = useCallback(() => {
     if (!canUseRecognitionAssist) return
 
-    const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const Recognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition
     if (!Recognition) return
 
     const recognition = new Recognition()
@@ -337,21 +367,25 @@ export function ChannelStudio() {
 
     if (browserAsrEnabled && !speechSupported) {
       appendSystemMessage(
-        "Browser SpeechRecognition is unavailable here. Switch ASR to the server demo path or use the text composer."
+        "Browser SpeechRecognition is unavailable here. Switch ASR to the server demo path or use the text composer.",
       )
       return
     }
 
     if (asrProvider.id === "demo" && !speechSupported) {
       appendSystemMessage(
-        "Demo Server ASR still relies on browser transcript assist in this prototype. Use the text composer or switch back to Browser SpeechRecognition on this device."
+        "Demo Server ASR still relies on browser transcript assist in this prototype. Use the text composer or switch back to Browser SpeechRecognition on this device.",
       )
       return
     }
 
-    if (asrProvider.id === "demo" && speechSupported && !demoAssistNoticeRef.current) {
+    if (
+      asrProvider.id === "demo" &&
+      speechSupported &&
+      !demoAssistNoticeRef.current
+    ) {
       appendSystemMessage(
-        "Demo Server ASR is active. Until a real server ASR adapter lands, the browser transcript assist stays on so this path remains runnable."
+        "Demo Server ASR is active. Until a real server ASR adapter lands, the browser transcript assist stays on so this path remains runnable.",
       )
       demoAssistNoticeRef.current = true
     }
@@ -359,12 +393,12 @@ export function ChannelStudio() {
     const utteranceId = crypto.randomUUID()
     const started = sendControl({
       type: "START_UTTERANCE",
-      utteranceId
+      utteranceId,
     })
 
     if (!started) return
 
-    outputRef.current?.reset()
+    outputRef.current?.beginTurn(utteranceId)
 
     activeUtteranceRef.current = utteranceId
     setIsRecording(true)
@@ -375,7 +409,9 @@ export function ChannelStudio() {
     } catch {
       activeUtteranceRef.current = null
       setIsRecording(false)
-      appendSystemMessage("Microphone access was denied. You can still use the text composer below.")
+      appendSystemMessage(
+        "Microphone access was denied. You can still use the text composer below.",
+      )
     }
   }, [
     appendSystemMessage,
@@ -384,7 +420,7 @@ export function ChannelStudio() {
     isRecording,
     sendControl,
     speechSupported,
-    startRecognition
+    startRecognition,
   ])
 
   const finishCapture = useCallback(() => {
@@ -400,7 +436,7 @@ export function ChannelStudio() {
       type: "COMMIT_UTTERANCE",
       utteranceId,
       transcript: draftRef.current.trim(),
-      source: "microphone"
+      source: "microphone",
     })
   }, [sendControl, stopRecognition])
 
@@ -416,10 +452,10 @@ export function ChannelStudio() {
       sendControl({
         type: "TEXT_UTTERANCE",
         utteranceId,
-        text
+        text,
       })
     ) {
-      outputRef.current?.reset()
+      outputRef.current?.beginTurn(utteranceId)
       setDraftText("")
     }
   }, [appendSystemMessage, sendControl])
@@ -435,18 +471,23 @@ export function ChannelStudio() {
           <p className="hero-eyebrow">Runnable prototype</p>
           <h1 className="hero-title">OpenClaw voice channel cockpit</h1>
           <p className="hero-copy">
-            This screen now simulates a preview stream plus a final bot text stream, so you can
-            watch the mock bot think, answer in blocks, and hand those blocks to client TTS.
+            This screen now simulates a preview stream plus a final bot text
+            stream, so you can watch the mock bot think, answer in blocks, and
+            hand those blocks to client TTS.
           </p>
         </div>
         <div className="status-row">
           <span className={`status-pill ${badgeTone(connectionState)}`}>
             websocket {connectionState}
           </span>
-          <span className={`status-pill ${channelState?.botCount ? "live" : "warn"}`}>
+          <span
+            className={`status-pill ${channelState?.botCount ? "live" : "warn"}`}
+          >
             {channelState?.botCount ?? 0} bot online
           </span>
-          <span className="status-pill neutral">channel {settings.channelId}</span>
+          <span className="status-pill neutral">
+            channel {settings.channelId}
+          </span>
         </div>
       </section>
 
@@ -457,7 +498,11 @@ export function ChannelStudio() {
               <p className="card-kicker">Channel</p>
               <h2>Conversation stream</h2>
             </div>
-            <button className="ghost-button" type="button" onClick={() => setReconnectIndex((value) => value + 1)}>
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={() => setReconnectIndex((value) => value + 1)}
+            >
               Reconnect
             </button>
           </div>
@@ -465,11 +510,15 @@ export function ChannelStudio() {
           <div className="timeline" ref={timelineRef}>
             {timeline.length === 0 ? (
               <div className="timeline-empty">
-                Hold the push-to-talk button or type into the composer to send the first utterance.
+                Hold the push-to-talk button or type into the composer to send
+                the first utterance.
               </div>
             ) : (
               timeline.map((entry) => (
-                <article key={entry.id} className={`timeline-entry ${entry.role}`}>
+                <article
+                  key={entry.id}
+                  className={`timeline-entry ${entry.role}`}
+                >
                   <div className="entry-meta">
                     <span className="entry-title">{entry.title}</span>
                     <span>{entry.meta}</span>
@@ -493,7 +542,11 @@ export function ChannelStudio() {
               placeholder="Speak or type here. The draft doubles as a transcript assist for the current prototype."
             />
             <div className="composer-actions">
-              <button className="primary-button" type="button" onClick={sendTextUtterance}>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={sendTextUtterance}
+              >
                 Send text
               </button>
               <button
@@ -508,7 +561,10 @@ export function ChannelStudio() {
               </button>
             </div>
             <p className="composer-hint">
-              ASR: {asrProvider.label} ({getProviderModeLabel(asrProvider.mode)}) · TTS: {ttsProvider.label} ({getProviderModeLabel(ttsProvider.mode)}) · speech API: {speechStatus}
+              ASR: {asrProvider.label} ({getProviderModeLabel(asrProvider.mode)}
+              ) · TTS: {ttsProvider.label} (
+              {getProviderModeLabel(ttsProvider.mode)}) · speech API:{" "}
+              {speechStatus}
             </p>
           </div>
         </section>
@@ -523,10 +579,16 @@ export function ChannelStudio() {
             </div>
             <div className="radar-orb">
               <span className="orb-core" />
-              <span className="orb-pulse" style={{ transform: `scale(${1 + micLevel * 1.4})` }} />
+              <span
+                className="orb-pulse"
+                style={{ transform: `scale(${1 + micLevel * 1.4})` }}
+              />
             </div>
             <div className="meter">
-              <span className="meter-fill" style={{ width: `${Math.max(6, micLevel * 100)}%` }} />
+              <span
+                className="meter-fill"
+                style={{ width: `${Math.max(6, micLevel * 100)}%` }}
+              />
             </div>
             <div className="stats-grid">
               <div className="stat">
@@ -535,11 +597,15 @@ export function ChannelStudio() {
               </div>
               <div className="stat">
                 <span className="stat-label">Listeners</span>
-                <strong className="stat-value">{channelState?.clientCount ?? 0}</strong>
+                <strong className="stat-value">
+                  {channelState?.clientCount ?? 0}
+                </strong>
               </div>
               <div className="stat">
                 <span className="stat-label">Mic state</span>
-                <strong className="stat-value">{isRecording ? "recording" : "idle"}</strong>
+                <strong className="stat-value">
+                  {isRecording ? "recording" : "idle"}
+                </strong>
               </div>
               <div className="stat">
                 <span className="stat-label">Adapters</span>
@@ -556,10 +622,22 @@ export function ChannelStudio() {
               </div>
             </div>
             <ul className="note-list">
-              <li>Client websocket still sends control JSON plus binary PCM microphone frames.</li>
-              <li>The mock bot now emits a preview stream before it commits final answer blocks.</li>
-              <li>Final bot blocks keep streaming over the channel while client TTS can speak them locally.</li>
-              <li>Settings let you flip the prototype between browser-owned and server-owned media paths.</li>
+              <li>
+                Client websocket still sends control JSON plus binary PCM
+                microphone frames.
+              </li>
+              <li>
+                The mock bot now emits a preview stream before it commits final
+                answer blocks.
+              </li>
+              <li>
+                Final bot blocks keep streaming over the channel while client
+                TTS can speak them locally.
+              </li>
+              <li>
+                Settings let you flip the prototype between browser-owned and
+                server-owned media paths.
+              </li>
             </ul>
           </section>
         </aside>
@@ -568,7 +646,11 @@ export function ChannelStudio() {
   )
 }
 
-function createEntry(role: TimelineEntry["role"], title: string, text: string): TimelineEntry {
+function createEntry(
+  role: TimelineEntry["role"],
+  title: string,
+  text: string,
+): TimelineEntry {
   return {
     id: `${role}-${crypto.randomUUID()}`,
     role,
@@ -576,8 +658,8 @@ function createEntry(role: TimelineEntry["role"], title: string, text: string): 
     text,
     meta: new Date().toLocaleTimeString([], {
       hour: "2-digit",
-      minute: "2-digit"
-    })
+      minute: "2-digit",
+    }),
   }
 }
 

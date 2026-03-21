@@ -5,6 +5,6 @@ export interface TTSAdapter {
 
   synthesize(
     text: AsyncIterable<string>,
-    config?: TTSConfig
+    config?: TTSConfig,
   ): AsyncGenerator<AudioChunk>
 }

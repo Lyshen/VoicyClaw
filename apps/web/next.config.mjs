@@ -7,8 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const nextConfig = {
   transpilePackages: ["@voicyclaw/protocol"],
   turbopack: {
-    root: path.join(__dirname, "../..")
-  }
+    root: path.join(__dirname, "../.."),
+  },
 }
 
 export default nextConfig
