@@ -111,6 +111,9 @@ describe.sequential("protocol failure paths", () => {
       channel_id: channelId,
       protocol_version: PROTOCOL_VERSION,
     })
+
+    const welcome = await firstBot.waitForMessage(isWelcomeMessage)
+
     secondBot.sendJson({
       type: "HELLO",
       api_key: secondKey.apiKey,
@@ -119,7 +122,6 @@ describe.sequential("protocol failure paths", () => {
       protocol_version: PROTOCOL_VERSION,
     })
 
-    const welcome = await firstBot.waitForMessage(isWelcomeMessage)
     const error = await secondBot.waitForMessage(isErrorMessage)
 
     expect(welcome).toMatchObject({
