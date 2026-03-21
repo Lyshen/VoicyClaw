@@ -1,0 +1,22 @@
+{
+  "name": "voicyclaw",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev": "pnpm db:generate && pnpm db:push && concurrently -c blue,green,magenta \"pnpm --filter @voicyclaw/server dev\" \"pnpm --filter @voicyclaw/web dev\" \"pnpm --filter @voicyclaw/mock-bot dev\"",
+    "dev:web": "pnpm --filter @voicyclaw/web dev",
+    "dev:server": "pnpm --filter @voicyclaw/server dev",
+    "dev:bot": "pnpm --filter @voicyclaw/mock-bot dev",
+    "db:generate": "pnpm --filter @voicyclaw/server db:generate",
+    "db:push": "pnpm --filter @voicyclaw/server db:push",
+    "build": "pnpm db:generate && pnpm --filter @voicyclaw/server build && pnpm --filter @voicyclaw/web build && pnpm --filter @voicyclaw/mock-bot build",
+    "typecheck": "pnpm --filter @voicyclaw/server typecheck && pnpm --filter @voicyclaw/web typecheck && pnpm --filter @voicyclaw/mock-bot typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

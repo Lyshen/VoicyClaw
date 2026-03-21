@@ -1,0 +1,26 @@
+{
+  "name": "@voicyclaw/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --out-dir dist",
+    "start": "node dist/index.js",
+    "db:generate": "node -e \"console.log('SQLite runtime uses node:sqlite, so there is no client generation step.')\"",
+    "db:push": "tsx src/setup-db.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@voicyclaw/asr": "workspace:*",
+    "@voicyclaw/protocol": "workspace:*",
+    "@voicyclaw/tts": "workspace:*",
+    "fastify": "^5.8.2",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "tsup": "^8.5.1"
+  }
+}

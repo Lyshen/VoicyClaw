@@ -1,0 +1,23 @@
+{
+  "name": "@voicyclaw/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
+    "dev": "pnpm clean && next dev --webpack --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@voicyclaw/protocol": "workspace:*",
+    "next": "^16.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3"
+  }
+}

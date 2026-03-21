@@ -29,8 +29,39 @@ User mic → WebSocket → ASR (streaming) → OpenClaw protocol
 - **WebSocket only** (prototype) — no WebRTC complexity
 - **Bidirectional streaming** — ASR and TTS both stream; TTS synthesis starts on the first text token from the bot
 - **Bring your own API keys** — users configure their own ASR/TTS vendor keys; VoicyClaw never holds them
+- **Dual provider modes** — both ASR and TTS support `client provider` mode and `server provider` mode
 - **Pluggable adapters** — swap ASR/TTS providers without touching the pipeline
 - **OpenClaw protocol** — minimal JSON-over-WebSocket channel protocol between server and bots (see [`doc/02-openclaw-protocol.md`](doc/02-openclaw-protocol.md))
+
+---
+
+## Provider Modes
+
+VoicyClaw treats ASR and TTS as two-stage capabilities that may run in either the client or the server:
+
+- **Client provider mode** — the browser or operating system performs ASR/TTS locally or through its own bundled service. Example: browser `SpeechRecognition` or `speechSynthesis`.
+- **Server provider mode** — the browser sends raw audio or text to VoicyClaw, and the VoicyClaw server calls a vendor SDK or API such as OpenAI, Azure, Volcengine, or Alibaba Cloud.
+
+This gives four valid combinations:
+
+| ASR | TTS | Typical use |
+|---|---|---|
+| client | client | fastest prototype path, lowest setup cost |
+| client | server | browser transcript + server-managed voice output |
+| server | client | server-grade transcription + lightweight browser playback |
+| server | server | full managed media pipeline, best for production control |
+
+For the current runnable prototype, browser speech recognition and browser speech synthesis are already used as client providers, while demo server-side adapters keep the OpenClaw pipeline runnable.
+
+## Shared Output Turn Control
+
+VoicyClaw keeps provider implementations thin and moves playback ownership into a shared output-turn coordinator in the web runtime:
+
+- both browser TTS text playback and server PCM playback are correlated by `utteranceId`
+- when a newer bot turn becomes active, stale queued speech or audio chunks from older turns are cancelled or dropped
+- provider switching does not duplicate queue logic, because the same coordinator owns interruption, reset, and turn-boundary rules
+
+This keeps `client provider` and `server provider` modes behaviorally consistent even though one side emits browser speech calls and the other side emits audio chunks.
 
 ---
 
@@ -52,7 +83,7 @@ User mic → WebSocket → ASR (streaming) → OpenClaw protocol
 
 - **Frontend**: Next.js (TypeScript)
 - **Backend / WS Server**: Fastify + `ws` (TypeScript)
-- **Database**: SQLite via Prisma
+- **Database**: SQLite via `node:sqlite`
 - **Monorepo**: pnpm workspaces
 
 ---
@@ -64,6 +95,25 @@ User mic → WebSocket → ASR (streaming) → OpenClaw protocol
 | [`doc/01-project-definition.md`](doc/01-project-definition.md) | Full project definition, architecture, scope |
 | [`doc/02-openclaw-protocol.md`](doc/02-openclaw-protocol.md) | OpenClaw WebSocket protocol spec |
 | [`doc/03-adapter-interface.md`](doc/03-adapter-interface.md) | ASR / TTS adapter interface definitions |
+
+---
+
+## Quick Start
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Then open `http://localhost:3000`.
+
+- The root `dev` script starts the web app, the Fastify/WebSocket server, and a local demo ClawBot
+- Use **hold-to-talk** for microphone streaming, or type into the composer as a transcript fallback
+- Browser speech recognition and browser speech synthesis are treated as `client providers`
+- Visit `/settings` to edit the channel/server defaults and mint platform keys for external bots
+- `pnpm build` verifies the server, web app, and local bot all compile successfully
+
+Note: this runnable prototype uses `node:sqlite` instead of Prisma so it stays friction-free on the current Node toolchain, while the design docs still describe the longer-term Prisma-based plan.
 
 ---
 

@@ -1,0 +1,20 @@
+{
+  "name": "@voicyclaw/mock-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --out-dir dist",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@voicyclaw/protocol": "workspace:*",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "tsup": "^8.5.1"
+  }
+}

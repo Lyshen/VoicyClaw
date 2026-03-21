@@ -34,10 +34,21 @@ A key issued by the VoicyClaw platform to authenticate a ClawBot. The bot uses t
 3. Receive and send channel messages
 
 ### 2.5 ASR Adapter
-A pluggable interface that accepts a raw audio stream (PCM/WebSocket) and returns transcribed text. Users configure their preferred vendor and provide their own API key.
+A pluggable interface that returns transcribed text. VoicyClaw supports two ASR execution modes:
+- **Client provider mode** — ASR runs in the browser or operating system (for example browser speech recognition) and sends transcript text to the platform
+- **Server provider mode** — raw audio is sent to the VoicyClaw server, which calls a vendor API/SDK and returns transcript text
 
 ### 2.6 TTS Adapter
-A pluggable interface that accepts a text string and returns an audio stream (MP3/PCM). Users configure their preferred vendor and provide their own API key.
+A pluggable interface that turns text into speech. VoicyClaw supports two TTS execution modes:
+- **Client provider mode** — the browser or operating system speaks the bot text directly (for example browser speech synthesis)
+- **Server provider mode** — the VoicyClaw server calls a vendor API/SDK and streams synthesized audio back to the user
+
+### 2.7 Provider Mode
+A **Provider Mode** describes where a media capability executes:
+- `client provider` — runs in the end-user runtime (browser or OS integration)
+- `server provider` — runs inside the VoicyClaw backend through vendor integrations
+
+ASR and TTS are both intentionally designed to support either mode independently.
 
 ---
 
@@ -50,13 +61,15 @@ A pluggable interface that accepts a text string and returns an audio stream (MP
 │  ┌──────────┐    ┌─────────────────┐   ┌────────────┐  │
 │  │  Web UI  │◄──►│  API / WS Gate  │◄──►│  Channel   │  │
 │  │(Next.js) │    │  (Fastify/NestJS│   │  Manager   │  │
-│  └──────────┘    └────────┬────────┘   └─────┬──────┘  │
-│                           │                   │         │
-│              ┌────────────▼──────┐   ┌────────▼──────┐  │
-│              │   ASR Adapter     │   │ TTS Adapter   │  │
-│              │ (Whisper/Azure/   │   │(ElevenLabs/   │  │
-│              │  iFlytek/Baidu…)  │   │ Azure/Edge…)  │  │
-│              └───────────────────┘   └───────────────┘  │
+│  └────┬─────┘    └────────┬────────┘   └─────┬──────┘  │
+│       │                   │                   │         │
+│       │      client providers        server providers   │
+│       │                   │                   │         │
+│  ┌────▼────┐    ┌─────────▼────────┐  ┌──────▼───────┐ │
+│  │Browser  │    │   ASR Adapter    │  │ TTS Adapter  │ │
+│  │ASR/TTS  │    │ (Whisper/Azure/  │  │(OpenAI/Azure/│ │
+│  │providers│    │  Volcengine/…)   │  │ Volcengine…) │ │
+│  └─────────┘    └──────────────────┘  └──────────────┘ │
 └──────────────────────────┬──────────────────────────────┘
                            │  OpenClaw Channel Protocol
                            │  (WebSocket, JSON-framed)
@@ -72,30 +85,58 @@ A pluggable interface that accepts a text string and returns an audio stream (MP
 ## 4. Real-Time Data Flow
 
 ```
+Option A — server-provider pipeline
+
 User Microphone
       │
       │ (raw audio via WebSocket)
       ▼
-  ASR Adapter ──► transcribed text
-                        │
-                        ▼
-              Channel Message (OpenClaw Protocol)
-                        │
-                        ▼
-                    ClawBot
-                        │
-                        │ streaming text chunks
-                        ▼
-                  TTS Adapter ──► audio stream chunks
-                                        │
-                                        ▼
-                               User Speaker (playback)
+  Server ASR Adapter ──► transcribed text
+                              │
+                              ▼
+                    Channel Message (OpenClaw Protocol)
+                              │
+                              ▼
+                          ClawBot
+                              │
+                              │ streaming text chunks
+                              ▼
+                    Server TTS Adapter ──► audio stream chunks
+                                                  │
+                                                  ▼
+                                         User Speaker (playback)
+
+Option B — client-provider assisted pipeline
+
+User Microphone
+      │
+      ▼
+Client ASR Provider ──► transcript text ──► VoicyClaw / OpenClaw ──► ClawBot
+                                                                 │
+                                                                 ▼
+                                               bot text chunks ──► Client TTS Provider
+                                                                 │
+                                                                 ▼
+                                                          User Speaker
 ```
 
 Key design decisions:
 - **Streaming TTS**: TTS synthesis begins on the first text chunk from the bot, minimizing perceived latency.
 - **No WebRTC in prototype**: all audio is transported over WebSocket (binary frames, PCM 16kHz mono).
-- **Stateless ASR/TTS adapters**: each adapter is a self-contained async function with a standard interface.
+- **Dual execution modes**: ASR and TTS can independently run as client providers or server providers.
+- **Stateless server adapters**: server-side adapters are self-contained async functions with a standard interface.
+- **Shared output-turn coordinator**: the web runtime owns playback turn state above the providers, so browser speech synthesis and streamed server audio both follow the same interrupt / stale-drop rules.
+
+### 4.1 Shared Output-Turn Coordinator
+
+TTS provider mode changes where voice is produced, but not how a conversation turn should be controlled. To avoid duplicating queue logic in every provider, VoicyClaw defines a shared output-turn coordinator in the client runtime:
+
+- it tracks the active `utteranceId` for outbound bot media
+- it interrupts the previous turn when a newer turn becomes active
+- it drops stale browser speech tasks and stale server audio chunks that arrive after a turn switch
+- it lets browser TTS providers and server audio playback share the same turn-boundary behavior
+
+This keeps provider implementations simple. Client providers only speak text. Server providers only emit audio chunks. The coordinator owns when those outputs are still allowed to play.
 
 ---
 
@@ -105,11 +146,11 @@ Key design decisions:
 
 | Layer | Technology | Rationale |
 |---|---|---|
-| Frontend | Next.js (TypeScript) | Full-stack TS, SSR, fast iteration |
+| Frontend | Next.js (TypeScript) + browser speech APIs | Full-stack TS, SSR, optional client-provider media path |
 | Backend API | Fastify or NestJS (TypeScript) | WebSocket support, typed, performant |
 | Real-time WS Server | Node.js `ws` library | Simple, battle-tested |
 | Channel Protocol | JSON over WebSocket | Easy to implement, easy to debug |
-| Database | SQLite (via Prisma) | Zero-ops for prototype |
+| Database | SQLite | Zero-ops for prototype |
 | Auth | Simple JWT + API Key | Sufficient for prototype |
 
 ### Future Migration Path
@@ -124,6 +165,14 @@ Key design decisions:
 
 ### ASR (Speech-to-Text)
 
+#### Client Providers
+
+| Provider | Region | Priority |
+|---|---|---|
+| Browser SpeechRecognition / OS speech services | Browser-dependent | P0 |
+
+#### Server Providers
+
 | Vendor | Region | Priority |
 |---|---|---|
 | OpenAI Whisper API | Global | P0 |
@@ -136,6 +185,14 @@ Key design decisions:
 
 ### TTS (Text-to-Speech)
 
+#### Client Providers
+
+| Provider | Region | Priority |
+|---|---|---|
+| Browser SpeechSynthesis / OS speech services | Browser-dependent | P0 |
+
+#### Server Providers
+
 | Vendor | Region | Priority |
 |---|---|---|
 | OpenAI TTS | Global | P0 |
@@ -146,7 +203,7 @@ Key design decisions:
 | iFlytek TTS | CN | P1 |
 | Edge TTS (free) | Global | P2 |
 
-All adapters share a common interface (see `doc/03-adapter-interface.md`). Users provide their own API keys via the platform settings UI.
+Server adapters share a common backend interface (see `doc/03-adapter-interface.md`). Client providers use browser or OS capabilities and are configured in the web UI alongside server providers. Users provide their own API keys for server-provider mode via the platform settings UI.
 
 ---
 
@@ -197,6 +254,7 @@ A channel can have multiple ClawBots. Message dispatch rules:
 In scope:
 - [ ] Web UI: Login, API Key management, Channel view with voice input/output
 - [ ] WebSocket server for audio streaming
+- [ ] Client-provider path: browser speech recognition and browser speech synthesis
 - [ ] ASR adapter: OpenAI Whisper (P0)
 - [ ] TTS adapter: OpenAI TTS (P0)
 - [ ] OpenClaw channel protocol (basic JSON WS)
