@@ -132,7 +132,7 @@ openclaw gateway restart
 Later, when stable:
 
 ```bash
-openclaw plugins install @voicyclaw/openclaw-voicyclaw
+openclaw plugins install @voicyclaw/voicyclaw
 ```
 
 ### 4.2 Plugin shape
@@ -143,16 +143,18 @@ Recommended initial structure:
 extensions/voicyclaw/
 ├── package.json
 ├── openclaw.plugin.json
+├── README.md
+├── tsconfig.json
 ├── index.ts
-├── setup-entry.ts                # optional later
-├── src/
-│   ├── config.ts
-│   ├── runtime.ts
-│   ├── socket-client.ts
-│   ├── channel-adapter.ts
-│   ├── session-map.ts
-│   ├── message-types.ts
-│   └── *.test.ts
+└── src/
+    ├── channel.ts
+    ├── config.ts
+    ├── dispatch.ts
+    ├── gateway.ts
+    ├── protocol.ts
+    ├── runtime.ts
+    ├── socket-client.ts
+    └── *.test.ts
 ```
 
 ### 4.3 Manifest draft
@@ -160,27 +162,21 @@ extensions/voicyclaw/
 ```json
 {
   "id": "voicyclaw",
-  "kind": "channel",
-  "name": "VoicyClaw",
-  "description": "Connect OpenClaw to a VoicyClaw server",
   "channels": ["voicyclaw"],
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
-    "properties": {
-      "enabled": { "type": "boolean" },
-      "url": { "type": "string" },
-      "token": { "type": "string" },
-      "workspaceId": { "type": "string" },
-      "botId": { "type": "string" },
-      "channelId": { "type": "string" },
-      "reconnectBackoffMs": { "type": "integer", "minimum": 500 }
-    }
+    "properties": {}
   }
 }
 ```
 
-Note: exact schema details can evolve, but `channels: ["voicyclaw"]` is the key declaration that allows `channels.voicyclaw` config.
+Important distinction:
+
+- `openclaw.plugin.json` reserves the `channels.voicyclaw` key and validates plugin-level config
+- the actual `channels.voicyclaw` schema should live in the runtime channel plugin (`src/channel.ts`)
+
+That matches how OpenClaw channel plugins such as `nostr` and `discord` are packaged.
 
 ---
 
@@ -565,7 +561,7 @@ Public npm package:
 
 ```bash
 npm publish
-openclaw plugins install @voicyclaw/openclaw-voicyclaw
+openclaw plugins install @voicyclaw/voicyclaw
 ```
 
 This avoids needing special OpenClaw core releases just to ship plugin changes.

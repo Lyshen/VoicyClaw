@@ -1,0 +1,9 @@
+{
+  "id": "voicyclaw",
+  "channels": ["voicyclaw"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

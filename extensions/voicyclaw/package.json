@@ -1,0 +1,44 @@
+{
+  "name": "@voicyclaw/voicyclaw",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw VoicyClaw channel plugin",
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "dependencies": {
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
+    "@types/node": "^25.5.0",
+    "openclaw": "2026.3.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.1"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "voicyclaw",
+      "label": "VoicyClaw",
+      "selectionLabel": "VoicyClaw (Outbound Connector)",
+      "detailLabel": "VoicyClaw",
+      "docsPath": "/channels/voicyclaw",
+      "docsLabel": "voicyclaw",
+      "blurb": "Connect OpenClaw outward to a VoicyClaw service over WebSocket.",
+      "aliases": [
+        "voiceclaw"
+      ],
+      "order": 60
+    }
+  }
+}
