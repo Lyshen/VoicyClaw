@@ -301,7 +301,6 @@ export function loadPrototypeSettings(
     ...defaultSettings,
     ...runtimeDefaults,
   }
-
   if (typeof window === "undefined") {
     return defaults
   }
