@@ -36,6 +36,15 @@ pnpm test
 pnpm typecheck
 ```
 
+The test suite includes a wire-level smoke case that covers the minimal
+VoicyClaw workflow:
+
+- `HELLO`
+- `WELCOME`
+- `STT_RESULT`
+- `BOT_PREVIEW`
+- `TTS_TEXT`
+
 ## Link Into OpenClaw
 
 ```bash
