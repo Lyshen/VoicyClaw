@@ -111,9 +111,10 @@ jobs:
 
       - name: Publish plugin to npm
         if: ${{ needs.meta.outputs.publish_plugin == 'true' }}
+        working-directory: ./extensions/voicyclaw
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm --dir ./extensions/voicyclaw publish --access public --no-git-checks --provenance
+        run: pnpm publish --access public --no-git-checks --provenance
 
   images:
     needs: meta
