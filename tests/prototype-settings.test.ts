@@ -68,6 +68,18 @@ describe("prototype settings helpers", () => {
     })
   })
 
+  it("applies runtime defaults before reading local storage", () => {
+    expect(
+      loadPrototypeSettings({
+        serverUrl: "https://voice.example.com/path",
+        channelId: "Runtime Room",
+      }),
+    ).toMatchObject({
+      serverUrl: "https://voice.example.com/path",
+      channelId: "Runtime Room",
+    })
+  })
+
   it("persists normalized settings back to local storage", () => {
     const storage = createMemoryStorage()
     globalThis.window = { localStorage: storage } as Window & typeof globalThis

@@ -1,0 +1,5 @@
+src/*.test.ts
+vitest.config.ts
+biome.json
+pnpm-lock.yaml
+node_modules

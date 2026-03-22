@@ -1,10 +1,42 @@
 {
   "name": "@voicyclaw/voicyclaw",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "OpenClaw VoicyClaw channel plugin",
   "type": "module",
   "packageManager": "pnpm@10.28.2",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lyshen/VoicyClaw.git",
+    "directory": "extensions/voicyclaw"
+  },
+  "homepage": "https://github.com/Lyshen/VoicyClaw/tree/main/extensions/voicyclaw",
+  "bugs": {
+    "url": "https://github.com/Lyshen/VoicyClaw/issues"
+  },
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "voicyclaw",
+    "voice"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "README.md",
+    "index.ts",
+    "openclaw.plugin.json",
+    "src/channel.ts",
+    "src/config.ts",
+    "src/dispatch.ts",
+    "src/gateway.ts",
+    "src/protocol.ts",
+    "src/runtime.ts",
+    "src/socket-client.ts",
+    "tsconfig.json"
+  ],
   "dependencies": {
     "ws": "^8.19.0"
   },

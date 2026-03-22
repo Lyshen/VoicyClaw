@@ -90,6 +90,7 @@ The repo now includes a standard GitHub CI workflow, a repo-wide lint gate, cove
 - `pnpm test` - runs unit and integration tests for protocol helpers, demo providers, settings normalization, output-turn coordination, the local server/mock-bot relay, and protocol failure handling
 - `pnpm test:coverage` - runs the same Vitest suite with V8 coverage, writes `coverage/summary.md`, and refreshes `docs/badges/coverage.svg`
 - `pnpm typecheck` - runs TypeScript checks across `apps/server`, `apps/web`, and `apps/mock-bot`
+- `pnpm plugin:voicyclaw:check` - runs install, lint, typecheck, and smoke-tested protocol checks for the standalone OpenClaw plugin under `extensions/voicyclaw`
 - `pnpm build` - validates production builds for the server, web app, and mock bot
 - `pnpm test:e2e` - builds the monorepo and runs Playwright smoke tests against the full local demo stack
 - `pnpm ci:check` - runs the database bootstrap, coverage suite, typecheck, and Playwright smoke flow used in GitHub Actions
@@ -117,6 +118,29 @@ The CI workflow in `.github/workflows/ci.yml` runs on pushes to `main` / `codex/
 | [`doc/04-openclaw-gateway-bridge.md`](doc/04-openclaw-gateway-bridge.md) | Design for the minimal OpenClaw Gateway bridge that lets VoicyClaw interoperate with a real OpenClaw deployment |
 | [`doc/05-conversation-backend-abstraction.md`](doc/05-conversation-backend-abstraction.md) | The stable backend contract that keeps voice business logic independent from local-bot vs Gateway transport details |
 | [`doc/06-openclaw-voicyclaw-channel-plugin.md`](doc/06-openclaw-voicyclaw-channel-plugin.md) | Detailed design for the long-term OpenClaw `voicyclaw` channel plugin that actively connects to the VoicyClaw service |
+| [`doc/07-artifact-standardization.md`](doc/07-artifact-standardization.md) | Standardized release outputs for the plugin and the self-hostable VoicyClaw service |
+
+---
+
+## Release Artifacts
+
+VoicyClaw now standardizes around two main deliverables:
+
+- OpenClaw plugin: npm package `@voicyclaw/voicyclaw`
+- Self-hosted service: Docker images plus `deploy/docker-compose.yml`
+
+Useful commands:
+
+```bash
+pnpm release:prepare
+pnpm plugin:voicyclaw:pack
+pnpm docker:build:server
+pnpm docker:build:web
+pnpm docker:compose:up
+```
+
+`pnpm release:prepare` runs the repo checks, packs the plugin tarball into
+`dist/release`, and copies the self-host deploy bundle into `dist/deploy`.
 
 ---
 

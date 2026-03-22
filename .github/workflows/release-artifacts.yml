@@ -1,0 +1,211 @@
+name: Release Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the leading v
+        required: true
+        type: string
+      publish_plugin:
+        description: Publish the OpenClaw plugin to npm
+        required: true
+        default: false
+        type: boolean
+      publish_images:
+        description: Push Docker images to GHCR
+        required: true
+        default: false
+        type: boolean
+      push_latest:
+        description: Also publish latest Docker tags
+        required: true
+        default: false
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      version_minor: ${{ steps.meta.outputs.version_minor }}
+      owner_lc: ${{ steps.meta.outputs.owner_lc }}
+      publish_plugin: ${{ steps.meta.outputs.publish_plugin }}
+      publish_images: ${{ steps.meta.outputs.publish_images }}
+      push_latest: ${{ steps.meta.outputs.push_latest }}
+    steps:
+      - id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            PUBLISH_PLUGIN="${{ inputs.publish_plugin }}"
+            PUBLISH_IMAGES="${{ inputs.publish_images }}"
+            PUSH_LATEST="${{ inputs.push_latest }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+            PUBLISH_PLUGIN="true"
+            PUBLISH_IMAGES="true"
+            PUSH_LATEST="true"
+          fi
+
+          VERSION_MINOR="$(echo "${VERSION}" | cut -d. -f1,2)"
+          OWNER_LC="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version_minor=${VERSION_MINOR}" >> "$GITHUB_OUTPUT"
+          echo "owner_lc=${OWNER_LC}" >> "$GITHUB_OUTPUT"
+          echo "publish_plugin=${PUBLISH_PLUGIN}" >> "$GITHUB_OUTPUT"
+          echo "publish_images=${PUBLISH_IMAGES}" >> "$GITHUB_OUTPUT"
+          echo "push_latest=${PUSH_LATEST}" >> "$GITHUB_OUTPUT"
+
+  plugin:
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            extensions/voicyclaw/pnpm-lock.yaml
+          registry-url: https://registry.npmjs.org
+
+      - name: Validate plugin
+        run: pnpm plugin:voicyclaw:check
+
+      - name: Set plugin package version
+        run: npm pkg set version="${{ needs.meta.outputs.version }}" --prefix extensions/voicyclaw
+
+      - name: Pack plugin tarball
+        run: |
+          mkdir -p dist/release
+          pnpm plugin:voicyclaw:pack
+
+      - name: Verify plugin tarball contents
+        run: pnpm plugin:voicyclaw:pack:verify
+
+      - name: Upload plugin package
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicyclaw-plugin-package
+          path: dist/release/*.tgz
+
+      - name: Publish plugin to npm
+        if: ${{ needs.meta.outputs.publish_plugin == 'true' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm --dir ./extensions/voicyclaw publish --access public --no-git-checks --provenance
+
+  images:
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: ${{ needs.meta.outputs.publish_images == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata (server)
+        id: server-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ needs.meta.outputs.owner_lc }}/voicyclaw-server
+          tags: |
+            type=raw,value=${{ needs.meta.outputs.version }}
+            type=raw,value=${{ needs.meta.outputs.version_minor }}
+            type=raw,value=latest,enable=${{ needs.meta.outputs.push_latest == 'true' }}
+
+      - name: Docker metadata (web)
+        id: web-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ needs.meta.outputs.owner_lc }}/voicyclaw-web
+          tags: |
+            type=raw,value=${{ needs.meta.outputs.version }}
+            type=raw,value=${{ needs.meta.outputs.version_minor }}
+            type=raw,value=latest,enable=${{ needs.meta.outputs.push_latest == 'true' }}
+
+      - name: Build and optionally push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/server.Dockerfile
+          push: ${{ needs.meta.outputs.publish_images == 'true' }}
+          tags: ${{ steps.server-meta.outputs.tags }}
+          labels: ${{ steps.server-meta.outputs.labels }}
+
+      - name: Build and optionally push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/web.Dockerfile
+          push: ${{ needs.meta.outputs.publish_images == 'true' }}
+          tags: ${{ steps.web-meta.outputs.tags }}
+          labels: ${{ steps.web-meta.outputs.labels }}
+
+      - name: Prepare deployment bundle
+        run: node scripts/prepare-deploy-bundle.mjs
+
+      - name: Upload deployment bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicyclaw-deploy-bundle
+          path: dist/deploy
+
+  github-release:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs:
+      - plugin
+      - images
+      - meta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download plugin artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: voicyclaw-plugin-package
+          path: dist/release
+
+      - name: Download deploy bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: voicyclaw-deploy-bundle
+          path: dist/deploy
+
+      - name: Publish GitHub release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/release/*.tgz
+            dist/deploy/docker-compose.yml
+            dist/deploy/docker.env.example
+            dist/deploy/README.md
+          generate_release_notes: true
