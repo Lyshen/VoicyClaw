@@ -174,8 +174,7 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
 export const SETTINGS_STORAGE_KEY = "voicyclaw.prototype.settings"
 
 export const defaultSettings: PrototypeSettings = {
-  serverUrl:
-    process.env.NEXT_PUBLIC_VOICYCLAW_SERVER_URL ?? "http://localhost:3001",
+  serverUrl: "http://localhost:3001",
   channelId: "demo-room",
   language: "en-US",
   conversationBackend: "local-bot",
@@ -295,14 +294,20 @@ function normalizeConversationBackend(
   return defaultSettings.conversationBackend
 }
 
-export function loadPrototypeSettings() {
+export function loadPrototypeSettings(
+  runtimeDefaults?: Partial<PrototypeSettings>,
+) {
+  const defaults = {
+    ...defaultSettings,
+    ...runtimeDefaults,
+  }
   if (typeof window === "undefined") {
-    return defaultSettings
+    return defaults
   }
 
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
-    if (!raw) return defaultSettings
+    if (!raw) return defaults
 
     const parsed = JSON.parse(raw) as Partial<PrototypeSettings> & {
       browserSpeechEnabled?: boolean
@@ -310,17 +315,13 @@ export function loadPrototypeSettings() {
     }
 
     return {
-      ...defaultSettings,
+      ...defaults,
       ...parsed,
-      serverUrl: normalizeServerUrl(
-        parsed.serverUrl ?? defaultSettings.serverUrl,
-      ),
+      serverUrl: normalizeServerUrl(parsed.serverUrl ?? defaults.serverUrl),
       openClawGatewayUrl: normalizeOpenClawGatewayUrl(
-        parsed.openClawGatewayUrl ?? defaultSettings.openClawGatewayUrl,
+        parsed.openClawGatewayUrl ?? defaults.openClawGatewayUrl,
       ),
-      channelId: sanitizeChannelId(
-        parsed.channelId ?? defaultSettings.channelId,
-      ),
+      channelId: sanitizeChannelId(parsed.channelId ?? defaults.channelId),
       conversationBackend: normalizeConversationBackend(
         parsed.conversationBackend,
       ),
@@ -334,7 +335,7 @@ export function loadPrototypeSettings() {
       ),
     }
   } catch {
-    return defaultSettings
+    return defaults
   }
 }
 

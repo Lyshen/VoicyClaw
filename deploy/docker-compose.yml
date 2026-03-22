@@ -1,0 +1,36 @@
+name: voicyclaw
+
+services:
+  server:
+    image: ${VOICYCLAW_SERVER_IMAGE:-ghcr.io/lyshen/voicyclaw-server}:${VOICYCLAW_VERSION:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/docker/server.Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      VOICYCLAW_SQLITE_FILE: /data/voicyclaw.sqlite
+    ports:
+      - "${VOICYCLAW_SERVER_PORT:-3001}:3001"
+    volumes:
+      - voicyclaw-data:/data
+    restart: unless-stopped
+
+  web:
+    image: ${VOICYCLAW_WEB_IMAGE:-ghcr.io/lyshen/voicyclaw-web}:${VOICYCLAW_VERSION:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      VOICYCLAW_PUBLIC_SERVER_PORT: ${VOICYCLAW_SERVER_PORT:-3001}
+      VOICYCLAW_PUBLIC_SERVER_URL: ${VOICYCLAW_PUBLIC_SERVER_URL:-}
+    depends_on:
+      - server
+    ports:
+      - "${VOICYCLAW_WEB_PORT:-3000}:3000"
+    restart: unless-stopped
+
+volumes:
+  voicyclaw-data:

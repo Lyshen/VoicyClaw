@@ -14,8 +14,23 @@ export function usePrototypeSettings() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    setSettings(loadPrototypeSettings())
-    setReady(true)
+    let active = true
+
+    const bootstrap = async () => {
+      const runtimeDefaults = await loadRuntimeDefaults()
+      if (!active) {
+        return
+      }
+
+      setSettings(loadPrototypeSettings(runtimeDefaults))
+      setReady(true)
+    }
+
+    void bootstrap()
+
+    return () => {
+      active = false
+    }
   }, [])
 
   useEffect(() => {
@@ -38,5 +53,21 @@ export function usePrototypeSettings() {
     setSettings,
     updateSetting,
     ready,
+  }
+}
+
+async function loadRuntimeDefaults(): Promise<Partial<PrototypeSettings>> {
+  try {
+    const response = await fetch("/api/runtime-config", {
+      cache: "no-store",
+    })
+    if (!response.ok) {
+      return {}
+    }
+
+    const payload = (await response.json()) as Partial<PrototypeSettings>
+    return payload
+  } catch {
+    return {}
   }
 }
