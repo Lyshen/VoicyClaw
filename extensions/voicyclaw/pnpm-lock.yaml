@@ -18,6 +18,9 @@ importers:
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       openclaw:
         specifier: 2026.3.2
         version: 2026.3.2(@napi-rs/canvas@0.1.97)(@types/express@5.0.6)(hono@4.12.8)(node-llama-cpp@3.16.2(typescript@5.9.3))

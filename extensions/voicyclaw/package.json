@@ -43,6 +43,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",
     "@types/node": "^25.5.0",
+    "@types/ws": "^8.18.1",
     "openclaw": "2026.3.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
