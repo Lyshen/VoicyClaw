@@ -11,6 +11,7 @@ import { OutputTurnCoordinator } from "../lib/output-turn-coordinator"
 import {
   buildWsUrl,
   getAsrProviderOption,
+  getConversationBackendOption,
   getProviderModeLabel,
   getTtsProviderOption,
 } from "../lib/prototype-settings"
@@ -55,6 +56,9 @@ export function ChannelStudio() {
 
   const asrProvider = getAsrProviderOption(settings.asrProvider)
   const ttsProvider = getTtsProviderOption(settings.ttsProvider)
+  const conversationBackend = getConversationBackendOption(
+    settings.conversationBackend,
+  )
   const browserAsrEnabled = asrProvider.mode === "client"
   const browserTtsEnabled = ttsProvider.mode === "client"
   const canUseRecognitionAssist =
@@ -252,6 +256,10 @@ export function ChannelStudio() {
       introShownRef.current = true
     }
 
+    appendSystemMessage(
+      `Conversation backend: ${conversationBackend.label}. ASR is ${getProviderModeLabel(asrProvider.mode).toLowerCase()} and TTS is ${getProviderModeLabel(ttsProvider.mode).toLowerCase()}.`,
+    )
+
     const ws = new WebSocket(buildWsUrl(settings))
     ws.binaryType = "arraybuffer"
     wsRef.current = ws
@@ -264,11 +272,19 @@ export function ChannelStudio() {
           clientId: clientIdRef.current,
           channelId: settings.channelId,
           settings: {
+            conversationBackend: settings.conversationBackend,
             asrMode: asrProvider.mode,
             asrProvider: asrProvider.id,
             ttsMode: ttsProvider.mode,
             ttsProvider: ttsProvider.id,
             language: settings.language,
+            openClawGateway:
+              settings.conversationBackend === "openclaw-gateway"
+                ? {
+                    url: settings.openClawGatewayUrl,
+                    token: settings.openClawGatewayToken,
+                  }
+                : undefined,
           },
         }),
       )
@@ -300,12 +316,16 @@ export function ChannelStudio() {
     }
   }, [
     appendSystemMessage,
+    conversationBackend.label,
     asrProvider.id,
     asrProvider.mode,
     handleServerMessage,
     ready,
     reconnectIndex,
     settings.channelId,
+    settings.conversationBackend,
+    settings.openClawGatewayToken,
+    settings.openClawGatewayUrl,
     settings.language,
     settings.serverUrl,
     ttsProvider.id,

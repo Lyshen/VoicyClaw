@@ -1,10 +1,18 @@
 export type ProviderMode = "client" | "server"
 export type AsrProviderId = "browser" | "demo"
 export type TtsProviderId = "browser" | "demo"
+export type ConversationBackendId = "local-bot" | "openclaw-gateway"
 
 type ProviderOption<T extends string> = {
   id: T
   mode: ProviderMode
+  label: string
+  summary: string
+  runtimeHint: string
+}
+
+type ConversationBackendOption = {
+  id: ConversationBackendId
   label: string
   summary: string
   runtimeHint: string
@@ -22,11 +30,33 @@ export interface PrototypeSettings {
   serverUrl: string
   channelId: string
   language: string
+  conversationBackend: ConversationBackendId
   asrProvider: AsrProviderId
   ttsProvider: TtsProviderId
+  openClawGatewayUrl: string
+  openClawGatewayToken: string
   openAiAsrKey: string
   openAiTtsKey: string
 }
+
+export const CONVERSATION_BACKEND_OPTIONS: ConversationBackendOption[] = [
+  {
+    id: "local-bot",
+    label: "Local demo bot",
+    summary:
+      "Uses the current VoicyClaw inbound bot socket and the bundled mock ClawBot flow.",
+    runtimeHint:
+      "Best for day-to-day demo work when you want `pnpm dev` to keep everything self-contained.",
+  },
+  {
+    id: "openclaw-gateway",
+    label: "OpenClaw Gateway",
+    summary:
+      "VoicyClaw sends final transcript turns to a real OpenClaw Gateway over its WebSocket chat API.",
+    runtimeHint:
+      "Use this to test a real local OpenClaw install with a Gateway URL and token.",
+  },
+]
 
 export const ASR_PROVIDER_OPTIONS: ProviderOption<AsrProviderId>[] = [
   {
@@ -148,8 +178,11 @@ export const defaultSettings: PrototypeSettings = {
     process.env.NEXT_PUBLIC_VOICYCLAW_SERVER_URL ?? "http://localhost:3001",
   channelId: "demo-room",
   language: "en-US",
+  conversationBackend: "local-bot",
   asrProvider: "browser",
   ttsProvider: "browser",
+  openClawGatewayUrl: "ws://127.0.0.1:18789",
+  openClawGatewayToken: "",
   openAiAsrKey: "",
   openAiTtsKey: "",
 }
@@ -172,12 +205,41 @@ export function getTtsProviderOption(providerId: string | undefined) {
   )
 }
 
+export function getConversationBackendOption(backendId: string | undefined) {
+  return (
+    CONVERSATION_BACKEND_OPTIONS.find((option) => option.id === backendId) ??
+    CONVERSATION_BACKEND_OPTIONS[0]
+  )
+}
+
 export function normalizeServerUrl(input: string) {
   try {
     const url = new URL(input || defaultSettings.serverUrl)
     return `${url.protocol}//${url.host}`
   } catch {
     return defaultSettings.serverUrl
+  }
+}
+
+export function normalizeOpenClawGatewayUrl(input: string) {
+  const fallback = defaultSettings.openClawGatewayUrl
+  const trimmed = input.trim() || fallback
+  const candidate =
+    /^wss?:\/\//i.test(trimmed) || /^https?:\/\//i.test(trimmed)
+      ? trimmed
+      : `ws://${trimmed}`
+
+  try {
+    const url = new URL(candidate)
+    if (url.protocol === "http:") {
+      url.protocol = "ws:"
+    } else if (url.protocol === "https:") {
+      url.protocol = "wss:"
+    }
+
+    return `${url.protocol}//${url.host}${url.pathname === "/" ? "" : url.pathname.replace(/\/$/, "")}`
+  } catch {
+    return fallback
   }
 }
 
@@ -223,6 +285,16 @@ function normalizeTtsProvider(
     : defaultSettings.ttsProvider
 }
 
+function normalizeConversationBackend(
+  backendId: string | undefined,
+): ConversationBackendId {
+  if (backendId === "openclaw-gateway") {
+    return "openclaw-gateway"
+  }
+
+  return defaultSettings.conversationBackend
+}
+
 export function loadPrototypeSettings() {
   if (typeof window === "undefined") {
     return defaultSettings
@@ -243,8 +315,14 @@ export function loadPrototypeSettings() {
       serverUrl: normalizeServerUrl(
         parsed.serverUrl ?? defaultSettings.serverUrl,
       ),
+      openClawGatewayUrl: normalizeOpenClawGatewayUrl(
+        parsed.openClawGatewayUrl ?? defaultSettings.openClawGatewayUrl,
+      ),
       channelId: sanitizeChannelId(
         parsed.channelId ?? defaultSettings.channelId,
+      ),
+      conversationBackend: normalizeConversationBackend(
+        parsed.conversationBackend,
       ),
       asrProvider: normalizeAsrProvider(
         parsed.asrProvider,
@@ -269,8 +347,14 @@ export function persistPrototypeSettings(settings: PrototypeSettings) {
       ...settings,
       serverUrl: normalizeServerUrl(settings.serverUrl),
       channelId: sanitizeChannelId(settings.channelId),
+      conversationBackend: getConversationBackendOption(
+        settings.conversationBackend,
+      ).id,
       asrProvider: getAsrProviderOption(settings.asrProvider).id,
       ttsProvider: getTtsProviderOption(settings.ttsProvider).id,
+      openClawGatewayUrl: normalizeOpenClawGatewayUrl(
+        settings.openClawGatewayUrl,
+      ),
     }),
   )
 }

@@ -138,6 +138,30 @@ TTS provider mode changes where voice is produced, but not how a conversation tu
 
 This keeps provider implementations simple. Client providers only speak text. Server providers only emit audio chunks. The coordinator owns when those outputs are still allowed to play.
 
+### 4.2 OpenClaw Gateway Interop Path
+
+The next planned interoperability milestone is to let VoicyClaw talk to a real OpenClaw Gateway without first requiring a custom OpenClaw plugin channel.
+
+The chosen MVP path is a **Gateway WebChat-compatible bridge**:
+
+- VoicyClaw still owns microphone capture, ASR, TTS, and browser playback
+- OpenClaw still owns agent execution, session routing, and streamed text generation
+- the bridge boundary is text-first: VoicyClaw sends final transcript text through the official Gateway chat API and consumes streamed chat events back
+- one VoicyClaw room maps to one deterministic OpenClaw `sessionKey` for the first feasibility slice
+
+This is intentionally smaller than a native OpenClaw extension and gives us the fastest route to a real end-to-end interop loop.
+
+See `doc/04-openclaw-gateway-bridge.md` for the detailed design.
+See `doc/05-conversation-backend-abstraction.md` for the backend contract that keeps transport-specific logic below the main voice pipeline.
+
+Longer term, the preferred product shape is the reverse connection model:
+
+- VoicyClaw exposes the stable hosted service endpoint
+- OpenClaw installs a `voicyclaw` channel plugin
+- the plugin actively connects to VoicyClaw instead of VoicyClaw dialing a remote Gateway
+
+See `doc/06-openclaw-voicyclaw-channel-plugin.md` for that detailed design.
+
 ---
 
 ## 5. Tech Stack
