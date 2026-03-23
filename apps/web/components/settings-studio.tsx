@@ -34,9 +34,6 @@ export function SettingsStudio() {
   const activeBackend = getConversationBackendOption(
     settings.conversationBackend,
   )
-  const openAiAsrReady = settings.openAiAsrKey.trim().length > 0
-  const openAiTtsReady = settings.openAiTtsKey.trim().length > 0
-  const hasPreparedKey = openAiAsrReady || openAiTtsReady
 
   useEffect(() => {
     if (!ready) return
@@ -281,7 +278,6 @@ export function SettingsStudio() {
           activeRuntimeHint={activeAsrProvider.runtimeHint}
           options={ASR_PROVIDER_OPTIONS}
           guides={ASR_PROVIDER_GUIDE}
-          preparedOpenAi={openAiAsrReady}
           onSelect={(providerId) => updateSetting("asrProvider", providerId)}
         />
 
@@ -294,7 +290,6 @@ export function SettingsStudio() {
           activeRuntimeHint={activeTtsProvider.runtimeHint}
           options={TTS_PROVIDER_OPTIONS}
           guides={TTS_PROVIDER_GUIDE}
-          preparedOpenAi={openAiTtsReady}
           onSelect={(providerId) => updateSetting("ttsProvider", providerId)}
         />
 
@@ -302,55 +297,43 @@ export function SettingsStudio() {
           <div className="card-heading compact">
             <div>
               <p className="card-kicker">Server-provider prep</p>
-              <h2>Bring-your-own keys</h2>
+              <h2>Credential wiring</h2>
             </div>
-            <span
-              className={`status-pill ${hasPreparedKey ? "live" : "neutral"}`}
-            >
-              {hasPreparedKey ? "Key staged" : "Optional"}
-            </span>
-          </div>
-          <div className="form-grid">
-            <label className="field">
-              <span>OpenAI ASR key</span>
-              <input
-                type="password"
-                value={settings.openAiAsrKey}
-                onChange={(event) =>
-                  updateSetting("openAiAsrKey", event.target.value)
-                }
-                placeholder="sk-..."
-              />
-              <small className="field-note">
-                Used for the planned OpenAI Whisper server adapter. Stored only
-                in local storage for now.
-              </small>
-            </label>
-            <label className="field">
-              <span>OpenAI TTS key</span>
-              <input
-                type="password"
-                value={settings.openAiTtsKey}
-                onChange={(event) =>
-                  updateSetting("openAiTtsKey", event.target.value)
-                }
-                placeholder="sk-..."
-              />
-              <small className="field-note">
-                Used for the planned OpenAI TTS server adapter. Stored only in
-                local storage for now.
-              </small>
-            </label>
           </div>
           <p className="support-copy">
-            The current runnable prototype already supports browser client
-            providers, demo server providers, and Volcengine server TTS when the
-            backend is started with a local `config/providers.local.yaml` file
-            through `VOICYCLAW_PROVIDER_CONFIG` or the equivalent
-            `VOICYCLAW_VOLCENGINE_*` environment variables. Environment
-            variables override YAML values. These OpenAI fields stay staged for
-            the next hosted adapter round.
+            Server-side providers read credentials from server config, not
+            browser local storage. The preferred path is
+            <code> config/providers.local.yaml </code>
+            in the repo root, with environment variables available as optional
+            overrides. Azure Speech needs a speech key plus region or endpoint.
+            Google Cloud TTS works best with a service account file or JSON,
+            though an access token or API key can also be wired for experiments.
+            Volcengine TTS reads the same YAML file through the
+            <code> DoubaoStreamTTS </code>
+            section and still supports <code>VOICYCLAW_VOLCENGINE_*</code>
+            overrides.
           </p>
+          <div className="code-block">
+            config/providers.local.yaml
+            {"\n"}
+            AzureSpeechTTS.api_key
+            {"\n"}
+            AzureSpeechTTS.region or AzureSpeechTTS.endpoint
+            {"\n"}
+            GoogleCloudTTS.service_account_file
+            {"\n"}
+            GoogleCloudTTS.service_account_json
+            {"\n"}
+            GoogleCloudTTS.access_token
+            {"\n"}
+            GoogleCloudTTS.api_key
+            {"\n"}
+            DoubaoStreamTTS.appid
+            {"\n"}
+            DoubaoStreamTTS.access_token
+            {"\n"}
+            DoubaoStreamTTS.speaker
+          </div>
         </section>
 
         <aside className="card stack-card">
@@ -406,7 +389,6 @@ type ProviderConfiguratorProps<T extends string> = {
     runtimeHint: string
   }>
   guides: ProviderGuide[]
-  preparedOpenAi: boolean
   onSelect: (providerId: T) => void
 }
 
@@ -419,7 +401,6 @@ function ProviderConfigurator<T extends string>({
   activeRuntimeHint,
   options,
   guides,
-  preparedOpenAi,
   onSelect,
 }: ProviderConfiguratorProps<T>) {
   return (
@@ -470,17 +451,8 @@ function ProviderConfigurator<T extends string>({
         </div>
         <div className="guide-card-grid">
           {guides.map((guide) => {
-            const ready = preparedOpenAi && guide.id.startsWith("openai")
-            const tone = ready
-              ? "live"
-              : guide.status === "next"
-                ? "neutral"
-                : "warn"
-            const label = ready
-              ? "Key ready"
-              : guide.status === "next"
-                ? "Next up"
-                : "Planned"
+            const tone = guide.status === "next" ? "neutral" : "warn"
+            const label = guide.status === "next" ? "Next up" : "Planned"
 
             return (
               <article key={guide.id} className="guide-card">

@@ -220,7 +220,6 @@ This split keeps the quality model pragmatic:
 | OpenAI Whisper API | Global | P0 |
 | Azure Cognitive Speech | Global | P0 |
 | Volcengine ASR | CN | P0 |
-| Alibaba Cloud NLS | CN | P0 |
 | iFlytek ASR | CN | P1 |
 | Google STT | Global | P1 |
 | Deepgram | Global | P2 |
@@ -240,7 +239,6 @@ This split keeps the quality model pragmatic:
 | OpenAI TTS | Global | P0 |
 | Azure Cognitive Speech TTS | Global | P0 |
 | Volcengine TTS | CN | P0 |
-| Alibaba Cloud TTS | CN | P0 |
 | ElevenLabs | Global | P1 |
 | iFlytek TTS | CN | P1 |
 | Edge TTS (free) | Global | P2 |

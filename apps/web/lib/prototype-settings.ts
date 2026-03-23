@@ -1,6 +1,11 @@
 export type ProviderMode = "client" | "server"
 export type AsrProviderId = "browser" | "demo"
-export type TtsProviderId = "browser" | "demo" | "volcengine-tts"
+export type TtsProviderId =
+  | "browser"
+  | "demo"
+  | "azure-tts"
+  | "google-tts"
+  | "volcengine-tts"
 export type ConversationBackendId = "local-bot" | "openclaw-gateway"
 
 type ProviderOption<T extends string> = {
@@ -35,8 +40,6 @@ export interface PrototypeSettings {
   ttsProvider: TtsProviderId
   openClawGatewayUrl: string
   openClawGatewayToken: string
-  openAiAsrKey: string
-  openAiTtsKey: string
 }
 
 export const CONVERSATION_BACKEND_OPTIONS: ConversationBackendOption[] = [
@@ -99,6 +102,24 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
       "Best when you want to verify the server-side audio path instead of browser speech synthesis.",
   },
   {
+    id: "azure-tts",
+    mode: "server",
+    label: "Azure Speech TTS",
+    summary:
+      "Uses Azure Speech neural voices from the VoicyClaw server and returns raw PCM for browser playback.",
+    runtimeHint:
+      "Set Azure speech credentials on the server, then use this for global low-friction hosted speech.",
+  },
+  {
+    id: "google-tts",
+    mode: "server",
+    label: "Google Cloud TTS",
+    summary:
+      "Uses Google Cloud Text-to-Speech from the VoicyClaw server and returns raw PCM for browser playback.",
+    runtimeHint:
+      "Set Google Cloud credentials on the server, then use this for global hosted speech with broad language coverage.",
+  },
+  {
     id: "volcengine-tts",
     mode: "server",
     label: "Volcengine TTS",
@@ -135,15 +156,6 @@ export const ASR_PROVIDER_GUIDE: ProviderGuide[] = [
       "Priority CN server provider for lower-latency regional speech recognition.",
     keyHint: "Will use server-side credentials managed in VoicyClaw settings.",
   },
-  {
-    id: "alibaba-nls",
-    label: "Alibaba Cloud NLS",
-    status: "planned",
-    summary:
-      "Additional CN server ASR provider for deployments that stay inside Alibaba Cloud.",
-    keyHint:
-      "Will require Alibaba Cloud key material once the adapter is wired.",
-  },
 ]
 
 export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
@@ -156,12 +168,12 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
       "Stage an OpenAI TTS key below; server synthesis wiring is queued next.",
   },
   {
-    id: "azure-tts",
-    label: "Azure Speech TTS",
+    id: "openai-tts-planned",
+    label: "OpenAI TTS",
     status: "planned",
     summary:
-      "High-quality neural voices with enterprise routing and regional controls.",
-    keyHint: "Will require Azure speech credentials once the adapter is added.",
+      "Alternative hosted voice path once we broaden beyond browser, demo, Azure, and Google.",
+    keyHint: "Will require an OpenAI API key once that adapter is added.",
   },
   {
     id: "volcengine-tts",
@@ -171,14 +183,6 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
       "Available now as a server provider when the backend is configured with Volcengine credentials.",
     keyHint:
       "Use config/providers.local.yaml via VOICYCLAW_PROVIDER_CONFIG or set VOICYCLAW_VOLCENGINE_* env vars; env vars override YAML.",
-  },
-  {
-    id: "alibaba-tts",
-    label: "Alibaba Cloud TTS",
-    status: "planned",
-    summary: "Additional CN server TTS provider for Alibaba Cloud deployments.",
-    keyHint:
-      "Will require Alibaba Cloud key material once the adapter is wired.",
   },
 ]
 
@@ -193,8 +197,6 @@ export const defaultSettings: PrototypeSettings = {
   ttsProvider: "browser",
   openClawGatewayUrl: "ws://127.0.0.1:18789",
   openClawGatewayToken: "",
-  openAiAsrKey: "",
-  openAiTtsKey: "",
 }
 
 export function getProviderModeLabel(mode: ProviderMode) {
@@ -288,6 +290,8 @@ function normalizeTtsProvider(
   providerId: string | undefined,
   legacyBrowserVoiceEnabled?: boolean,
 ): TtsProviderId {
+  if (providerId === "azure-tts") return "azure-tts"
+  if (providerId === "google-tts") return "google-tts"
   if (providerId === "demo") return "demo"
   if (providerId === "browser") return "browser"
   if (providerId === "volcengine-tts") return "volcengine-tts"

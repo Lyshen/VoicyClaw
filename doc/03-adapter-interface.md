@@ -353,7 +353,5 @@ For each new provider, implement one of the mode-specific interfaces above:
 | server | TTS | OpenAI TTS | P0 - implement first |
 | server | ASR | Volcengine ASR | P0 |
 | server | TTS | Volcengine TTS | P0 |
-| server | ASR | Alibaba Cloud NLS | P0 |
-| server | TTS | Alibaba Cloud TTS | P0 |
 | server | ASR | Azure Cognitive Speech | P0 |
 | server | TTS | Azure Cognitive Speech TTS | P0 |
