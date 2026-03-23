@@ -1,3 +1,5 @@
+export * from "./factory"
 export * from "./interface"
 export * from "./providers/demo"
+export * from "./providers/volcengine"
 export * from "./types"

@@ -17,7 +17,8 @@
     "@voicyclaw/protocol": "workspace:*",
     "@voicyclaw/tts": "workspace:*",
     "fastify": "^5.8.2",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
