@@ -1,3 +1,5 @@
 export * from "./interface"
+export * from "./providers/azure-speech"
 export * from "./providers/demo"
+export * from "./providers/google-cloud"
 export * from "./types"

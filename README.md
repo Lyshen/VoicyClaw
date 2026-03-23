@@ -43,7 +43,7 @@ User mic → WebSocket → ASR (streaming) → OpenClaw protocol
 VoicyClaw treats ASR and TTS as two-stage capabilities that may run in either the client or the server:
 
 - **Client provider mode** — the browser or operating system performs ASR/TTS locally or through its own bundled service. Example: browser `SpeechRecognition` or `speechSynthesis`.
-- **Server provider mode** — the browser sends raw audio or text to VoicyClaw, and the VoicyClaw server calls a vendor SDK or API such as OpenAI, Azure, Volcengine, or Alibaba Cloud.
+- **Server provider mode** — the browser sends raw audio or text to VoicyClaw, and the VoicyClaw server calls a vendor SDK or API such as Azure, Google Cloud, OpenAI, or Volcengine.
 
 This gives four valid combinations:
 
@@ -75,8 +75,8 @@ This keeps `client provider` and `server provider` modes behaviorally consistent
 | OpenAI Whisper | ASR | Global | P0 |
 | OpenAI TTS | TTS | Global | P0 |
 | Azure Cognitive Speech | ASR + TTS | Global | P0 |
+| Google Cloud TTS | TTS | Global | P0 |
 | Volcengine | ASR + TTS | CN | P0 |
-| Alibaba Cloud NLS | ASR + TTS | CN | P0 |
 | ElevenLabs | TTS | Global | P1 |
 | iFlytek | ASR + TTS | CN | P1 |
 
@@ -158,6 +158,37 @@ Then open `http://localhost:3000`.
 - Browser speech recognition and browser speech synthesis are treated as `client providers`
 - Visit `/settings` to edit the channel/server defaults and mint platform keys for external bots
 - `pnpm build` verifies the server, web app, and local bot all compile successfully
+
+For server-side TTS providers, prefer a repo-local YAML file:
+
+```yaml
+# config/providers.local.yaml
+AzureSpeechTTS:
+  endpoint: https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1
+  region: eastasia
+  api_key: your-azure-speech-key
+  voice: en-US-JennyNeural
+
+GoogleCloudTTS:
+  service_account_file: /absolute/path/to/google-service-account.json
+```
+
+Copy [`config/providers.example.yaml`](config/providers.example.yaml) to
+`config/providers.local.yaml`. The server auto-loads that local file when it
+exists. You can also point at another file with
+`VOICYCLAW_PROVIDER_CONFIG=/absolute/path/to/providers.local.yaml`.
+Environment variables still work as one-off overrides and win over YAML when
+both are present.
+
+To enable server-side Azure TTS, fill `AzureSpeechTTS.api_key` plus either
+`AzureSpeechTTS.region` or `AzureSpeechTTS.endpoint`, then choose `Azure Speech
+TTS` in `/settings`.
+
+To enable server-side Google Cloud TTS, fill one of
+`GoogleCloudTTS.service_account_file`,
+`GoogleCloudTTS.service_account_json`,
+`GoogleCloudTTS.access_token`, or `GoogleCloudTTS.api_key`, then choose
+`Google Cloud TTS` in `/settings`.
 
 Note: this runnable prototype uses `node:sqlite` instead of Prisma so it stays friction-free on the current Node toolchain, while the design docs still describe the longer-term Prisma-based plan.
 

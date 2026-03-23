@@ -9,6 +9,8 @@ test-results
 .DS_Store
 .env
 .env.local
+config/*.local.yaml
+config/*.local.yml
 apps/server/prisma/voicyclaw.db
 apps/server/prisma/voicyclaw.db-journal
 apps/server/.data
