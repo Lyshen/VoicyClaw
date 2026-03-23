@@ -22,6 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage.enabled true && node scripts/report-coverage.mjs",
+    "test:tts:live": "vitest run --config vitest.live.config.ts",
+    "test:tts:live:record": "VOICYCLAW_TTS_FIXTURE_MODE=record vitest run --config vitest.live.config.ts",
     "test:e2e": "PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 NEXT_PUBLIC_VOICYCLAW_SERVER_URL=http://127.0.0.1:3101 VOICYCLAW_SERVER_URL=http://127.0.0.1:3101 VOICYCLAW_WEB_PORT=3100 VOICYCLAW_SERVER_PORT=3101 pnpm build && PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 NEXT_PUBLIC_VOICYCLAW_SERVER_URL=http://127.0.0.1:3101 VOICYCLAW_SERVER_URL=http://127.0.0.1:3101 VOICYCLAW_WEB_PORT=3100 VOICYCLAW_SERVER_PORT=3101 playwright test",
     "build": "pnpm db:generate && pnpm --filter @voicyclaw/server build && pnpm --filter @voicyclaw/web build && pnpm --filter @voicyclaw/mock-bot build",
     "typecheck": "pnpm --filter @voicyclaw/server typecheck && pnpm --filter @voicyclaw/web typecheck && pnpm --filter @voicyclaw/mock-bot typecheck",

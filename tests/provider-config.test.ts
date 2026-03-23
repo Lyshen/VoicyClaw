@@ -7,11 +7,12 @@ import { describe, expect, it } from "vitest"
 import {
   loadProviderConfig,
   resolveAzureSpeechTTSConfig,
+  resolveDoubaoStreamTTSConfig,
   resolveGoogleCloudTTSConfig,
 } from "../apps/server/src/provider-config"
 
 describe("provider config", () => {
-  it("loads Azure and Google TTS YAML provider config", () => {
+  it("loads Azure, Google, and Doubao TTS YAML provider config", () => {
     const cwd = mkdtempSync(
       path.join(os.tmpdir(), "voicyclaw-provider-config-"),
     )
@@ -21,7 +22,7 @@ describe("provider config", () => {
       [
         "AzureSpeechTTS:",
         "  type: azure_speech_tts",
-        "  endpoint: https://eastasia.api.cognitive.microsoft.com/",
+        "  endpoint: https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1",
         "  region: eastasia",
         "  api_key: azure-key",
         "  voice: en-US-JennyNeural",
@@ -34,6 +35,14 @@ describe("provider config", () => {
         "  sample_rate: 24000",
         "  speaking_rate: 1.0",
         "  pitch: 0",
+        "",
+        "DoubaoStreamTTS:",
+        "  type: doubao_stream",
+        "  ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection",
+        "  appid: 123456",
+        "  access_token: token",
+        "  resource_id: volc.service_type.10029",
+        "  speaker: zh_female_demo",
       ].join("\n"),
     )
 
@@ -54,6 +63,12 @@ describe("provider config", () => {
       voice: "en-US-Chirp3-HD-Achernar",
       sample_rate: 24000,
     })
+    expect(resolveDoubaoStreamTTSConfig(env)).toMatchObject({
+      type: "doubao_stream",
+      appid: 123456,
+      access_token: "token",
+      speaker: "zh_female_demo",
+    })
   })
 
   it("finds config/providers.local.yaml from a nested server working directory", () => {
@@ -70,6 +85,9 @@ describe("provider config", () => {
         "AzureSpeechTTS:",
         "  region: eastasia",
         "  api_key: nested-azure-key",
+        "",
+        "DoubaoStreamTTS:",
+        "  appid: nested-app-id",
       ].join("\n"),
     )
 
@@ -80,6 +98,9 @@ describe("provider config", () => {
       expect(resolveAzureSpeechTTSConfig({})).toMatchObject({
         region: "eastasia",
         api_key: "nested-azure-key",
+      })
+      expect(resolveDoubaoStreamTTSConfig({})).toMatchObject({
+        appid: "nested-app-id",
       })
     } finally {
       process.chdir(originalCwd)

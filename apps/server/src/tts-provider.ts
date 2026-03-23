@@ -1,33 +1,48 @@
 import type { ClientHelloMessage } from "@voicyclaw/protocol"
 import {
   AzureSpeechTTSProvider,
-  DemoTTSProvider,
+  createServerTTSAdapter,
   GoogleCloudTTSProvider,
+  type TTSAdapter,
+  type VolcengineTTSProviderOptions,
 } from "@voicyclaw/tts"
 import {
   resolveAzureSpeechTTSConfig,
+  resolveDoubaoStreamTTSConfig,
   resolveGoogleCloudTTSConfig,
 } from "./provider-config"
 
 const DEFAULT_DEMO_SAMPLE_RATE = 16_000
+const DEFAULT_VOLCENGINE_SAMPLE_RATE = 16_000
 const DEFAULT_AZURE_SAMPLE_RATE = 24_000
 const DEFAULT_GOOGLE_SAMPLE_RATE = 24_000
 
 type RuntimeTTSSettings = ClientHelloMessage["settings"] | undefined
-
-type RuntimeTTSProvider = {
-  providerId: string
-  sampleRate: number
-  adapter: DemoTTSProvider | AzureSpeechTTSProvider | GoogleCloudTTSProvider
-}
-
 type RuntimeEnv = NodeJS.ProcessEnv
+
+export interface RuntimeTTSProvider {
+  providerId: "demo" | "volcengine-tts" | "azure-tts" | "google-tts"
+  sampleRate: number
+  adapter: TTSAdapter
+}
 
 export function createRuntimeTTSProvider(
   settings: RuntimeTTSSettings,
   env: RuntimeEnv = process.env,
 ): RuntimeTTSProvider {
   switch (settings?.ttsProvider) {
+    case "volcengine-tts": {
+      const options = resolveVolcengineTTSOptions(env)
+
+      return {
+        providerId: "volcengine-tts",
+        sampleRate: options.sampleRate ?? DEFAULT_VOLCENGINE_SAMPLE_RATE,
+        adapter: createServerTTSAdapter({
+          id: "volcengine-tts",
+          options,
+        }),
+      }
+    }
     case "azure-tts": {
       const options = resolveAzureSpeechTTSOptions(env)
 
@@ -50,7 +65,9 @@ export function createRuntimeTTSProvider(
       return {
         providerId: "demo",
         sampleRate: DEFAULT_DEMO_SAMPLE_RATE,
-        adapter: new DemoTTSProvider(),
+        adapter: createServerTTSAdapter({
+          id: "demo",
+        }),
       }
   }
 }
@@ -145,6 +162,58 @@ export function resolveGoogleCloudTTSOptions(env: RuntimeEnv = process.env) {
   }
 }
 
+export function resolveVolcengineTTSOptions(
+  env: RuntimeEnv = process.env,
+): VolcengineTTSProviderOptions {
+  const yamlConfig = resolveDoubaoStreamTTSConfig(env)
+  const appId = pickFirstNonEmpty(
+    env.VOICYCLAW_VOLCENGINE_APP_ID,
+    stringify(yamlConfig?.appid),
+  )
+  const accessToken = pickFirstNonEmpty(
+    env.VOICYCLAW_VOLCENGINE_ACCESS_TOKEN,
+    yamlConfig?.access_token,
+  )
+  const voiceType = pickFirstNonEmpty(
+    env.VOICYCLAW_VOLCENGINE_TTS_VOICE_TYPE,
+    yamlConfig?.speaker,
+  )
+  const missing = [
+    !appId && "VOICYCLAW_VOLCENGINE_APP_ID",
+    !accessToken && "VOICYCLAW_VOLCENGINE_ACCESS_TOKEN",
+    !voiceType && "VOICYCLAW_VOLCENGINE_TTS_VOICE_TYPE",
+  ].filter(Boolean) as string[]
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Volcengine TTS requires ${missing.join(", ")} when ttsProvider=volcengine-tts`,
+    )
+  }
+
+  const ensuredAppId = appId as string
+  const ensuredAccessToken = accessToken as string
+  const ensuredVoiceType = voiceType as string
+  const sampleRate =
+    parsePositiveInt(env.VOICYCLAW_VOLCENGINE_TTS_SAMPLE_RATE) ??
+    parsePositiveInt(yamlConfig?.sample_rate) ??
+    DEFAULT_VOLCENGINE_SAMPLE_RATE
+
+  return {
+    appId: ensuredAppId,
+    accessToken: ensuredAccessToken,
+    voiceType: ensuredVoiceType,
+    endpoint: pickFirstNonEmpty(
+      env.VOICYCLAW_VOLCENGINE_TTS_ENDPOINT,
+      yamlConfig?.ws_url,
+    ),
+    resourceId: pickFirstNonEmpty(
+      env.VOICYCLAW_VOLCENGINE_TTS_RESOURCE_ID,
+      yamlConfig?.resource_id,
+    ),
+    sampleRate,
+  }
+}
+
 function pickFirstNonEmpty(...values: Array<string | undefined>) {
   for (const value of values) {
     const normalized = value?.trim()
@@ -166,4 +235,9 @@ function parseFloatValue(value: string | number | undefined) {
   const parsed =
     typeof value === "number" ? value : Number.parseFloat(value ?? "")
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function stringify(value: string | number | undefined) {
+  if (value === undefined) return undefined
+  return String(value).trim()
 }

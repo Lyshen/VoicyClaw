@@ -28,6 +28,16 @@ type GoogleCloudTTSConfig = {
   pitch?: string | number
 }
 
+type DoubaoStreamTTSConfig = {
+  type?: string
+  ws_url?: string
+  appid?: string | number
+  access_token?: string
+  resource_id?: string
+  speaker?: string
+  sample_rate?: string | number
+}
+
 const DEFAULT_PROVIDER_CONFIG_RELATIVE_PATHS = [
   "config/providers.local.yaml",
   "config/providers.local.yml",
@@ -75,6 +85,18 @@ export function resolveGoogleCloudTTSConfig(
   }
 
   return config as GoogleCloudTTSConfig
+}
+
+export function resolveDoubaoStreamTTSConfig(
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const config = loadProviderConfig(env).DoubaoStreamTTS
+
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null
+  }
+
+  return config as DoubaoStreamTTSConfig
 }
 
 function resolveProviderConfigPath(env: NodeJS.ProcessEnv) {

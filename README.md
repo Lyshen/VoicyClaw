@@ -54,7 +54,7 @@ This gives four valid combinations:
 | server | client | server-grade transcription + lightweight browser playback |
 | server | server | full managed media pipeline, best for production control |
 
-For the current runnable prototype, browser speech recognition and browser speech synthesis are already used as client providers, while demo server-side adapters keep the OpenClaw pipeline runnable.
+For the current runnable prototype, browser speech recognition and browser speech synthesis are already used as client providers, while demo server-side adapters keep the OpenClaw pipeline runnable. Volcengine bidirectional TTS is also available now as a server provider when the backend is configured through `config/providers.local.yaml` or `VOICYCLAW_VOLCENGINE_*` environment variables.
 
 ## Shared Output Turn Control
 
@@ -156,6 +156,7 @@ Then open `http://localhost:3000`.
 - The root `dev` script starts the web app, the Fastify/WebSocket server, and a local demo ClawBot
 - Use **hold-to-talk** for microphone streaming, or type into the composer as a transcript fallback
 - Browser speech recognition and browser speech synthesis are treated as `client providers`
+- Add `config/providers.local.yaml` (or set `VOICYCLAW_PROVIDER_CONFIG`) before `pnpm dev` if you want to select `Volcengine TTS` on `/settings`
 - Visit `/settings` to edit the channel/server defaults and mint platform keys for external bots
 - `pnpm build` verifies the server, web app, and local bot all compile successfully
 
@@ -191,6 +192,45 @@ To enable server-side Google Cloud TTS, fill one of
 `Google Cloud TTS` in `/settings`.
 
 Note: this runnable prototype uses `node:sqlite` instead of Prisma so it stays friction-free on the current Node toolchain, while the design docs still describe the longer-term Prisma-based plan.
+
+You can start from the tracked example file:
+
+```bash
+cp config/providers.example.yaml config/providers.local.yaml
+VOICYCLAW_PROVIDER_CONFIG=./config/providers.local.yaml pnpm dev
+```
+
+Example provider config shape:
+
+```yaml
+DoubaoStreamTTS:
+  type: doubao_stream
+  ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection
+  appid: "your-app-id"
+  access_token: "your-access-token"
+  resource_id: volc.service_type.10029
+  speaker: zh_female_wanwanxiaohe_moon_bigtts
+  sample_rate: 16000
+```
+
+When both are present, `VOICYCLAW_VOLCENGINE_*` environment variables override the YAML values.
+
+## Live TTS Fixture Checks
+
+To keep each TTS vendor independently testable, VoicyClaw now includes an opt-in live fixture test that renders fixed samples (`你好`, `hello`) and stores local WAV + JSON manifests under `.artifacts/tts-fixtures`.
+
+```bash
+pnpm test:tts:live:record
+pnpm test:tts:live
+```
+
+- uses the same local provider config file at `config/providers.local.yaml`
+- records per-provider baselines into `.artifacts/tts-fixtures/baselines`
+- writes the latest run into `.artifacts/tts-fixtures/latest`
+- compares deterministic providers exactly and live vendor providers with manifest tolerances
+- lets you target one provider with `VOICYCLAW_TTS_FIXTURE_PROVIDER=volcengine-tts`
+- keeps CI clean because `tests/**/*.live.test.ts` is excluded from the default `pnpm test`
+- is meant as a local vendor regression check, not as a default PR gate in CI
 
 ---
 

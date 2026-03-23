@@ -1,6 +1,11 @@
 export type ProviderMode = "client" | "server"
 export type AsrProviderId = "browser" | "demo"
-export type TtsProviderId = "browser" | "demo" | "azure-tts" | "google-tts"
+export type TtsProviderId =
+  | "browser"
+  | "demo"
+  | "azure-tts"
+  | "google-tts"
+  | "volcengine-tts"
 export type ConversationBackendId = "local-bot" | "openclaw-gateway"
 
 type ProviderOption<T extends string> = {
@@ -114,6 +119,15 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
     runtimeHint:
       "Set Google Cloud credentials on the server, then use this for global hosted speech with broad language coverage.",
   },
+  {
+    id: "volcengine-tts",
+    mode: "server",
+    label: "Volcengine TTS",
+    summary:
+      "Streams bidirectional Volcengine speech audio from the VoicyClaw server for CN-market low-latency playback.",
+    runtimeHint:
+      "Requires server-side Volcengine credentials loaded from VOICYCLAW_PROVIDER_CONFIG or VOICYCLAW_VOLCENGINE_* environment variables.",
+  },
 ]
 
 export const ASR_PROVIDER_GUIDE: ProviderGuide[] = [
@@ -164,9 +178,11 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
   {
     id: "volcengine-tts",
     label: "Volcengine TTS",
-    status: "planned",
-    summary: "Priority CN server TTS target for local-market voice output.",
-    keyHint: "Will use server-side credentials managed in VoicyClaw settings.",
+    status: "next",
+    summary:
+      "Available now as a server provider when the backend is configured with Volcengine credentials.",
+    keyHint:
+      "Use config/providers.local.yaml via VOICYCLAW_PROVIDER_CONFIG or set VOICYCLAW_VOLCENGINE_* env vars; env vars override YAML.",
   },
 ]
 
@@ -278,6 +294,7 @@ function normalizeTtsProvider(
   if (providerId === "google-tts") return "google-tts"
   if (providerId === "demo") return "demo"
   if (providerId === "browser") return "browser"
+  if (providerId === "volcengine-tts") return "volcengine-tts"
   return legacyBrowserVoiceEnabled === false
     ? "demo"
     : defaultSettings.ttsProvider

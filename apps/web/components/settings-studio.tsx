@@ -308,6 +308,10 @@ export function SettingsStudio() {
             overrides. Azure Speech needs a speech key plus region or endpoint.
             Google Cloud TTS works best with a service account file or JSON,
             though an access token or API key can also be wired for experiments.
+            Volcengine TTS reads the same YAML file through the
+            <code> DoubaoStreamTTS </code>
+            section and still supports <code>VOICYCLAW_VOLCENGINE_*</code>
+            overrides.
           </p>
           <div className="code-block">
             config/providers.local.yaml
@@ -323,6 +327,12 @@ export function SettingsStudio() {
             GoogleCloudTTS.access_token
             {"\n"}
             GoogleCloudTTS.api_key
+            {"\n"}
+            DoubaoStreamTTS.appid
+            {"\n"}
+            DoubaoStreamTTS.access_token
+            {"\n"}
+            DoubaoStreamTTS.speaker
           </div>
         </section>
 
