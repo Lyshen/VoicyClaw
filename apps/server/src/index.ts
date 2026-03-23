@@ -16,7 +16,6 @@ import {
   type RuntimeBotInfo,
   type TtsTextMessage,
 } from "@voicyclaw/protocol"
-import { DemoTTSProvider } from "@voicyclaw/tts"
 import type { FastifyRequest } from "fastify"
 import Fastify from "fastify"
 import type { RawData } from "ws"
@@ -35,6 +34,7 @@ import {
   upsertBotRegistration,
 } from "./db"
 import { AsyncIterableQueue } from "./lib/async-queue"
+import { createRuntimeTTSProvider } from "./tts-provider"
 
 const DEFAULT_PORT = Number(process.env.PORT ?? 3001)
 const DEFAULT_CHANNEL_ID = "demo-room"
@@ -553,12 +553,13 @@ async function processUtterance(
       return
     }
 
-    const tts = new DemoTTSProvider()
+    const tts = createRuntimeTTSProvider(client.settings)
     let audioChunkCount = 0
     let audioBytes = 0
 
-    for await (const audioChunk of tts.synthesize(textStream, {
-      sampleRate: 16_000,
+    for await (const audioChunk of tts.adapter.synthesize(textStream, {
+      language: client.settings?.language,
+      sampleRate: tts.sampleRate,
     })) {
       audioChunkCount += 1
       audioBytes += audioChunk.byteLength
@@ -568,15 +569,15 @@ async function processUtterance(
         utteranceId: utterance.utteranceId,
         chunkIndex: audioChunkCount,
         bytes: audioChunk.byteLength,
-        sampleRate: 16_000,
-        ttsProvider: client.settings?.ttsProvider ?? "demo",
+        sampleRate: tts.sampleRate,
+        ttsProvider: tts.providerId,
       })
 
       sendJson(client.ws, {
         type: "AUDIO_CHUNK",
         utteranceId: utterance.utteranceId,
         audioBase64: audioChunk.toString("base64"),
-        sampleRate: 16_000,
+        sampleRate: tts.sampleRate,
       })
     }
 
@@ -586,14 +587,14 @@ async function processUtterance(
       utteranceId: utterance.utteranceId,
       chunkCount: audioChunkCount,
       audioBytes,
-      sampleRate: 16_000,
-      ttsProvider: client.settings?.ttsProvider ?? "demo",
+      sampleRate: tts.sampleRate,
+      ttsProvider: tts.providerId,
     })
 
     sendJson(client.ws, {
       type: "AUDIO_END",
       utteranceId: utterance.utteranceId,
-      sampleRate: 16_000,
+      sampleRate: tts.sampleRate,
     })
   } catch (error) {
     const message =

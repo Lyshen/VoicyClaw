@@ -9,6 +9,10 @@ test-results
 .DS_Store
 .env
 .env.local
+.artifacts
+volcengine_bidirection_demo*/
+config/*.local.yaml
+config/*.local.yml
 apps/server/prisma/voicyclaw.db
 apps/server/prisma/voicyclaw.db-journal
 apps/server/.data

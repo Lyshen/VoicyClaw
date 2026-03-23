@@ -344,8 +344,12 @@ export function SettingsStudio() {
           </div>
           <p className="support-copy">
             The current runnable prototype already supports browser client
-            providers and demo server providers. These OpenAI fields are staged
-            so the server adapters can plug in next.
+            providers, demo server providers, and Volcengine server TTS when the
+            backend is started with a local `config/providers.local.yaml` file
+            through `VOICYCLAW_PROVIDER_CONFIG` or the equivalent
+            `VOICYCLAW_VOLCENGINE_*` environment variables. Environment
+            variables override YAML values. These OpenAI fields stay staged for
+            the next hosted adapter round.
           </p>
         </section>
 

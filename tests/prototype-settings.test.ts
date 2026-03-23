@@ -101,6 +101,21 @@ describe("prototype settings helpers", () => {
       openClawGatewayUrl: "ws://127.0.0.1:18789",
     })
   })
+
+  it("keeps Volcengine server TTS selections round-trippable", () => {
+    const storage = createMemoryStorage()
+    storage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ttsProvider: "volcengine-tts",
+      }),
+    )
+    globalThis.window = { localStorage: storage } as Window & typeof globalThis
+
+    expect(loadPrototypeSettings()).toMatchObject({
+      ttsProvider: "volcengine-tts",
+    })
+  })
 })
 
 function createMemoryStorage(): MemoryStorage {
