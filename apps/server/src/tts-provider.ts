@@ -115,15 +115,6 @@ export function resolveAzureSpeechTTSOptions(env: RuntimeEnv = process.env) {
 
 export function resolveGoogleCloudTTSOptions(env: RuntimeEnv = process.env) {
   const config = resolveGoogleCloudTTSConfig(env)
-  const accessToken = pickFirstNonEmpty(
-    env.VOICYCLAW_GOOGLE_TTS_ACCESS_TOKEN,
-    config?.access_token,
-  )
-  const apiKey = pickFirstNonEmpty(
-    env.VOICYCLAW_GOOGLE_TTS_API_KEY,
-    env.GOOGLE_API_KEY,
-    config?.api_key,
-  )
   const serviceAccountJson = pickFirstNonEmpty(
     env.VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_JSON,
     config?.service_account_json,
@@ -133,32 +124,40 @@ export function resolveGoogleCloudTTSOptions(env: RuntimeEnv = process.env) {
     env.GOOGLE_APPLICATION_CREDENTIALS,
     config?.service_account_file,
   )
+  const voice = pickFirstNonEmpty(env.VOICYCLAW_GOOGLE_TTS_VOICE, config?.voice)
 
-  if (!accessToken && !apiKey && !serviceAccountJson && !serviceAccountFile) {
+  if (!serviceAccountJson && !serviceAccountFile) {
     throw new Error(
-      "Google Cloud TTS is missing credentials. Set VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_JSON, VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE, VOICYCLAW_GOOGLE_TTS_ACCESS_TOKEN, VOICYCLAW_GOOGLE_TTS_API_KEY, or GoogleCloudTTS credentials in config/providers.local.yaml.",
+      "Google Cloud TTS streaming is missing credentials. Set VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_JSON, VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE, or GoogleCloudTTS.service_account_json/service_account_file in config/providers.local.yaml.",
+    )
+  }
+
+  if (!voice) {
+    throw new Error(
+      "Google Cloud TTS streaming requires a Chirp 3 HD voice. Set VOICYCLAW_GOOGLE_TTS_VOICE or GoogleCloudTTS.voice in config/providers.local.yaml.",
+    )
+  }
+
+  if (!/chirp3?-hd/i.test(voice)) {
+    throw new Error(
+      `Google Cloud TTS streaming only supports Chirp 3 HD voices right now. Received ${voice}.`,
     )
   }
 
   return {
-    accessToken,
-    apiKey,
     serviceAccountJson,
     serviceAccountFile,
     endpoint: pickFirstNonEmpty(
       env.VOICYCLAW_GOOGLE_TTS_ENDPOINT,
       config?.endpoint,
     ),
-    voice: pickFirstNonEmpty(env.VOICYCLAW_GOOGLE_TTS_VOICE, config?.voice),
+    voice,
     sampleRate:
       parsePositiveInt(env.VOICYCLAW_GOOGLE_TTS_SAMPLE_RATE) ??
       parsePositiveInt(config?.sample_rate),
     speakingRate:
       parseFloatValue(env.VOICYCLAW_GOOGLE_TTS_SPEAKING_RATE) ??
       parseFloatValue(config?.speaking_rate),
-    pitch:
-      parseFloatValue(env.VOICYCLAW_GOOGLE_TTS_PITCH) ??
-      parseFloatValue(config?.pitch),
   }
 }
 

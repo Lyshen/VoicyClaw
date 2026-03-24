@@ -18,14 +18,11 @@ type AzureSpeechTTSConfig = {
 type GoogleCloudTTSConfig = {
   type?: string
   endpoint?: string
-  access_token?: string
-  api_key?: string
   service_account_json?: string
   service_account_file?: string
   voice?: string
   sample_rate?: string | number
   speaking_rate?: string | number
-  pitch?: string | number
 }
 
 type DoubaoStreamTTSConfig = {

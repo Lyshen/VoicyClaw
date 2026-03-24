@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@google-cloud/text-to-speech": "^6.4.0",
     "ws": "^8.19.0"
   },
   "exports": {
