@@ -188,16 +188,15 @@ TTS` in `/settings`.
 
 To enable server-side Google Cloud TTS, fill one of
 `GoogleCloudTTS.service_account_file`,
-`GoogleCloudTTS.service_account_json`,
-`GoogleCloudTTS.access_token`, or `GoogleCloudTTS.api_key`, then choose
-`Google Cloud TTS` in `/settings`.
+`GoogleCloudTTS.service_account_json`, plus a `Chirp 3 HD` voice such as
+`en-US-Chirp3-HD-Leda`, then choose `Google Cloud TTS` in `/settings`.
 
 When you use a `Chirp 3 HD` voice together with
 `GoogleCloudTTS.service_account_file` or `GoogleCloudTTS.service_account_json`,
 VoicyClaw now upgrades that path to bidirectional streaming synthesis so audio
-can start before the full bot reply is finished. If you stay on API key auth,
-pick a non-Chirp voice, or set `pitch`, the provider automatically falls back
-to synchronous synthesis.
+can start before the full bot reply is finished. The old synchronous Google
+path has been removed, so API keys, access tokens, and non-Chirp voices are no
+longer accepted for `google-tts`.
 
 Note: this runnable prototype uses `node:sqlite` instead of Prisma so it stays friction-free on the current Node toolchain, while the design docs still describe the longer-term Prisma-based plan.
 

@@ -1,5 +1,4 @@
 import { Buffer } from "node:buffer"
-import { generateKeyPairSync } from "node:crypto"
 import { mkdtempSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -74,70 +73,6 @@ describe("AzureSpeechTTSProvider", () => {
 })
 
 describe("GoogleCloudTTSProvider", () => {
-  it("exchanges a service-account JWT and decodes PCM audio content", async () => {
-    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 })
-    const serviceAccountJson = JSON.stringify({
-      client_email: "voice-test@example.iam.gserviceaccount.com",
-      private_key: privateKey.export({ type: "pkcs8", format: "pem" }),
-      token_uri: "https://oauth2.googleapis.com/token",
-    })
-    const audio = Buffer.from(Int16Array.from([10, -20, 30, -40]).buffer)
-    const fetchImpl = vi.fn(async (input: string | URL) => {
-      if (String(input).includes("oauth2.googleapis.com/token")) {
-        return new Response(
-          JSON.stringify({
-            access_token: "google-access-token",
-            expires_in: 3600,
-          }),
-          {
-            status: 200,
-            headers: {
-              "content-type": "application/json",
-            },
-          },
-        )
-      }
-
-      return new Response(
-        JSON.stringify({
-          audioContent: audio.toString("base64"),
-        }),
-        {
-          status: 200,
-          headers: {
-            "content-type": "application/json",
-          },
-        },
-      )
-    })
-    const provider = new GoogleCloudTTSProvider({
-      serviceAccountJson,
-      sampleRate: 24_000,
-      fetchImpl,
-    })
-
-    const chunks = await collect(
-      provider.synthesize(textChunks(["Hello", " world"]), {
-        language: "en-US",
-      }),
-    )
-
-    expect(chunks).toEqual([audio])
-    expect(fetchImpl).toHaveBeenCalledTimes(2)
-
-    const [, synthInit] = fetchImpl.mock.calls[1] as [string, RequestInit]
-    const headers = synthInit.headers as Record<string, string>
-    const body = JSON.parse(String(synthInit.body)) as {
-      voice: { languageCode: string }
-      audioConfig: { audioEncoding: string; sampleRateHertz: number }
-    }
-
-    expect(headers.Authorization).toBe("Bearer google-access-token")
-    expect(body.voice.languageCode).toBe("en-US")
-    expect(body.audioConfig.audioEncoding).toBe("PCM")
-    expect(body.audioConfig.sampleRateHertz).toBe(24_000)
-  })
-
   it("uses bidirectional streaming for Chirp 3 HD voices with service-account credentials", async () => {
     const firstAudio = Buffer.from(Int16Array.from([1, -1]).buffer)
     const secondAudio = Buffer.from(Int16Array.from([2, -2]).buffer)
@@ -189,42 +124,42 @@ describe("GoogleCloudTTSProvider", () => {
     expect(close).toHaveBeenCalledTimes(1)
   })
 
-  it("falls back to unary synthesis when pitch is requested", async () => {
-    const audio = Buffer.from(Int16Array.from([10, -20, 30, -40]).buffer)
-    const fetchImpl = vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            audioContent: audio.toString("base64"),
-          }),
-          {
-            status: 200,
-            headers: {
-              "content-type": "application/json",
-            },
-          },
-        ),
-    )
+  it("rejects non-Chirp voices because only streaming is supported", async () => {
     const createStreamingClient = vi.fn(() => {
       throw new Error("streaming should not be created")
     })
     const provider = new GoogleCloudTTSProvider({
       serviceAccountJson: "{}",
-      apiKey: "google-key",
-      voice: "en-US-Chirp3-HD-Leda",
-      pitch: 2,
-      fetchImpl,
+      voice: "en-US-Journey-F",
       createStreamingClient,
     })
 
-    const chunks = await collect(
-      provider.synthesize(textChunks(["Hello", " world"]), {
-        language: "en-US",
-      }),
-    )
+    await expect(
+      collect(
+        provider.synthesize(textChunks(["Hello", " world"]), {
+          language: "en-US",
+        }),
+      ),
+    ).rejects.toThrow(/Chirp 3 HD voices/)
+    expect(createStreamingClient).not.toHaveBeenCalled()
+  })
 
-    expect(chunks).toEqual([audio])
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  it("requires an explicit streaming voice", async () => {
+    const createStreamingClient = vi.fn(() => {
+      throw new Error("streaming should not be created")
+    })
+    const provider = new GoogleCloudTTSProvider({
+      serviceAccountJson: "{}",
+      createStreamingClient,
+    })
+
+    await expect(
+      collect(
+        provider.synthesize(textChunks(["Hello", " world"]), {
+          language: "en-US",
+        }),
+      ),
+    ).rejects.toThrow(/requires a Chirp 3 HD voice/)
     expect(createStreamingClient).not.toHaveBeenCalled()
   })
 })
@@ -238,12 +173,21 @@ describe("runtime TTS provider selection", () => {
     ).toThrow(/VOICYCLAW_AZURE_SPEECH_KEY/)
   })
 
-  it("requires Google credentials when Google TTS is selected", () => {
+  it("requires Google service-account credentials when Google TTS is selected", () => {
     expect(() =>
       resolveGoogleCloudTTSOptions({
         VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
       }),
     ).toThrow(/VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_JSON/)
+  })
+
+  it("requires a Google Chirp 3 HD voice when Google TTS is selected", () => {
+    expect(() =>
+      resolveGoogleCloudTTSOptions({
+        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE: "/tmp/google-tts.json",
+      }),
+    ).toThrow(/requires a Chirp 3 HD voice/)
   })
 
   it("selects Azure Speech TTS at runtime", () => {
@@ -277,7 +221,8 @@ describe("runtime TTS provider selection", () => {
         language: "en-US",
       },
       {
-        VOICYCLAW_GOOGLE_TTS_API_KEY: "google-key",
+        VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE: "/tmp/google-tts.json",
+        VOICYCLAW_GOOGLE_TTS_VOICE: "en-US-Chirp3-HD-Leda",
       },
     )
 
@@ -346,11 +291,10 @@ describe("runtime TTS provider selection", () => {
       {
         VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
           "GoogleCloudTTS:",
-          "  api_key: google-key-from-yaml",
+          "  service_account_file: /tmp/google-tts-from-yaml.json",
           "  voice: en-US-Chirp3-HD-Achernar",
           "  sample_rate: 48000",
           "  speaking_rate: 1.1",
-          "  pitch: -1",
         ]),
       },
     )
@@ -363,25 +307,23 @@ describe("runtime TTS provider selection", () => {
     const options = resolveGoogleCloudTTSOptions({
       VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
         "GoogleCloudTTS:",
-        "  api_key: google-key-from-yaml",
+        "  service_account_file: /tmp/google-tts-from-yaml.json",
         "  voice: en-US-Chirp3-HD-Achernar",
         "  sample_rate: 24000",
         "  speaking_rate: 1.1",
-        "  pitch: -1",
       ]),
-      VOICYCLAW_GOOGLE_TTS_API_KEY: "google-key-from-env",
+      VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE:
+        "/tmp/google-tts-from-env.json",
       VOICYCLAW_GOOGLE_TTS_VOICE: "en-US-Chirp3-HD-Leda",
       VOICYCLAW_GOOGLE_TTS_SAMPLE_RATE: "16000",
       VOICYCLAW_GOOGLE_TTS_SPEAKING_RATE: "0.95",
-      VOICYCLAW_GOOGLE_TTS_PITCH: "2",
     })
 
     expect(options).toMatchObject({
-      apiKey: "google-key-from-env",
+      serviceAccountFile: "/tmp/google-tts-from-env.json",
       voice: "en-US-Chirp3-HD-Leda",
       sampleRate: 16_000,
       speakingRate: 0.95,
-      pitch: 2,
     })
   })
 })

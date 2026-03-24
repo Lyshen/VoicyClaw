@@ -13,12 +13,9 @@ GoogleCloudTTS:
   endpoint: https://texttospeech.googleapis.com/v1beta1/text:synthesize
   service_account_file: /absolute/path/to/google-service-account.json
   service_account_json:
-  access_token:
-  api_key:
   voice: en-US-Chirp3-HD-Leda
   sample_rate: 24000
   speaking_rate:
-  pitch:
 
 DoubaoStreamTTS:
   type: doubao_stream
