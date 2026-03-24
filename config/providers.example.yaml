@@ -15,7 +15,7 @@ GoogleCloudTTS:
   service_account_json:
   access_token:
   api_key:
-  voice:
+  voice: en-US-Chirp3-HD-Leda
   sample_rate: 24000
   speaking_rate:
   pitch:

@@ -3,6 +3,7 @@ import { generateKeyPairSync } from "node:crypto"
 import { mkdtempSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
+import { Transform } from "node:stream"
 
 import { describe, expect, it, vi } from "vitest"
 
@@ -135,6 +136,96 @@ describe("GoogleCloudTTSProvider", () => {
     expect(body.voice.languageCode).toBe("en-US")
     expect(body.audioConfig.audioEncoding).toBe("PCM")
     expect(body.audioConfig.sampleRateHertz).toBe(24_000)
+  })
+
+  it("uses bidirectional streaming for Chirp 3 HD voices with service-account credentials", async () => {
+    const firstAudio = Buffer.from(Int16Array.from([1, -1]).buffer)
+    const secondAudio = Buffer.from(Int16Array.from([2, -2]).buffer)
+    const call = new FakeGoogleStreamingCall([firstAudio, secondAudio])
+    const close = vi.fn(async () => undefined)
+    const provider = new GoogleCloudTTSProvider({
+      serviceAccountJson: "{}",
+      voice: "en-US-Chirp3-HD-Leda",
+      sampleRate: 24_000,
+      speakingRate: 1.05,
+      createStreamingClient: () => ({
+        streamingSynthesize: () => call as never,
+        close,
+      }),
+    })
+
+    const chunks = await collect(
+      provider.synthesize(textChunks(["Hello", " world"]), {
+        language: "en-US",
+      }),
+    )
+
+    expect(chunks).toEqual([firstAudio, secondAudio])
+    expect(call.requests).toEqual([
+      {
+        streamingConfig: {
+          voice: {
+            languageCode: "en-US",
+            name: "en-US-Chirp3-HD-Leda",
+          },
+          streamingAudioConfig: {
+            audioEncoding: "PCM",
+            sampleRateHertz: 24_000,
+            speakingRate: 1.05,
+          },
+        },
+      },
+      {
+        input: {
+          text: "Hello",
+        },
+      },
+      {
+        input: {
+          text: " world",
+        },
+      },
+    ])
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it("falls back to unary synthesis when pitch is requested", async () => {
+    const audio = Buffer.from(Int16Array.from([10, -20, 30, -40]).buffer)
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            audioContent: audio.toString("base64"),
+          }),
+          {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+            },
+          },
+        ),
+    )
+    const createStreamingClient = vi.fn(() => {
+      throw new Error("streaming should not be created")
+    })
+    const provider = new GoogleCloudTTSProvider({
+      serviceAccountJson: "{}",
+      apiKey: "google-key",
+      voice: "en-US-Chirp3-HD-Leda",
+      pitch: 2,
+      fetchImpl,
+      createStreamingClient,
+    })
+
+    const chunks = await collect(
+      provider.synthesize(textChunks(["Hello", " world"]), {
+        language: "en-US",
+      }),
+    )
+
+    expect(chunks).toEqual([audio])
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(createStreamingClient).not.toHaveBeenCalled()
   })
 })
 
@@ -323,4 +414,45 @@ function missingProviderConfigPath() {
     mkdtempSync(path.join(os.tmpdir(), "voicyclaw-provider-missing-")),
     "missing.yaml",
   )
+}
+
+class FakeGoogleStreamingCall extends Transform {
+  readonly requests: unknown[] = []
+  private responseIndex = 0
+
+  constructor(private readonly responses: Buffer[]) {
+    super({
+      objectMode: true,
+    })
+  }
+
+  override _transform(
+    chunk: {
+      input?: {
+        text?: string
+      }
+    },
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void,
+  ) {
+    this.requests.push(chunk)
+
+    if (chunk.input?.text) {
+      const response = this.responses[this.responseIndex]
+      this.responseIndex += 1
+
+      if (response) {
+        this.push({
+          audioContent: response,
+        })
+      }
+    }
+
+    callback()
+  }
+
+  override _final(callback: (error?: Error | null) => void) {
+    this.push(null)
+    callback()
+  }
 }

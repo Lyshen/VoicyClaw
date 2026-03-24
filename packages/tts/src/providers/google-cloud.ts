@@ -1,6 +1,8 @@
 import { Buffer } from "node:buffer"
 import { createSign } from "node:crypto"
 import { readFile } from "node:fs/promises"
+import type { protos as googleTtsProtos } from "@google-cloud/text-to-speech"
+import { v1 as googleTextToSpeechV1 } from "@google-cloud/text-to-speech"
 
 import type { TTSAdapter } from "../interface"
 import type { AudioChunk, TTSConfig } from "../types"
@@ -30,6 +32,29 @@ export interface GoogleCloudTTSProviderOptions {
   speakingRate?: number
   pitch?: number
   fetchImpl?: typeof fetch
+  createStreamingClient?: () => GoogleStreamingSynthesizeClient
+}
+
+type GoogleStreamingSynthesizeRequest =
+  googleTtsProtos.google.cloud.texttospeech.v1.IStreamingSynthesizeRequest
+type GoogleStreamingSynthesizeResponse =
+  googleTtsProtos.google.cloud.texttospeech.v1.IStreamingSynthesizeResponse
+
+interface GoogleStreamingSynthesizeStream {
+  write: (request: GoogleStreamingSynthesizeRequest) => boolean
+  end: () => void
+  destroy: (error?: Error) => void
+  once: (
+    event: "drain",
+    listener: () => void,
+  ) => GoogleStreamingSynthesizeStream
+  off: (event: "drain", listener: () => void) => GoogleStreamingSynthesizeStream
+  [Symbol.asyncIterator]: () => AsyncIterator<GoogleStreamingSynthesizeResponse>
+}
+
+interface GoogleStreamingSynthesizeClient {
+  streamingSynthesize: () => GoogleStreamingSynthesizeStream
+  close: () => Promise<void>
 }
 
 export class GoogleCloudTTSProvider implements TTSAdapter {
@@ -42,6 +67,20 @@ export class GoogleCloudTTSProvider implements TTSAdapter {
     text: AsyncIterable<string>,
     config?: TTSConfig,
   ): AsyncGenerator<AudioChunk> {
+    const voiceName = config?.voice?.trim() || this.options.voice?.trim()
+    if (voiceName && shouldUseStreaming(this.options, voiceName)) {
+      yield* this.synthesizeStreaming(text, config, voiceName)
+      return
+    }
+
+    yield* this.synthesizeUnary(text, config, voiceName)
+  }
+
+  private async *synthesizeUnary(
+    text: AsyncIterable<string>,
+    config: TTSConfig | undefined,
+    voiceName: string | undefined,
+  ): AsyncGenerator<AudioChunk> {
     const input = await collectFullText(text)
 
     if (!input) {
@@ -50,7 +89,6 @@ export class GoogleCloudTTSProvider implements TTSAdapter {
 
     const sampleRate =
       config?.sampleRate ?? this.options.sampleRate ?? DEFAULT_SAMPLE_RATE
-    const voiceName = config?.voice?.trim() || this.options.voice?.trim()
     const languageCode = resolveLanguageCode(config?.language, voiceName)
     const response = await (this.options.fetchImpl ?? fetch)(
       buildGoogleEndpointUrl(
@@ -103,6 +141,42 @@ export class GoogleCloudTTSProvider implements TTSAdapter {
     }
   }
 
+  private async *synthesizeStreaming(
+    text: AsyncIterable<string>,
+    config: TTSConfig | undefined,
+    voiceName: string,
+  ): AsyncGenerator<AudioChunk> {
+    const client = await this.createStreamingClient()
+    const sampleRate =
+      config?.sampleRate ?? this.options.sampleRate ?? DEFAULT_SAMPLE_RATE
+    const languageCode = resolveLanguageCode(config?.language, voiceName)
+    const stream = client.streamingSynthesize()
+    const writePromise = this.writeStreamingRequests(
+      stream,
+      text,
+      languageCode,
+      voiceName,
+      sampleRate,
+    ).catch((error) => {
+      stream.destroy(normalizeError(error))
+      throw error
+    })
+
+    try {
+      for await (const response of stream) {
+        const audio = normalizeGoogleAudioContent(response.audioContent)
+        if (audio.byteLength > 0) {
+          yield audio
+        }
+      }
+
+      await writePromise
+    } finally {
+      await settlePromise(writePromise)
+      await client.close().catch(() => undefined)
+    }
+  }
+
   private async buildHeaders() {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -114,6 +188,84 @@ export class GoogleCloudTTSProvider implements TTSAdapter {
     }
 
     return headers
+  }
+
+  private async createStreamingClient() {
+    if (this.options.createStreamingClient) {
+      return this.options.createStreamingClient()
+    }
+
+    const serviceAccount = await loadServiceAccount(this.options)
+    if (!serviceAccount) {
+      throw new Error(
+        "Google Cloud streaming TTS requires VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_JSON or VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE.",
+      )
+    }
+
+    const filePath = this.options.serviceAccountFile?.trim()
+
+    return new googleTextToSpeechV1.TextToSpeechClient({
+      ...(filePath
+        ? {
+            keyFilename: filePath,
+          }
+        : {
+            credentials: {
+              client_email: serviceAccount.client_email,
+              private_key: serviceAccount.private_key,
+            },
+            ...(serviceAccount.project_id
+              ? {
+                  projectId: serviceAccount.project_id,
+                }
+              : {}),
+          }),
+      ...(normalizeGoogleStreamingApiHost(this.options.endpoint)
+        ? {
+            apiEndpoint: normalizeGoogleStreamingApiHost(this.options.endpoint),
+          }
+        : {}),
+    })
+  }
+
+  private async writeStreamingRequests(
+    stream: GoogleStreamingSynthesizeStream,
+    text: AsyncIterable<string>,
+    languageCode: string,
+    voiceName: string,
+    sampleRate: number,
+  ) {
+    await writeStreamingRequest(stream, {
+      streamingConfig: {
+        voice: {
+          languageCode,
+          name: voiceName,
+        },
+        streamingAudioConfig: {
+          audioEncoding: "PCM",
+          sampleRateHertz: sampleRate,
+          ...(typeof this.options.speakingRate === "number"
+            ? {
+                speakingRate: this.options.speakingRate,
+              }
+            : {}),
+        },
+      },
+    })
+
+    for await (const chunk of text) {
+      if (!chunk.trim()) {
+        continue
+      }
+
+      await writeStreamingRequest(stream, {
+        input: {
+          text: chunk,
+        },
+      })
+    }
+
+    stream.end()
   }
 
   private async resolveAccessToken() {
@@ -249,6 +401,19 @@ function buildGoogleEndpointUrl(endpoint: string, apiKey?: string) {
   return url.toString()
 }
 
+function normalizeGoogleStreamingApiHost(endpoint?: string) {
+  const normalized = endpoint?.trim()
+  if (!normalized) {
+    return undefined
+  }
+
+  try {
+    return new URL(normalized).host
+  } catch {
+    return normalized
+  }
+}
+
 function resolveLanguageCode(
   language: string | undefined,
   voice: string | undefined,
@@ -266,6 +431,71 @@ function resolveLanguageCode(
   }
 
   return "en-US"
+}
+
+function shouldUseStreaming(
+  options: GoogleCloudTTSProviderOptions,
+  voiceName: string | undefined,
+) {
+  if (!voiceName || !isChirpStreamingVoice(voiceName)) {
+    return false
+  }
+
+  if (typeof options.pitch === "number") {
+    return false
+  }
+
+  return Boolean(
+    options.serviceAccountJson?.trim() || options.serviceAccountFile?.trim(),
+  )
+}
+
+function isChirpStreamingVoice(voiceName: string) {
+  return /chirp3?-hd/i.test(voiceName)
+}
+
+function normalizeGoogleAudioContent(
+  audioContent: Uint8Array | Buffer | string | null | undefined,
+) {
+  if (!audioContent) {
+    return Buffer.alloc(0)
+  }
+
+  if (typeof audioContent === "string") {
+    return Buffer.from(audioContent, "base64")
+  }
+
+  return Buffer.from(audioContent)
+}
+
+async function writeStreamingRequest(
+  stream: GoogleStreamingSynthesizeStream,
+  request: GoogleStreamingSynthesizeRequest,
+) {
+  if (stream.write(request)) {
+    return
+  }
+
+  await new Promise<void>((resolve) => {
+    const handleDrain = () => {
+      stream.off("drain", handleDrain)
+      resolve()
+    }
+
+    stream.once("drain", handleDrain)
+  })
+}
+
+function normalizeError(error: unknown) {
+  return error instanceof Error ? error : new Error(String(error))
+}
+
+async function settlePromise(promise: Promise<unknown>) {
+  try {
+    await promise
+  } catch {
+    // The streaming loop already surfaces the original failure path.
+  }
 }
 
 function toBase64Url(value: string | Buffer) {
