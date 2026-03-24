@@ -429,7 +429,6 @@ describe("runtime TTS provider selection", () => {
       }),
     ).toThrow(/use google-tts for Chirp 3 HD streaming/i)
   })
-
   it("selects Azure Speech TTS at runtime", () => {
     const runtime = createRuntimeTTSProvider(
       {
