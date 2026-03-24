@@ -8,11 +8,12 @@ import {
   loadProviderConfig,
   resolveAzureSpeechTTSConfig,
   resolveDoubaoStreamTTSConfig,
+  resolveGoogleCloudBatchedTTSConfig,
   resolveGoogleCloudTTSConfig,
 } from "../apps/server/src/provider-config"
 
 describe("provider config", () => {
-  it("loads Azure, Google, and Doubao TTS YAML provider config", () => {
+  it("loads Azure, Google streaming, Google batched, and Doubao TTS YAML provider config", () => {
     const cwd = mkdtempSync(
       path.join(os.tmpdir(), "voicyclaw-provider-config-"),
     )
@@ -35,6 +36,16 @@ describe("provider config", () => {
         "  sample_rate: 24000",
         "  speaking_rate: 1.0",
         "  pitch: 0",
+        "",
+        "GoogleCloudBatchedTTS:",
+        "  type: google_cloud_tts_batched",
+        "  service_account_file: /tmp/google-batched-tts.json",
+        "  voice: en-US-Neural2-F",
+        "  sample_rate: 24000",
+        "  speaking_rate: 0.95",
+        "  pitch: -1",
+        "  flush_timeout_ms: 450",
+        "  max_chunk_characters: 220",
         "",
         "DoubaoStreamTTS:",
         "  type: doubao_stream",
@@ -63,6 +74,13 @@ describe("provider config", () => {
       api_key: "google-key",
       voice: "en-US-Chirp3-HD-Achernar",
       sample_rate: 24000,
+    })
+    expect(resolveGoogleCloudBatchedTTSConfig(env)).toMatchObject({
+      type: "google_cloud_tts_batched",
+      service_account_file: "/tmp/google-batched-tts.json",
+      voice: "en-US-Neural2-F",
+      sample_rate: 24000,
+      flush_timeout_ms: 450,
     })
     expect(resolveDoubaoStreamTTSConfig(env)).toMatchObject({
       type: "doubao_stream",

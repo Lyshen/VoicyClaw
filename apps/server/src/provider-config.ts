@@ -25,6 +25,19 @@ type GoogleCloudTTSConfig = {
   speaking_rate?: string | number
 }
 
+type GoogleCloudBatchedTTSConfig = {
+  type?: string
+  endpoint?: string
+  service_account_json?: string
+  service_account_file?: string
+  voice?: string
+  sample_rate?: string | number
+  speaking_rate?: string | number
+  pitch?: string | number
+  flush_timeout_ms?: string | number
+  max_chunk_characters?: string | number
+}
+
 type DoubaoStreamTTSConfig = {
   type?: string
   ws_url?: string
@@ -83,6 +96,18 @@ export function resolveGoogleCloudTTSConfig(
   }
 
   return config as GoogleCloudTTSConfig
+}
+
+export function resolveGoogleCloudBatchedTTSConfig(
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const config = loadProviderConfig(env).GoogleCloudBatchedTTS
+
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null
+  }
+
+  return config as GoogleCloudBatchedTTSConfig
 }
 
 export function resolveDoubaoStreamTTSConfig(

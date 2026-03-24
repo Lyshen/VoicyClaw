@@ -5,6 +5,7 @@ export type TtsProviderId =
   | "demo"
   | "azure-tts"
   | "google-tts"
+  | "google-batched-tts"
   | "volcengine-tts"
 export type ConversationBackendId = "local-bot" | "openclaw-gateway"
 
@@ -113,11 +114,20 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
   {
     id: "google-tts",
     mode: "server",
-    label: "Google Cloud TTS",
+    label: "Google Cloud TTS (Streaming)",
     summary:
-      "Uses Google Cloud Text-to-Speech from the VoicyClaw server and returns raw PCM for browser playback.",
+      "Uses Google Chirp 3 HD bidirectional streaming from the VoicyClaw server and returns raw PCM for browser playback.",
     runtimeHint:
-      "Set Google Cloud credentials on the server, then use this for global hosted speech with broad language coverage.",
+      "Use this when you want the best Google realtime voice path with Chirp 3 HD streaming voices.",
+  },
+  {
+    id: "google-batched-tts",
+    mode: "server",
+    label: "Google Cloud TTS (Batched)",
+    summary:
+      "Uses Google unary Text-to-Speech with sentence batching in the server for lower-cost WaveNet or Neural2 style playback.",
+    runtimeHint:
+      "Use this when you want cheaper Google voices with good conversational pacing, without changing the shared server pipeline.",
   },
   {
     id: "volcengine-tts",
@@ -292,6 +302,7 @@ function normalizeTtsProvider(
 ): TtsProviderId {
   if (providerId === "azure-tts") return "azure-tts"
   if (providerId === "google-tts") return "google-tts"
+  if (providerId === "google-batched-tts") return "google-batched-tts"
   if (providerId === "demo") return "demo"
   if (providerId === "browser") return "browser"
   if (providerId === "volcengine-tts") return "volcengine-tts"

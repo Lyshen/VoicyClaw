@@ -2,6 +2,7 @@ import type { ClientHelloMessage } from "@voicyclaw/protocol"
 import {
   AzureSpeechTTSProvider,
   createServerTTSAdapter,
+  GoogleCloudBatchedTTSProvider,
   GoogleCloudTTSProvider,
   type TTSAdapter,
   type VolcengineTTSProviderOptions,
@@ -9,6 +10,7 @@ import {
 import {
   resolveAzureSpeechTTSConfig,
   resolveDoubaoStreamTTSConfig,
+  resolveGoogleCloudBatchedTTSConfig,
   resolveGoogleCloudTTSConfig,
 } from "./provider-config"
 
@@ -16,12 +18,18 @@ const DEFAULT_DEMO_SAMPLE_RATE = 16_000
 const DEFAULT_VOLCENGINE_SAMPLE_RATE = 16_000
 const DEFAULT_AZURE_SAMPLE_RATE = 24_000
 const DEFAULT_GOOGLE_SAMPLE_RATE = 24_000
+const DEFAULT_GOOGLE_BATCHED_SAMPLE_RATE = 24_000
 
 type RuntimeTTSSettings = ClientHelloMessage["settings"] | undefined
 type RuntimeEnv = NodeJS.ProcessEnv
 
 export interface RuntimeTTSProvider {
-  providerId: "demo" | "volcengine-tts" | "azure-tts" | "google-tts"
+  providerId:
+    | "demo"
+    | "volcengine-tts"
+    | "azure-tts"
+    | "google-tts"
+    | "google-batched-tts"
   sampleRate: number
   adapter: TTSAdapter
 }
@@ -59,6 +67,15 @@ export function createRuntimeTTSProvider(
         providerId: "google-tts",
         sampleRate: options.sampleRate ?? DEFAULT_GOOGLE_SAMPLE_RATE,
         adapter: new GoogleCloudTTSProvider(options),
+      }
+    }
+    case "google-batched-tts": {
+      const options = resolveGoogleCloudBatchedTTSOptions(env)
+
+      return {
+        providerId: "google-batched-tts",
+        sampleRate: options.sampleRate ?? DEFAULT_GOOGLE_BATCHED_SAMPLE_RATE,
+        adapter: new GoogleCloudBatchedTTSProvider(options),
       }
     }
     default:
@@ -158,6 +175,68 @@ export function resolveGoogleCloudTTSOptions(env: RuntimeEnv = process.env) {
     speakingRate:
       parseFloatValue(env.VOICYCLAW_GOOGLE_TTS_SPEAKING_RATE) ??
       parseFloatValue(config?.speaking_rate),
+  }
+}
+
+export function resolveGoogleCloudBatchedTTSOptions(
+  env: RuntimeEnv = process.env,
+) {
+  const config = resolveGoogleCloudBatchedTTSConfig(env)
+  const serviceAccountJson = pickFirstNonEmpty(
+    env.VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_JSON,
+    config?.service_account_json,
+  )
+  const serviceAccountFile = pickFirstNonEmpty(
+    env.VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE,
+    env.GOOGLE_APPLICATION_CREDENTIALS,
+    config?.service_account_file,
+  )
+  const voice = pickFirstNonEmpty(
+    env.VOICYCLAW_GOOGLE_BATCHED_TTS_VOICE,
+    config?.voice,
+  )
+
+  if (!serviceAccountJson && !serviceAccountFile) {
+    throw new Error(
+      "Google Cloud batched TTS is missing credentials. Set VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_JSON, VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE, or GoogleCloudBatchedTTS.service_account_json/service_account_file in config/providers.local.yaml.",
+    )
+  }
+
+  if (!voice) {
+    throw new Error(
+      "Google Cloud batched TTS requires a non-Chirp voice such as WaveNet or Neural2. Set VOICYCLAW_GOOGLE_BATCHED_TTS_VOICE or GoogleCloudBatchedTTS.voice in config/providers.local.yaml.",
+    )
+  }
+
+  if (/chirp3?-hd/i.test(voice)) {
+    throw new Error(
+      `Google Cloud batched TTS is intended for unary voices such as WaveNet or Neural2. Received ${voice}; use google-tts for Chirp 3 HD streaming.`,
+    )
+  }
+
+  return {
+    serviceAccountJson,
+    serviceAccountFile,
+    endpoint: pickFirstNonEmpty(
+      env.VOICYCLAW_GOOGLE_BATCHED_TTS_ENDPOINT,
+      config?.endpoint,
+    ),
+    voice,
+    sampleRate:
+      parsePositiveInt(env.VOICYCLAW_GOOGLE_BATCHED_TTS_SAMPLE_RATE) ??
+      parsePositiveInt(config?.sample_rate),
+    speakingRate:
+      parseFloatValue(env.VOICYCLAW_GOOGLE_BATCHED_TTS_SPEAKING_RATE) ??
+      parseFloatValue(config?.speaking_rate),
+    pitch:
+      parseFloatValue(env.VOICYCLAW_GOOGLE_BATCHED_TTS_PITCH) ??
+      parseFloatValue(config?.pitch),
+    flushTimeoutMs:
+      parsePositiveInt(env.VOICYCLAW_GOOGLE_BATCHED_TTS_FLUSH_TIMEOUT_MS) ??
+      parsePositiveInt(config?.flush_timeout_ms),
+    maxChunkCharacters:
+      parsePositiveInt(env.VOICYCLAW_GOOGLE_BATCHED_TTS_MAX_CHUNK_CHARACTERS) ??
+      parsePositiveInt(config?.max_chunk_characters),
   }
 }
 

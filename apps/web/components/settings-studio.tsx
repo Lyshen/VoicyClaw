@@ -306,8 +306,9 @@ export function SettingsStudio() {
             <code> config/providers.local.yaml </code>
             in the repo root, with environment variables available as optional
             overrides. Azure Speech needs a speech key plus region or endpoint.
-            Google Cloud TTS works best with a service account file or JSON,
-            though an access token or API key can also be wired for experiments.
+            Google Cloud streaming and batched TTS both work best with a service
+            account file or JSON. The streaming path expects a Chirp 3 HD voice,
+            while the batched path expects a WaveNet or Neural2 style voice.
             Volcengine TTS reads the same YAML file through the
             <code> DoubaoStreamTTS </code>
             section and still supports <code>VOICYCLAW_VOLCENGINE_*</code>
@@ -324,9 +325,11 @@ export function SettingsStudio() {
             {"\n"}
             GoogleCloudTTS.service_account_json
             {"\n"}
-            GoogleCloudTTS.access_token
+            GoogleCloudBatchedTTS.service_account_file
             {"\n"}
-            GoogleCloudTTS.api_key
+            GoogleCloudBatchedTTS.service_account_json
+            {"\n"}
+            GoogleCloudBatchedTTS.voice
             {"\n"}
             DoubaoStreamTTS.appid
             {"\n"}
