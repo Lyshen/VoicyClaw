@@ -118,6 +118,7 @@ The CI workflow in `.github/workflows/ci.yml` runs on pushes to `main` / `codex/
 | [`doc/04-openclaw-gateway-bridge.md`](doc/04-openclaw-gateway-bridge.md) | Design for the minimal OpenClaw Gateway bridge that lets VoicyClaw interoperate with a real OpenClaw deployment |
 | [`doc/05-conversation-backend-abstraction.md`](doc/05-conversation-backend-abstraction.md) | The stable backend contract that keeps voice business logic independent from local-bot vs Gateway transport details |
 | [`doc/06-openclaw-voicyclaw-channel-plugin.md`](doc/06-openclaw-voicyclaw-channel-plugin.md) | Detailed design for the long-term OpenClaw `voicyclaw` channel plugin that actively connects to the VoicyClaw service |
+| [`doc/08-tts-provider-roadmap.md`](doc/08-tts-provider-roadmap.md) | TTS provider strategy across realtime flagship providers and cheaper batched providers |
 | [`doc/07-artifact-standardization.md`](doc/07-artifact-standardization.md) | Standardized release outputs for the plugin and the self-hostable VoicyClaw service |
 
 ---
@@ -173,6 +174,10 @@ AzureSpeechTTS:
 GoogleCloudTTS:
   service_account_file: /absolute/path/to/google-service-account.json
   voice: en-US-Chirp3-HD-Leda
+
+GoogleCloudBatchedTTS:
+  service_account_file: /absolute/path/to/google-service-account.json
+  voice: en-US-Neural2-F
 ```
 
 Copy [`config/providers.example.yaml`](config/providers.example.yaml) to
@@ -189,7 +194,8 @@ TTS` in `/settings`.
 To enable server-side Google Cloud TTS, fill one of
 `GoogleCloudTTS.service_account_file`,
 `GoogleCloudTTS.service_account_json`, plus a `Chirp 3 HD` voice such as
-`en-US-Chirp3-HD-Leda`, then choose `Google Cloud TTS` in `/settings`.
+`en-US-Chirp3-HD-Leda`, then choose `Google Cloud TTS (Streaming)` in
+`/settings`.
 
 When you use a `Chirp 3 HD` voice together with
 `GoogleCloudTTS.service_account_file` or `GoogleCloudTTS.service_account_json`,
@@ -197,6 +203,16 @@ VoicyClaw now upgrades that path to bidirectional streaming synthesis so audio
 can start before the full bot reply is finished. The old synchronous Google
 path has been removed, so API keys, access tokens, and non-Chirp voices are no
 longer accepted for `google-tts`.
+
+To enable the cheaper Google batched path, fill one of
+`GoogleCloudBatchedTTS.service_account_file`,
+`GoogleCloudBatchedTTS.service_account_json`, plus a non-Chirp voice such as
+`en-US-Neural2-F` or `en-US-Wavenet-D`, then choose `Google Cloud TTS
+(Batched)` in `/settings`.
+
+`google-batched-tts` intentionally keeps its sentence batching inside the
+provider adapter so the existing business-layer flow does not need to change,
+and the current `google-tts` / `volcengine-tts` streaming paths stay isolated.
 
 Note: this runnable prototype uses `node:sqlite` instead of Prisma so it stays friction-free on the current Node toolchain, while the design docs still describe the longer-term Prisma-based plan.
 

@@ -9,10 +9,12 @@ import { describe, expect, it, vi } from "vitest"
 import {
   createRuntimeTTSProvider,
   resolveAzureSpeechTTSOptions,
+  resolveGoogleCloudBatchedTTSOptions,
   resolveGoogleCloudTTSOptions,
 } from "../apps/server/src/tts-provider"
 import { AzureSpeechTTSProvider } from "../packages/tts/src/providers/azure-speech"
 import { GoogleCloudTTSProvider } from "../packages/tts/src/providers/google-cloud"
+import { GoogleCloudBatchedTTSProvider } from "../packages/tts/src/providers/google-cloud-batched"
 
 describe("AzureSpeechTTSProvider", () => {
   it("posts SSML to Azure and yields raw PCM audio", async () => {
@@ -224,6 +226,155 @@ describe("GoogleCloudTTSProvider", () => {
   })
 })
 
+describe("GoogleCloudBatchedTTSProvider", () => {
+  it("batches sentence chunks into unary Google synthesizeSpeech calls", async () => {
+    const firstAudio = Buffer.from(Int16Array.from([11, -11]).buffer)
+    const secondAudio = Buffer.from(Int16Array.from([12, -12]).buffer)
+    const synthesizeSpeech = vi.fn(
+      async (request: { input?: { text?: string } }) => {
+        const text = String(request.input?.text ?? "")
+
+        if (text === "Hello world.") {
+          return [{ audioContent: firstAudio }]
+        }
+
+        if (text === "Next sentence!") {
+          return [{ audioContent: secondAudio }]
+        }
+
+        throw new Error(`Unexpected text: ${text}`)
+      },
+    )
+    const close = vi.fn(async () => undefined)
+    const provider = new GoogleCloudBatchedTTSProvider({
+      serviceAccountJson: "{}",
+      voice: "en-US-Neural2-F",
+      sampleRate: 24_000,
+      speakingRate: 0.95,
+      pitch: -1,
+      createSynthesizeClient: () => ({
+        synthesizeSpeech,
+        close,
+      }),
+    })
+
+    const chunks = await collect(
+      provider.synthesize(textChunks(["Hello", " world.", " Next sentence!"]), {
+        language: "en-US",
+      }),
+    )
+
+    expect(chunks).toEqual([firstAudio, secondAudio])
+    expect(synthesizeSpeech).toHaveBeenCalledTimes(2)
+    expect(synthesizeSpeech.mock.calls).toEqual([
+      [
+        {
+          input: {
+            text: "Hello world.",
+          },
+          voice: {
+            languageCode: "en-US",
+            name: "en-US-Neural2-F",
+          },
+          audioConfig: {
+            audioEncoding: "LINEAR16",
+            sampleRateHertz: 24_000,
+            speakingRate: 0.95,
+            pitch: -1,
+          },
+        },
+      ],
+      [
+        {
+          input: {
+            text: "Next sentence!",
+          },
+          voice: {
+            languageCode: "en-US",
+            name: "en-US-Neural2-F",
+          },
+          audioConfig: {
+            audioEncoding: "LINEAR16",
+            sampleRateHertz: 24_000,
+            speakingRate: 0.95,
+            pitch: -1,
+          },
+        },
+      ],
+    ])
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it("flushes a partial segment after the batching timeout", async () => {
+    const firstAudio = Buffer.from(Int16Array.from([21, -21]).buffer)
+    const secondAudio = Buffer.from(Int16Array.from([22, -22]).buffer)
+    const synthesizeSpeech = vi.fn(
+      async (request: { input?: { text?: string } }) => {
+        const text = String(request.input?.text ?? "")
+
+        if (text === "Hello") {
+          return [{ audioContent: firstAudio }]
+        }
+
+        if (text === "later.") {
+          return [{ audioContent: secondAudio }]
+        }
+
+        throw new Error(`Unexpected text: ${text}`)
+      },
+    )
+    const close = vi.fn(async () => undefined)
+    const provider = new GoogleCloudBatchedTTSProvider({
+      serviceAccountJson: "{}",
+      voice: "en-US-Neural2-F",
+      flushTimeoutMs: 10,
+      createSynthesizeClient: () => ({
+        synthesizeSpeech,
+        close,
+      }),
+    })
+
+    const chunks = await collect(
+      provider.synthesize(
+        (async function* () {
+          yield "Hello"
+          await sleep(30)
+          yield " later."
+        })(),
+        {
+          language: "en-US",
+        },
+      ),
+    )
+
+    expect(chunks).toEqual([firstAudio, secondAudio])
+    expect(
+      synthesizeSpeech.mock.calls.map(([request]) => request.input?.text ?? ""),
+    ).toEqual(["Hello", "later."])
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects Chirp voices because batched mode is for unary models", async () => {
+    const createSynthesizeClient = vi.fn(() => {
+      throw new Error("unary client should not be created")
+    })
+    const provider = new GoogleCloudBatchedTTSProvider({
+      serviceAccountJson: "{}",
+      voice: "en-US-Chirp3-HD-Leda",
+      createSynthesizeClient,
+    })
+
+    await expect(
+      collect(
+        provider.synthesize(textChunks(["Hello", " world"]), {
+          language: "en-US",
+        }),
+      ),
+    ).rejects.toThrow(/use google-tts for Chirp 3 HD streaming/i)
+    expect(createSynthesizeClient).not.toHaveBeenCalled()
+  })
+})
+
 describe("runtime TTS provider selection", () => {
   it("requires Azure credentials when Azure TTS is selected", () => {
     expect(() =>
@@ -250,6 +401,34 @@ describe("runtime TTS provider selection", () => {
     ).toThrow(/requires a Chirp 3 HD voice/)
   })
 
+  it("requires Google service-account credentials when Google batched TTS is selected", () => {
+    expect(() =>
+      resolveGoogleCloudBatchedTTSOptions({
+        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+      }),
+    ).toThrow(/VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_JSON/)
+  })
+
+  it("requires a non-Chirp voice when Google batched TTS is selected", () => {
+    expect(() =>
+      resolveGoogleCloudBatchedTTSOptions({
+        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE:
+          "/tmp/google-batched-tts.json",
+      }),
+    ).toThrow(/requires a non-Chirp voice/)
+  })
+
+  it("rejects Chirp voices when Google batched TTS is selected", () => {
+    expect(() =>
+      resolveGoogleCloudBatchedTTSOptions({
+        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE:
+          "/tmp/google-batched-tts.json",
+        VOICYCLAW_GOOGLE_BATCHED_TTS_VOICE: "en-US-Chirp3-HD-Leda",
+      }),
+    ).toThrow(/use google-tts for Chirp 3 HD streaming/i)
+  })
   it("selects Azure Speech TTS at runtime", () => {
     const runtime = createRuntimeTTSProvider(
       {
@@ -287,6 +466,27 @@ describe("runtime TTS provider selection", () => {
     )
 
     expect(runtime.providerId).toBe("google-tts")
+    expect(runtime.sampleRate).toBe(24_000)
+  })
+
+  it("selects Google Cloud batched TTS at runtime", () => {
+    const runtime = createRuntimeTTSProvider(
+      {
+        conversationBackend: "local-bot",
+        asrMode: "client",
+        asrProvider: "browser",
+        ttsMode: "server",
+        ttsProvider: "google-batched-tts",
+        language: "en-US",
+      },
+      {
+        VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE:
+          "/tmp/google-batched-tts.json",
+        VOICYCLAW_GOOGLE_BATCHED_TTS_VOICE: "en-US-Neural2-F",
+      },
+    )
+
+    expect(runtime.providerId).toBe("google-batched-tts")
     expect(runtime.sampleRate).toBe(24_000)
   })
 
@@ -386,6 +586,67 @@ describe("runtime TTS provider selection", () => {
       speakingRate: 0.95,
     })
   })
+
+  it("loads Google batched runtime options from provider YAML", () => {
+    const runtime = createRuntimeTTSProvider(
+      {
+        conversationBackend: "local-bot",
+        asrMode: "client",
+        asrProvider: "browser",
+        ttsMode: "server",
+        ttsProvider: "google-batched-tts",
+        language: "en-US",
+      },
+      {
+        VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+          "GoogleCloudBatchedTTS:",
+          "  service_account_file: /tmp/google-batched-from-yaml.json",
+          "  voice: en-US-Neural2-F",
+          "  sample_rate: 22050",
+          "  speaking_rate: 0.9",
+          "  pitch: -1",
+          "  flush_timeout_ms: 320",
+          "  max_chunk_characters: 180",
+        ]),
+      },
+    )
+
+    expect(runtime.providerId).toBe("google-batched-tts")
+    expect(runtime.sampleRate).toBe(22_050)
+  })
+
+  it("lets env vars override Google batched provider YAML values", () => {
+    const options = resolveGoogleCloudBatchedTTSOptions({
+      VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+        "GoogleCloudBatchedTTS:",
+        "  service_account_file: /tmp/google-batched-from-yaml.json",
+        "  voice: en-US-Neural2-F",
+        "  sample_rate: 22050",
+        "  speaking_rate: 0.9",
+        "  pitch: -1",
+        "  flush_timeout_ms: 320",
+        "  max_chunk_characters: 180",
+      ]),
+      VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE:
+        "/tmp/google-batched-from-env.json",
+      VOICYCLAW_GOOGLE_BATCHED_TTS_VOICE: "en-US-Wavenet-D",
+      VOICYCLAW_GOOGLE_BATCHED_TTS_SAMPLE_RATE: "24000",
+      VOICYCLAW_GOOGLE_BATCHED_TTS_SPEAKING_RATE: "1.05",
+      VOICYCLAW_GOOGLE_BATCHED_TTS_PITCH: "2",
+      VOICYCLAW_GOOGLE_BATCHED_TTS_FLUSH_TIMEOUT_MS: "450",
+      VOICYCLAW_GOOGLE_BATCHED_TTS_MAX_CHUNK_CHARACTERS: "240",
+    })
+
+    expect(options).toMatchObject({
+      serviceAccountFile: "/tmp/google-batched-from-env.json",
+      voice: "en-US-Wavenet-D",
+      sampleRate: 24_000,
+      speakingRate: 1.05,
+      pitch: 2,
+      flushTimeoutMs: 450,
+      maxChunkCharacters: 240,
+    })
+  })
 })
 
 async function collect<T>(source: AsyncIterable<T>) {
@@ -402,6 +663,10 @@ async function* textChunks(values: string[]) {
   for (const value of values) {
     yield value
   }
+}
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function writeProviderConfigFile(lines: string[]) {

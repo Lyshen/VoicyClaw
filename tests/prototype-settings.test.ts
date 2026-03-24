@@ -116,6 +116,21 @@ describe("prototype settings helpers", () => {
       ttsProvider: "volcengine-tts",
     })
   })
+
+  it("keeps Google batched server TTS selections round-trippable", () => {
+    const storage = createMemoryStorage()
+    storage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ttsProvider: "google-batched-tts",
+      }),
+    )
+    globalThis.window = { localStorage: storage } as Window & typeof globalThis
+
+    expect(loadPrototypeSettings()).toMatchObject({
+      ttsProvider: "google-batched-tts",
+    })
+  })
 })
 
 function createMemoryStorage(): MemoryStorage {

@@ -10,12 +10,24 @@ AzureSpeechTTS:
 
 GoogleCloudTTS:
   type: google_cloud_tts
-  endpoint: https://texttospeech.googleapis.com/v1beta1/text:synthesize
+  endpoint: texttospeech.googleapis.com
   service_account_file: /absolute/path/to/google-service-account.json
   service_account_json:
   voice: en-US-Chirp3-HD-Leda
   sample_rate: 24000
   speaking_rate:
+
+GoogleCloudBatchedTTS:
+  type: google_cloud_tts_batched
+  endpoint: texttospeech.googleapis.com
+  service_account_file: /absolute/path/to/google-service-account.json
+  service_account_json:
+  voice: en-US-Neural2-F
+  sample_rate: 24000
+  speaking_rate:
+  pitch:
+  flush_timeout_ms: 450
+  max_chunk_characters: 220
 
 DoubaoStreamTTS:
   type: doubao_stream
