@@ -1,33 +1,125 @@
 # VoicyClaw
 
-### *Talk to claws easily.*
-
 [![CI](https://github.com/Lyshen/VoicyClaw/actions/workflows/ci.yml/badge.svg)](https://github.com/Lyshen/VoicyClaw/actions/workflows/ci.yml)
 ![Coverage](docs/badges/coverage.svg)
 
 ---
 
-VoicyClaw is an open-source voice platform that connects you to AI agents (ClawBots) through a real-time voice channel. Speak — your voice is transcribed, routed to a ClawBot via the OpenClaw protocol, and the response streams back as synthesized speech. End-to-end streaming, bring-your-own API keys, no lock-in.
+> **Give OpenClaw agents a voice.**
+>
+> Talk in VoicyClaw, let OpenClaw run the agent, and hear the reply streamed back in real time.
+
+**VoicyClaw turns OpenClaw agents into spoken conversations.**
+It starts as a web voice app today, and grows toward a simple hosted layer for connecting real OpenClaw agents.
+
+**Project direction**
+
+- a dedicated voice-first web experience
+- a simple way to connect real OpenClaw agents
+- a stable hosted endpoint for future OpenClaw plugin installs
+- a clean path toward account, workspace, and connector token onboarding
 
 ---
 
-## How It Works
+## What Is VoicyClaw
+
+**VoicyClaw is the part that makes OpenClaw feel spoken, not just textual.**
+You speak, OpenClaw does the agent work, and VoicyClaw plays the reply back.
+
+**VoicyClaw handles**
+
+- microphone capture, ASR, TTS, playback, interruption, and voice UX
+
+**OpenClaw handles**
+
+- agent execution, memory, tools, model routing, and session logic
+
+**Today:** the main experience is hearing an OpenClaw agent speak inside the VoicyClaw web app.
+
+**Next:** the main onboarding target is "install a connector, issue a token, and hear your OpenClaw agent speak".
+
+This means VoicyClaw should be described first as a voice product for OpenClaw, not just as a TTS playground or a one-off browser demo.
+
+---
+
+## Current Product Shape
+
+**The clearest product story today lives in the VoicyClaw web app.**
+Right now, the easiest way to understand the project is to use it and hear the agent speak.
+
+**What that means today**
+
+- open the VoicyClaw web app
+- connect either the bundled local demo bot or a real OpenClaw backend
+- choose a voice path such as browser, Azure, Google, or Volcengine
+- hear streamed OpenClaw replies inside VoicyClaw itself
+
+**Near-term product target**
+
+- deploy VoicyClaw behind a stable public domain
+- improve the landing page so the hosted voice story is obvious
+- issue connector tokens / API keys from a lightweight account flow
+- make OpenClaw onboarding feel like a short install-and-connect workflow
+
+---
+
+## Connection Modes
+
+**VoicyClaw should support more than one way to reach an OpenClaw agent.**
+That lets the product start simple for local demos and grow into a cleaner install story later.
+
+| Mode | Status | What it means |
+|---|---|---|
+| local demo bot | available now | fully local dev loop for fast iteration |
+| OpenClaw Gateway backend | available now | VoicyClaw talks to a real OpenClaw deployment through Gateway URL + token |
+| OpenClaw `voicyclaw` plugin | in progress | installable connector that lets OpenClaw connect outward to VoicyClaw |
+
+The long-term preferred shape is the plugin path, because it removes the need for users to expose their OpenClaw Gateway to the public internet just to test voice.
+
+---
+
+## How It Works Today
+
+**The current interaction loop is already simple enough to explain in one glance.**
 
 ```
-User mic → WebSocket → ASR (streaming) → OpenClaw protocol
-                                                  ↓
-                                           ClawBot (LLM agent)
-                                                  ↓
-                                    streaming text → TTS → audio → User
+User mic
+  -> VoicyClaw web client
+  -> VoicyClaw server
+  -> local bot or OpenClaw backend
+  -> streamed text reply
+  -> VoicyClaw TTS
+  -> audio playback in VoicyClaw
 ```
 
-1. **Request an API key** from the VoicyClaw platform
-2. **Give the key to your ClawBot** — it self-registers and joins the channel automatically
-3. **Talk** — voice in, voice out, streaming throughout
+**Hosted onboarding target**
+
+1. sign into VoicyClaw
+2. create a workspace or project
+3. issue a connector token / API key
+4. install or configure the OpenClaw connector
+5. see the OpenClaw agent appear in VoicyClaw
+6. talk and hear the reply with real-time voice playback
+
+---
+
+## Scope Today vs Later
+
+**README should promise the experience people can actually use now.**
+
+**Today**, VoicyClaw's primary user-facing surface is its own web voice experience.
+
+- users talk inside VoicyClaw
+- VoicyClaw owns the voice playback path
+- OpenClaw provides the agent response stream
+
+**Later**, the same speech infrastructure may also help render or deliver voice for additional OpenClaw channels such as Feishu or WeChat. That is an important future expansion path, but it is not the primary README promise today.
 
 ---
 
 ## Key Design Decisions
+
+**The prototype stays intentionally simple in the business layer, while keeping room for better provider integrations underneath.**
 
 - **WebSocket only** (prototype) — no WebRTC complexity
 - **Bidirectional streaming** — ASR and TTS both stream; TTS synthesis starts on the first text token from the bot
@@ -40,7 +132,8 @@ User mic → WebSocket → ASR (streaming) → OpenClaw protocol
 
 ## Provider Modes
 
-VoicyClaw treats ASR and TTS as two-stage capabilities that may run in either the client or the server:
+**ASR and TTS can run in the browser or on the server.**
+That flexibility lets VoicyClaw support both quick demos and more controlled production-style setups.
 
 - **Client provider mode** — the browser or operating system performs ASR/TTS locally or through its own bundled service. Example: browser `SpeechRecognition` or `speechSynthesis`.
 - **Server provider mode** — the browser sends raw audio or text to VoicyClaw, and the VoicyClaw server calls a vendor SDK or API such as Azure, Google Cloud, OpenAI, or Volcengine.
@@ -58,7 +151,8 @@ For the current runnable prototype, browser speech recognition and browser speec
 
 ## Shared Output Turn Control
 
-VoicyClaw keeps provider implementations thin and moves playback ownership into a shared output-turn coordinator in the web runtime:
+**Playback control is shared across providers instead of being reimplemented provider by provider.**
+That keeps interruption behavior and turn ownership consistent even when the speech vendor changes.
 
 - both browser TTS text playback and server PCM playback are correlated by `utteranceId`
 - when a newer bot turn becomes active, stale queued speech or audio chunks from older turns are cancelled or dropped
@@ -68,21 +162,26 @@ This keeps `client provider` and `server provider` modes behaviorally consistent
 
 ---
 
-## ASR / TTS Vendor Support
+## What Works Today
 
-| Vendor | Type | Region | Priority |
-|---|---|---|---|
-| OpenAI Whisper | ASR | Global | P0 |
-| OpenAI TTS | TTS | Global | P0 |
-| Azure Cognitive Speech | ASR + TTS | Global | P0 |
-| Google Cloud TTS | TTS | Global | P0 |
-| Volcengine | ASR + TTS | CN | P0 |
-| ElevenLabs | TTS | Global | P1 |
-| iFlytek | ASR + TTS | CN | P1 |
+**The core voice loop is already real and usable.**
+
+| Capability | Status | Notes |
+|---|---|---|
+| browser speech recognition | available now | fastest zero-setup prototype path |
+| browser speech synthesis | available now | client-side playback option |
+| Azure Speech TTS | available now | server-side raw PCM playback |
+| Google Cloud TTS (Chirp streaming) | available now | premium realtime Google path |
+| Google Cloud TTS (WaveNet / Neural2 batched) | available now | lower-cost unary Google path |
+| Volcengine bidirectional TTS | available now | CN-market low-latency path |
+| OpenClaw Gateway backend | available now | real OpenClaw text backend integration |
+| OpenClaw `voicyclaw` plugin | in progress | connector/productization path for easier install |
 
 ---
 
 ## Quality Gates
+
+**The repo already has real engineering guardrails, not just prototype code.**
 
 The repo now includes a standard GitHub CI workflow, a repo-wide lint gate, coverage reporting, smoke E2E coverage, and integration coverage for both the happy path and key protocol failure paths.
 
@@ -257,32 +356,42 @@ pnpm test:tts:live
 
 ---
 
-## Prototype Sprint — Next 24–48 Hours
+## Product Roadmap
 
-Goal: **end-to-end voice conversation with a real ClawBot running locally**.
+### Phase 1 — Public Voice Beta
 
-### Milestone 1 — Foundation (0–8h)
-- [ ] Init pnpm monorepo (`apps/web`, `apps/server`, `packages/protocol`, `packages/asr`, `packages/tts`)
-- [ ] Shared `protocol` package: TypeScript types for all OpenClaw messages
-- [ ] `apps/server`: Fastify + WS server, implement `HELLO / WELCOME / ERROR / DISCONNECT`
-- [ ] `apps/web`: Next.js shell, basic layout, mic permission request
+Goal: make VoicyClaw feel like a real hosted voice product, not just a dev shell.
 
-### Milestone 2 — Audio Pipeline (8–20h)
-- [ ] Browser → server: capture mic audio (PCM 16kHz), stream over WebSocket binary frames
-- [ ] Server → ASR: wire `OpenAIASRProvider`, get `STT_RESULT` flowing
-- [ ] Server → Bot: send `STT_RESULT` to ClawBot via OpenClaw protocol, receive `TTS_TEXT` stream
-- [ ] Server → TTS: wire `OpenAITTSProvider`, stream synthesized audio back to browser
-- [ ] Browser: play received audio chunks in real time
+- deploy behind a stable public domain with HTTPS / WSS
+- add a stronger landing page that explains the OpenClaw voice story clearly
+- keep the VoicyClaw web app as the fastest way to hear OpenClaw bots speak
+- tighten the hosted demo loop and setup docs
 
-### Milestone 3 — Connect Real ClawBot (20–36h)
-- [ ] API key issuance endpoint (`POST /api/keys`)
-- [ ] Bot registration endpoint (`POST /api/bot/register`)
-- [ ] Connect local ClawBot, verify full voice loop end-to-end
+### Phase 2 — Connector Onboarding
 
-### Milestone 4 — Minimal UI Polish (36–48h)
-- [ ] Channel view: show live transcript (ASR text) and bot response text
-- [ ] Settings page: enter OpenAI ASR/TTS API keys
-- [ ] Push-to-talk button + visual speaking indicator
+Goal: make "connect my OpenClaw bot" a short, repeatable workflow.
+
+- add a lightweight account / workspace model
+- issue connector tokens or API keys from the dashboard
+- provide copy-paste install and config steps for OpenClaw users
+- show bot online / offline state clearly after installation
+
+### Phase 3 — Plugin-First Install Flow
+
+Goal: reduce setup friction for real OpenClaw users.
+
+- ship the installable `@voicyclaw/voicyclaw` package as the preferred path
+- let OpenClaw connect outward to VoicyClaw instead of requiring public Gateway exposure
+- improve reconnect, status reporting, and bot registration behavior
+- turn "install + configure + talk" into the default product story
+
+### Phase 4 — Channel Expansion and Hosted Operations
+
+Goal: grow from one great voice surface into a broader speech layer.
+
+- evaluate speech delivery for additional OpenClaw channels such as Feishu or WeChat
+- expand usage tracking, provider guidance, and cost visibility
+- add richer tenant / billing / project controls only when the hosted flow truly needs them
 
 ---
 
