@@ -22,6 +22,7 @@ DoubaoStreamTTS:
   ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection
   appid: "your-app-id"
   access_token: "your-access-token"
+  model: seed-tts-2.0-standard
   resource_id: volc.service_type.10029
   speaker: zh_female_wanwanxiaohe_moon_bigtts
   sample_rate: 16000

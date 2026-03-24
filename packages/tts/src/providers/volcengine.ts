@@ -32,6 +32,7 @@ export interface VolcengineTTSProviderOptions {
   appId: string
   accessToken: string
   voiceType: string
+  model?: string
   endpoint?: string
   resourceId?: string
   sampleRate?: number
@@ -50,37 +51,47 @@ export class VolcengineTTSProvider implements TTSAdapter {
     const sampleRate =
       config?.sampleRate ?? this.options.sampleRate ?? DEFAULT_SAMPLE_RATE
     const voiceType = config?.voice?.trim() || this.options.voiceType.trim()
-    let client: ConnectedClient | null = null
+    const iterator = text[Symbol.asyncIterator]()
+    const firstChunk = await readNextNonEmptyChunk(iterator)
+
+    if (!firstChunk) {
+      return
+    }
+
+    const client = await this.connect(voiceType)
+    const sessionId = randomUUID()
+    const requestTemplate = createRequestTemplate(
+      voiceType,
+      sampleRate,
+      this.options.model,
+    )
+    const audioQueue = new AsyncChunkQueue<AudioChunk>()
+    let writePromise: Promise<void> | null = null
+    let receivePromise: Promise<void> | null = null
 
     try {
-      for await (const chunk of text) {
-        const cleaned = chunk.trim()
+      await this.startSession(client, sessionId, requestTemplate)
 
-        if (!cleaned) {
-          continue
-        }
+      receivePromise = this.receiveSessionAudio(client, sessionId, audioQueue)
+      writePromise = this.writeSessionText(
+        client,
+        iterator,
+        firstChunk,
+        sessionId,
+        requestTemplate,
+      )
 
-        if (!client) {
-          client = await this.connect(voiceType)
-        }
-
-        yield* this.synthesizeChunk(client, cleaned, voiceType, sampleRate)
+      for await (const audioChunk of audioQueue) {
+        yield audioChunk
       }
 
-      if (!client) {
-        return
-      }
-
-      await client.channel.sendEvent(
-        VolcengineEventType.FinishConnection,
-        encodeJson({}),
-      )
-      await client.channel.waitFor(
-        VolcengineMessageType.FullServerResponse,
-        VolcengineEventType.ConnectionFinished,
-      )
+      await writePromise
+      await receivePromise
     } finally {
-      client?.socket.close()
+      await settlePromise(writePromise)
+      await settlePromise(receivePromise)
+      await this.finishConnection(client).catch(() => undefined)
+      client.socket.close()
     }
   }
 
@@ -121,30 +132,11 @@ export class VolcengineTTSProvider implements TTSAdapter {
     return socket
   }
 
-  private async *synthesizeChunk(
+  private async startSession(
     client: ConnectedClient,
-    chunk: string,
-    voiceType: string,
-    sampleRate: number,
-  ): AsyncGenerator<AudioChunk> {
-    const sessionId = randomUUID()
-    const requestTemplate = {
-      user: {
-        uid: randomUUID(),
-      },
-      req_params: {
-        speaker: voiceType,
-        audio_params: {
-          format: "pcm",
-          sample_rate: sampleRate,
-          enable_timestamp: true,
-        },
-        additions: JSON.stringify({
-          disable_markdown_filter: false,
-        }),
-      },
-    }
-
+    sessionId: string,
+    requestTemplate: ReturnType<typeof createRequestTemplate>,
+  ) {
     await client.channel.sendEvent(
       VolcengineEventType.StartSession,
       encodeJson({
@@ -157,47 +149,127 @@ export class VolcengineTTSProvider implements TTSAdapter {
       VolcengineMessageType.FullServerResponse,
       VolcengineEventType.SessionStarted,
     )
+  }
 
-    for (const character of chunk) {
+  private async writeSessionText(
+    client: ConnectedClient,
+    text: AsyncIterator<string>,
+    firstChunk: string,
+    sessionId: string,
+    requestTemplate: ReturnType<typeof createRequestTemplate>,
+  ) {
+    try {
+      await this.sendTaskRequest(client, sessionId, requestTemplate, firstChunk)
+
+      for await (const chunk of iterateNonEmptyChunks(text)) {
+        await this.sendTaskRequest(client, sessionId, requestTemplate, chunk)
+      }
+    } finally {
       await client.channel.sendEvent(
-        VolcengineEventType.TaskRequest,
-        encodeJson({
-          ...requestTemplate,
-          event: VolcengineEventType.TaskRequest,
-          req_params: {
-            ...requestTemplate.req_params,
-            text: character,
-          },
-        }),
+        VolcengineEventType.FinishSession,
+        encodeJson({}),
         sessionId,
       )
     }
+  }
 
+  private async sendTaskRequest(
+    client: ConnectedClient,
+    sessionId: string,
+    requestTemplate: ReturnType<typeof createRequestTemplate>,
+    chunk: string,
+  ) {
     await client.channel.sendEvent(
-      VolcengineEventType.FinishSession,
-      encodeJson({}),
+      VolcengineEventType.TaskRequest,
+      encodeJson({
+        ...requestTemplate,
+        event: VolcengineEventType.TaskRequest,
+        req_params: {
+          ...requestTemplate.req_params,
+          text: chunk,
+        },
+      }),
       sessionId,
     )
+  }
 
-    while (true) {
-      const message = await client.channel.receive()
-      throwIfVolcengineError(message)
+  private async receiveSessionAudio(
+    client: ConnectedClient,
+    sessionId: string,
+    audioQueue: AsyncChunkQueue<AudioChunk>,
+  ) {
+    try {
+      while (true) {
+        const message = await client.channel.receive()
+        throwIfVolcengineError(message)
 
-      if (message.type === VolcengineMessageType.AudioOnlyServer) {
-        if (message.payload.byteLength > 0) {
-          yield Buffer.from(message.payload)
+        if (message.type === VolcengineMessageType.AudioOnlyServer) {
+          if (message.payload.byteLength > 0) {
+            audioQueue.push(Buffer.from(message.payload))
+          }
+          continue
         }
-        continue
-      }
 
-      if (
-        message.type === VolcengineMessageType.FullServerResponse &&
-        message.event === VolcengineEventType.SessionFinished
-      ) {
-        return
+        if (
+          message.type === VolcengineMessageType.FullServerResponse &&
+          message.event === VolcengineEventType.SessionFinished &&
+          message.sessionId === sessionId
+        ) {
+          audioQueue.close()
+          return
+        }
       }
+    } catch (error) {
+      audioQueue.error(normalizeError(error))
+      throw error
     }
   }
+
+  private async finishConnection(client: ConnectedClient) {
+    await client.channel.sendEvent(
+      VolcengineEventType.FinishConnection,
+      encodeJson({}),
+    )
+    await client.channel.waitFor(
+      VolcengineMessageType.FullServerResponse,
+      VolcengineEventType.ConnectionFinished,
+    )
+  }
+}
+
+function createRequestTemplate(
+  voiceType: string,
+  sampleRate: number,
+  model: string | undefined,
+) {
+  const normalizedModel = normalizeModel(model)
+
+  return {
+    user: {
+      uid: randomUUID(),
+    },
+    req_params: {
+      ...(normalizedModel
+        ? {
+            model: normalizedModel,
+          }
+        : {}),
+      speaker: voiceType,
+      audio_params: {
+        format: "pcm",
+        sample_rate: sampleRate,
+        enable_timestamp: true,
+      },
+      additions: JSON.stringify({
+        disable_markdown_filter: false,
+      }),
+    },
+  }
+}
+
+function normalizeModel(model: string | undefined) {
+  const normalized = model?.trim()
+  return normalized || undefined
 }
 
 function voiceToResourceId(voiceType: string) {
@@ -206,6 +278,135 @@ function voiceToResourceId(voiceType: string) {
 
 function encodeJson(value: unknown) {
   return new TextEncoder().encode(JSON.stringify(value))
+}
+
+async function readNextNonEmptyChunk(iterator: AsyncIterator<string>) {
+  while (true) {
+    const { done, value } = await iterator.next()
+    if (done) {
+      return null
+    }
+
+    if (value.trim()) {
+      return value
+    }
+  }
+}
+
+async function* iterateNonEmptyChunks(iterator: AsyncIterator<string>) {
+  while (true) {
+    const { done, value } = await iterator.next()
+    if (done) {
+      return
+    }
+
+    if (!value.trim()) {
+      continue
+    }
+
+    yield value
+  }
+}
+
+class AsyncChunkQueue<T> implements AsyncIterableIterator<T> {
+  private readonly values: T[] = []
+  private readonly waiters: Array<{
+    resolve: (result: IteratorResult<T>) => void
+    reject: (error: Error) => void
+  }> = []
+  private ended = false
+  private failure: Error | null = null
+
+  push(value: T) {
+    if (this.ended || this.failure) {
+      return
+    }
+
+    const waiter = this.waiters.shift()
+    if (waiter) {
+      waiter.resolve({
+        value,
+        done: false,
+      })
+      return
+    }
+
+    this.values.push(value)
+  }
+
+  close() {
+    if (this.ended) {
+      return
+    }
+
+    this.ended = true
+
+    while (this.waiters.length > 0) {
+      this.waiters.shift()?.resolve({
+        value: undefined as T,
+        done: true,
+      })
+    }
+  }
+
+  error(error: Error) {
+    if (this.failure || this.ended) {
+      return
+    }
+
+    this.failure = error
+
+    while (this.waiters.length > 0) {
+      this.waiters.shift()?.reject(error)
+    }
+  }
+
+  async next(): Promise<IteratorResult<T>> {
+    if (this.values.length > 0) {
+      return {
+        value: this.values.shift() as T,
+        done: false,
+      }
+    }
+
+    if (this.failure) {
+      throw this.failure
+    }
+
+    if (this.ended) {
+      return {
+        value: undefined as T,
+        done: true,
+      }
+    }
+
+    return new Promise<IteratorResult<T>>((resolve, reject) => {
+      this.waiters.push({
+        resolve,
+        reject,
+      })
+    })
+  }
+
+  [Symbol.asyncIterator]() {
+    return this
+  }
+}
+
+function normalizeError(error: unknown) {
+  return error instanceof Error ? error : new Error(String(error))
+}
+
+async function settlePromise(promise: Promise<unknown> | null) {
+  if (!promise) {
+    return
+  }
+
+  try {
+    await promise
+  } catch {
+    // The async queue already surfaced the original failure path.
+  }
 }
 
 async function waitForSocketOpen(socket: VolcengineSocket) {

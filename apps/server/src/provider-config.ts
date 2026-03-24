@@ -30,6 +30,7 @@ type DoubaoStreamTTSConfig = {
   ws_url?: string
   appid?: string | number
   access_token?: string
+  model?: string
   resource_id?: string
   speaker?: string
   sample_rate?: string | number

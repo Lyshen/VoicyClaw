@@ -72,6 +72,7 @@ describe("Volcengine TTS runtime wiring", () => {
         "  ws_url: wss://example.com/yaml",
         "  appid: yaml-app-id",
         "  access_token: yaml-token",
+        "  model: seed-tts-2.0-standard",
         "  resource_id: yaml-resource",
         "  speaker: yaml-speaker",
         "  sample_rate: 16000",
@@ -83,6 +84,7 @@ describe("Volcengine TTS runtime wiring", () => {
       VOICYCLAW_VOLCENGINE_APP_ID: "env-app-id",
       VOICYCLAW_VOLCENGINE_ACCESS_TOKEN: "env-token",
       VOICYCLAW_VOLCENGINE_TTS_VOICE_TYPE: "env-speaker",
+      VOICYCLAW_VOLCENGINE_TTS_MODEL: "seed-tts-2.0-expressive",
       VOICYCLAW_VOLCENGINE_TTS_ENDPOINT: "wss://example.com/env",
       VOICYCLAW_VOLCENGINE_TTS_RESOURCE_ID: "env-resource",
       VOICYCLAW_VOLCENGINE_TTS_SAMPLE_RATE: "24000",
@@ -92,6 +94,7 @@ describe("Volcengine TTS runtime wiring", () => {
       appId: "env-app-id",
       accessToken: "env-token",
       voiceType: "env-speaker",
+      model: "seed-tts-2.0-expressive",
       endpoint: "wss://example.com/env",
       resourceId: "env-resource",
       sampleRate: 24_000,
@@ -100,10 +103,14 @@ describe("Volcengine TTS runtime wiring", () => {
 })
 
 describe("VolcengineTTSProvider", () => {
-  it("streams bidirectional audio from the provider socket", async () => {
+  it("keeps a single session open while streaming text and audio", async () => {
     const socket = new MockVolcengineSocket([
-      [Buffer.from([1, 2, 3, 4]), Buffer.from([5, 6, 7, 8])],
-      [Buffer.from([9, 10, 11, 12])],
+      {
+        taskResponses: [
+          [Buffer.from([1, 2, 3, 4]), Buffer.from([5, 6, 7, 8])],
+          [Buffer.from([9, 10, 11, 12])],
+        ],
+      },
     ])
     const provider = new VolcengineTTSProvider({
       appId: "app-id",
@@ -124,26 +131,119 @@ describe("VolcengineTTSProvider", () => {
       "090a0b0c",
     ])
 
-    expect(
-      socket.sentMessages
-        .filter((message) => message.event === VolcengineEventType.StartSession)
-        .map((message) => message.sessionId),
-    ).toHaveLength(2)
+    const sessionIds = socket.sentMessages
+      .filter((message) => message.event === VolcengineEventType.StartSession)
+      .map((message) => message.sessionId)
+    expect(sessionIds).toHaveLength(1)
 
     const taskPayloads = socket.sentMessages
       .filter((message) => message.event === VolcengineEventType.TaskRequest)
       .map((message) => decodePayload(message.payload).req_params.text)
 
-    expect(taskPayloads).toEqual(["你", "好", "世", "界"])
+    expect(taskPayloads).toEqual(["你好", "世界"])
+    expect(
+      decodePayload(
+        socket.sentMessages.find(
+          (message) => message.event === VolcengineEventType.TaskRequest,
+        )?.payload as Uint8Array,
+      ).req_params.model,
+    ).toBeUndefined()
+  })
+
+  it("can yield audio before the final text chunk arrives", async () => {
+    const socket = new MockVolcengineSocket([
+      {
+        taskResponses: [
+          [Buffer.from([1, 2, 3, 4])],
+          [Buffer.from([5, 6, 7, 8])],
+        ],
+      },
+    ])
+    const provider = new VolcengineTTSProvider({
+      appId: "app-id",
+      accessToken: "token",
+      voiceType: "zh_female_example",
+      createSocket: () => socket,
+    })
+    let releaseSecondChunk: (() => void) | undefined
+    const secondChunkGate = new Promise<void>((resolve) => {
+      releaseSecondChunk = resolve
+    })
+    const synthesis = provider.synthesize(
+      (async function* () {
+        yield "第一句。"
+        await secondChunkGate
+        yield "第二句。"
+      })(),
+      {
+        sampleRate: 16_000,
+      },
+    )
+
+    const firstAudio = await synthesis.next()
+
+    expect(firstAudio.done).toBe(false)
+    expect(firstAudio.value?.toString("hex")).toBe("01020304")
+    expect(
+      socket.sentMessages.filter(
+        (message) => message.event === VolcengineEventType.FinishSession,
+      ),
+    ).toHaveLength(0)
+
+    releaseSecondChunk?.()
+
+    const remaining: Buffer[] = []
+    for await (const chunk of synthesis) {
+      remaining.push(chunk)
+    }
+
+    expect(remaining.map((chunk) => chunk.toString("hex"))).toEqual([
+      "05060708",
+    ])
+  })
+
+  it("passes the configured V3 model when present", async () => {
+    const socket = new MockVolcengineSocket([
+      {
+        taskResponses: [[Buffer.from([1, 2, 3, 4])]],
+      },
+    ])
+    const provider = new VolcengineTTSProvider({
+      appId: "app-id",
+      accessToken: "token",
+      voiceType: "zh_female_example",
+      model: "seed-tts-2.0-standard",
+      createSocket: () => socket,
+    })
+
+    await collect(
+      provider.synthesize(textChunks(["你好。"]), {
+        sampleRate: 16_000,
+      }),
+    )
+
+    const request = socket.sentMessages.find(
+      (message) => message.event === VolcengineEventType.TaskRequest,
+    )
+    expect(
+      decodePayload((request?.payload ?? new Uint8Array()) as Uint8Array)
+        .req_params.model,
+    ).toBe("seed-tts-2.0-standard")
   })
 })
+
+type MockSessionPlan = {
+  taskResponses?: Uint8Array[][]
+  finishResponses?: Uint8Array[]
+}
 
 class MockVolcengineSocket extends EventEmitter implements VolcengineSocket {
   readonly sentMessages = [] as ReturnType<typeof unmarshalVolcengineMessage>[]
   readonly readyState = 1
   private responseIndex = 0
+  private activeTaskIndex = 0
 
-  constructor(private readonly sessionAudio: Uint8Array[][]) {
+  constructor(private readonly sessionPlans: MockSessionPlan[]) {
     super()
     queueMicrotask(() => {
       this.emit("open")
@@ -175,6 +275,7 @@ class MockVolcengineSocket extends EventEmitter implements VolcengineSocket {
     }
 
     if (message.event === VolcengineEventType.StartSession) {
+      this.activeTaskIndex = 0
       this.emitMessage(
         createServerResponse(
           VolcengineEventType.SessionStarted,
@@ -184,11 +285,22 @@ class MockVolcengineSocket extends EventEmitter implements VolcengineSocket {
       return
     }
 
-    if (message.event === VolcengineEventType.FinishSession) {
-      const chunks = this.sessionAudio[this.responseIndex] ?? []
-      this.responseIndex += 1
+    if (message.event === VolcengineEventType.TaskRequest) {
+      const plan = this.sessionPlans[this.responseIndex]
+      const chunks = plan?.taskResponses?.[this.activeTaskIndex] ?? []
+      this.activeTaskIndex += 1
 
       for (const chunk of chunks) {
+        this.emitMessage(createAudioResponse(chunk))
+      }
+      return
+    }
+
+    if (message.event === VolcengineEventType.FinishSession) {
+      const plan = this.sessionPlans[this.responseIndex]
+      this.responseIndex += 1
+
+      for (const chunk of plan?.finishResponses ?? []) {
         this.emitMessage(createAudioResponse(chunk))
       }
 
@@ -251,6 +363,7 @@ function decodePayload(payload: Uint8Array) {
   return JSON.parse(Buffer.from(payload).toString("utf8")) as {
     req_params: {
       text: string
+      model?: string
     }
   }
 }

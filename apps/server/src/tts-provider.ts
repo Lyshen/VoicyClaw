@@ -201,6 +201,10 @@ export function resolveVolcengineTTSOptions(
     appId: ensuredAppId,
     accessToken: ensuredAccessToken,
     voiceType: ensuredVoiceType,
+    model: pickFirstNonEmpty(
+      env.VOICYCLAW_VOLCENGINE_TTS_MODEL,
+      yamlConfig?.model,
+    ),
     endpoint: pickFirstNonEmpty(
       env.VOICYCLAW_VOLCENGINE_TTS_ENDPOINT,
       yamlConfig?.ws_url,
