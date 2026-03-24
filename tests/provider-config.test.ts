@@ -41,6 +41,7 @@ describe("provider config", () => {
         "  ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection",
         "  appid: 123456",
         "  access_token: token",
+        "  model: seed-tts-2.0-standard",
         "  resource_id: volc.service_type.10029",
         "  speaker: zh_female_demo",
       ].join("\n"),
@@ -67,6 +68,7 @@ describe("provider config", () => {
       type: "doubao_stream",
       appid: 123456,
       access_token: "token",
+      model: "seed-tts-2.0-standard",
       speaker: "zh_female_demo",
     })
   })
