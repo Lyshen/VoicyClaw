@@ -124,6 +124,66 @@ describe("GoogleCloudTTSProvider", () => {
     expect(close).toHaveBeenCalledTimes(1)
   })
 
+  it("waits for the first non-empty chunk before opening the Google stream", async () => {
+    const audio = Buffer.from(Int16Array.from([7, -7]).buffer)
+    const call = new FakeGoogleStreamingCall([audio])
+    const close = vi.fn(async () => undefined)
+    const createStreamingClient = vi.fn(() => ({
+      streamingSynthesize: () => call as never,
+      close,
+    }))
+    let releaseFirstChunk: (() => void) | undefined
+    const firstChunkGate = new Promise<void>((resolve) => {
+      releaseFirstChunk = resolve
+    })
+    const provider = new GoogleCloudTTSProvider({
+      serviceAccountJson: "{}",
+      voice: "en-US-Chirp3-HD-Leda",
+      createStreamingClient,
+    })
+
+    const synthesis = collect(
+      provider.synthesize(
+        (async function* () {
+          yield "   "
+          await firstChunkGate
+          yield "Hello after delay"
+        })(),
+        {
+          language: "en-US",
+        },
+      ),
+    )
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(createStreamingClient).not.toHaveBeenCalled()
+
+    releaseFirstChunk?.()
+
+    await expect(synthesis).resolves.toEqual([audio])
+    expect(createStreamingClient).toHaveBeenCalledTimes(1)
+    expect(call.requests).toEqual([
+      {
+        streamingConfig: {
+          voice: {
+            languageCode: "en-US",
+            name: "en-US-Chirp3-HD-Leda",
+          },
+          streamingAudioConfig: {
+            audioEncoding: "PCM",
+            sampleRateHertz: 24_000,
+          },
+        },
+      },
+      {
+        input: {
+          text: "Hello after delay",
+        },
+      },
+    ])
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
   it("rejects non-Chirp voices because only streaming is supported", async () => {
     const createStreamingClient = vi.fn(() => {
       throw new Error("streaming should not be created")

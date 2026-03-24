@@ -56,6 +56,13 @@ export class GoogleCloudTTSProvider implements TTSAdapter {
     config?: TTSConfig,
   ): AsyncGenerator<AudioChunk> {
     const voiceName = resolveStreamingVoice(config, this.options)
+    const iterator = text[Symbol.asyncIterator]()
+    const firstChunk = await readNextNonEmptyChunk(iterator)
+
+    if (!firstChunk) {
+      return
+    }
+
     const client = await this.createStreamingClient()
     const sampleRate =
       config?.sampleRate ?? this.options.sampleRate ?? DEFAULT_SAMPLE_RATE
@@ -63,7 +70,8 @@ export class GoogleCloudTTSProvider implements TTSAdapter {
     const stream = client.streamingSynthesize()
     const writePromise = this.writeStreamingRequests(
       stream,
-      text,
+      iterator,
+      firstChunk,
       languageCode,
       voiceName,
       sampleRate,
@@ -127,7 +135,8 @@ export class GoogleCloudTTSProvider implements TTSAdapter {
 
   private async writeStreamingRequests(
     stream: GoogleStreamingSynthesizeStream,
-    text: AsyncIterable<string>,
+    text: AsyncIterator<string>,
+    firstChunk: string,
     languageCode: string,
     voiceName: string,
     sampleRate: number,
@@ -150,11 +159,13 @@ export class GoogleCloudTTSProvider implements TTSAdapter {
       },
     })
 
-    for await (const chunk of text) {
-      if (!chunk.trim()) {
-        continue
-      }
+    await writeStreamingRequest(stream, {
+      input: {
+        text: firstChunk,
+      },
+    })
 
+    for await (const chunk of iterateNonEmptyChunks(text)) {
       await writeStreamingRequest(stream, {
         input: {
           text: chunk,
@@ -268,6 +279,34 @@ async function writeStreamingRequest(
 
     stream.once("drain", handleDrain)
   })
+}
+
+async function readNextNonEmptyChunk(iterator: AsyncIterator<string>) {
+  while (true) {
+    const { done, value } = await iterator.next()
+    if (done) {
+      return null
+    }
+
+    if (value.trim()) {
+      return value
+    }
+  }
+}
+
+async function* iterateNonEmptyChunks(iterator: AsyncIterator<string>) {
+  while (true) {
+    const { done, value } = await iterator.next()
+    if (done) {
+      return
+    }
+
+    if (!value.trim()) {
+      continue
+    }
+
+    yield value
+  }
 }
 
 function normalizeError(error: unknown) {
