@@ -8,24 +8,37 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   createRuntimeTTSProvider,
+  resolveAzureSpeechStreamingTTSOptions,
   resolveAzureSpeechTTSOptions,
   resolveGoogleCloudBatchedTTSOptions,
   resolveGoogleCloudTTSOptions,
 } from "../apps/server/src/tts-provider"
 import { AzureSpeechTTSProvider } from "../packages/tts/src/providers/azure-speech"
+import {
+  type AzurePushAudioStreamLike,
+  type AzureSpeechSynthesizerLike,
+  normalizeAzureEndpointForSdk,
+} from "../packages/tts/src/providers/azure-speech-shared"
+import { AzureSpeechStreamingTTSProvider } from "../packages/tts/src/providers/azure-speech-streaming"
 import { GoogleCloudTTSProvider } from "../packages/tts/src/providers/google-cloud"
 import { GoogleCloudBatchedTTSProvider } from "../packages/tts/src/providers/google-cloud-batched"
 
 describe("AzureSpeechTTSProvider", () => {
-  it("posts SSML to Azure and yields raw PCM audio", async () => {
-    const audio = Buffer.from(Int16Array.from([1, -2, 3, -4]).buffer)
-    const fetchImpl = vi.fn(async () => new Response(audio, { status: 200 }))
+  it("streams Azure SDK audio chunks and yields raw PCM audio", async () => {
+    const firstAudio = Buffer.from(Int16Array.from([1, -2]).buffer)
+    const secondAudio = Buffer.from(Int16Array.from([3, -4]).buffer)
+    const synthesizer = new FakeAzureSpeechSynthesizer([
+      {
+        chunks: [firstAudio, secondAudio],
+      },
+    ])
+    const createSynthesizer = vi.fn(() => synthesizer)
     const provider = new AzureSpeechTTSProvider({
       apiKey: "azure-key",
       region: "eastus",
       voice: "en-US-JennyNeural",
       sampleRate: 24_000,
-      fetchImpl,
+      createSynthesizer,
     })
 
     const chunks = await collect(
@@ -34,43 +47,104 @@ describe("AzureSpeechTTSProvider", () => {
       }),
     )
 
-    expect(chunks).toEqual([audio])
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-
-    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
-    const headers = init.headers as Record<string, string>
-
-    expect(url).toBe(
-      "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1",
-    )
-    expect(headers["Ocp-Apim-Subscription-Key"]).toBe("azure-key")
-    expect(headers["X-Microsoft-OutputFormat"]).toBe("raw-24khz-16bit-mono-pcm")
-    expect(String(init.body)).toContain("Hello world")
-    expect(String(init.body)).toContain("en-US-JennyNeural")
+    expect(chunks).toEqual([firstAudio, secondAudio])
+    expect(createSynthesizer).toHaveBeenCalledWith({
+      apiKey: "azure-key",
+      region: "eastus",
+      endpoint: undefined,
+      voice: "en-US-JennyNeural",
+      language: "en-US",
+      sampleRate: 24_000,
+    })
+    expect(synthesizer.requests).toEqual(["Hello world"])
+    expect(synthesizer.closeCalls).toBe(1)
   })
 
-  it("normalizes the Azure portal resource endpoint into the speech synthesis endpoint", async () => {
-    const audio = Buffer.from(Int16Array.from([1, -2, 3, -4]).buffer)
-    const fetchImpl = vi.fn(async () => new Response(audio, { status: 200 }))
-    const provider = new AzureSpeechTTSProvider({
+  it("normalizes Azure REST and portal endpoints into websocket synthesis endpoints", () => {
+    expect(
+      normalizeAzureEndpointForSdk(
+        "https://eastasia.api.cognitive.microsoft.com/",
+        "eastasia",
+      ),
+    ).toBe(
+      "wss://eastasia.tts.speech.microsoft.com/tts/cognitiveservices/websocket/v1",
+    )
+    expect(
+      normalizeAzureEndpointForSdk(
+        "https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1",
+      ),
+    ).toBe(
+      "wss://eastasia.tts.speech.microsoft.com/tts/cognitiveservices/websocket/v1",
+    )
+  })
+})
+
+describe("AzureSpeechStreamingTTSProvider", () => {
+  it("batches sentence chunks into segmented Azure synth calls", async () => {
+    const firstAudio = Buffer.from(Int16Array.from([11, -11]).buffer)
+    const secondAudio = Buffer.from(Int16Array.from([12, -12]).buffer)
+    const synthesizer = new FakeAzureSpeechSynthesizer([
+      {
+        chunks: [firstAudio],
+      },
+      {
+        chunks: [secondAudio],
+      },
+    ])
+    const provider = new AzureSpeechStreamingTTSProvider({
       apiKey: "azure-key",
-      region: "eastasia",
-      endpoint: "https://eastasia.api.cognitive.microsoft.com/",
-      voice: "en-US-JennyNeural",
+      region: "eastus",
+      voice: "en-US-AvaNeural",
       sampleRate: 24_000,
-      fetchImpl,
+      createSynthesizer: () => synthesizer,
     })
 
-    await collect(
-      provider.synthesize(textChunks(["Hello"]), {
+    const chunks = await collect(
+      provider.synthesize(textChunks(["Hello", " world.", " Next sentence!"]), {
         language: "en-US",
       }),
     )
 
-    const [url] = fetchImpl.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe(
-      "https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1",
+    expect(chunks).toEqual([firstAudio, secondAudio])
+    expect(synthesizer.requests).toEqual(["Hello world.", "Next sentence!"])
+    expect(synthesizer.closeCalls).toBe(1)
+  })
+
+  it("flushes a partial Azure segment after the batching timeout", async () => {
+    const firstAudio = Buffer.from(Int16Array.from([21, -21]).buffer)
+    const secondAudio = Buffer.from(Int16Array.from([22, -22]).buffer)
+    const synthesizer = new FakeAzureSpeechSynthesizer([
+      {
+        chunks: [firstAudio],
+      },
+      {
+        chunks: [secondAudio],
+      },
+    ])
+    const provider = new AzureSpeechStreamingTTSProvider({
+      apiKey: "azure-key",
+      region: "eastus",
+      voice: "en-US-AvaNeural",
+      flushTimeoutMs: 10,
+      createSynthesizer: () => synthesizer,
+    })
+
+    const chunks = await collect(
+      provider.synthesize(
+        (async function* () {
+          yield "Hello"
+          await sleep(30)
+          yield " later."
+        })(),
+        {
+          language: "en-US",
+        },
+      ),
     )
+
+    expect(chunks).toEqual([firstAudio, secondAudio])
+    expect(synthesizer.requests).toEqual(["Hello", "later."])
+    expect(synthesizer.closeCalls).toBe(1)
   })
 })
 
@@ -384,6 +458,14 @@ describe("runtime TTS provider selection", () => {
     ).toThrow(/VOICYCLAW_AZURE_SPEECH_KEY/)
   })
 
+  it("requires Azure credentials when Azure segmented TTS is selected", () => {
+    expect(() =>
+      resolveAzureSpeechStreamingTTSOptions({
+        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+      }),
+    ).toThrow(/VOICYCLAW_AZURE_SPEECH_KEY/)
+  })
+
   it("requires Google service-account credentials when Google TTS is selected", () => {
     expect(() =>
       resolveGoogleCloudTTSOptions({
@@ -446,6 +528,26 @@ describe("runtime TTS provider selection", () => {
     )
 
     expect(runtime.providerId).toBe("azure-tts")
+    expect(runtime.sampleRate).toBe(24_000)
+  })
+
+  it("selects Azure segmented TTS at runtime", () => {
+    const runtime = createRuntimeTTSProvider(
+      {
+        conversationBackend: "local-bot",
+        asrMode: "client",
+        asrProvider: "browser",
+        ttsMode: "server",
+        ttsProvider: "azure-streaming-tts",
+        language: "en-US",
+      },
+      {
+        VOICYCLAW_AZURE_SPEECH_KEY: "azure-key",
+        VOICYCLAW_AZURE_SPEECH_REGION: "eastus",
+      },
+    )
+
+    expect(runtime.providerId).toBe("azure-streaming-tts")
     expect(runtime.sampleRate).toBe(24_000)
   })
 
@@ -535,6 +637,68 @@ describe("runtime TTS provider selection", () => {
       region: "westus",
       voice: "en-US-JennyNeural",
       sampleRate: 16_000,
+    })
+  })
+
+  it("loads Azure segmented runtime options from provider YAML and base Azure credentials", () => {
+    const runtime = createRuntimeTTSProvider(
+      {
+        conversationBackend: "local-bot",
+        asrMode: "client",
+        asrProvider: "browser",
+        ttsMode: "server",
+        ttsProvider: "azure-streaming-tts",
+        language: "en-US",
+      },
+      {
+        VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+          "AzureSpeechTTS:",
+          "  api_key: azure-key-from-yaml",
+          "  region: eastasia",
+          "",
+          "AzureSpeechStreamingTTS:",
+          "  voice: en-US-AvaNeural",
+          "  sample_rate: 48000",
+          "  flush_timeout_ms: 320",
+          "  max_chunk_characters: 180",
+        ]),
+      },
+    )
+
+    expect(runtime.providerId).toBe("azure-streaming-tts")
+    expect(runtime.sampleRate).toBe(48_000)
+  })
+
+  it("lets env vars override Azure segmented provider YAML values", () => {
+    const options = resolveAzureSpeechStreamingTTSOptions({
+      VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+        "AzureSpeechTTS:",
+        "  api_key: azure-key-from-yaml",
+        "  region: eastasia",
+        "  voice: en-US-AvaNeural",
+        "  sample_rate: 24000",
+        "",
+        "AzureSpeechStreamingTTS:",
+        "  voice: en-US-AndrewNeural",
+        "  sample_rate: 22050",
+        "  flush_timeout_ms: 320",
+        "  max_chunk_characters: 180",
+      ]),
+      VOICYCLAW_AZURE_SPEECH_KEY: "azure-key-from-env",
+      VOICYCLAW_AZURE_SPEECH_REGION: "westus",
+      VOICYCLAW_AZURE_STREAMING_TTS_VOICE: "en-US-JennyNeural",
+      VOICYCLAW_AZURE_STREAMING_TTS_SAMPLE_RATE: "16000",
+      VOICYCLAW_AZURE_STREAMING_TTS_FLUSH_TIMEOUT_MS: "450",
+      VOICYCLAW_AZURE_STREAMING_TTS_MAX_CHUNK_CHARACTERS: "240",
+    })
+
+    expect(options).toMatchObject({
+      apiKey: "azure-key-from-env",
+      region: "westus",
+      voice: "en-US-JennyNeural",
+      sampleRate: 16_000,
+      flushTimeoutMs: 450,
+      maxChunkCharacters: 240,
     })
   })
 
@@ -683,6 +847,56 @@ function missingProviderConfigPath() {
   )
 }
 
+class FakeAzureSpeechSynthesizer implements AzureSpeechSynthesizerLike {
+  readonly requests: string[] = []
+  closeCalls = 0
+  private responseIndex = 0
+
+  constructor(
+    private readonly responses: Array<{
+      chunks: Buffer[]
+      error?: string
+      reason?: number
+    }>,
+  ) {}
+
+  speakTextAsync(
+    text: string,
+    cb?: (result: { reason?: number; errorDetails?: string }) => void,
+    err?: (error: string) => void,
+    stream?: AzurePushAudioStreamLike,
+  ) {
+    this.requests.push(text)
+
+    const response = this.responses[this.responseIndex]
+    this.responseIndex += 1
+
+    if (!response) {
+      err?.("Missing fake Azure response")
+      return
+    }
+
+    if (response.error) {
+      err?.(response.error)
+      return
+    }
+
+    for (const chunk of response.chunks) {
+      stream?.write(toArrayBuffer(chunk))
+    }
+
+    stream?.close()
+    cb?.({
+      reason: response.reason ?? 8,
+    })
+  }
+
+  close(cb?: () => void) {
+    this.closeCalls += 1
+    cb?.()
+  }
+}
+
 class FakeGoogleStreamingCall extends Transform {
   readonly requests: unknown[] = []
   private responseIndex = 0
@@ -722,4 +936,11 @@ class FakeGoogleStreamingCall extends Transform {
     this.push(null)
     callback()
   }
+}
+
+function toArrayBuffer(buffer: Buffer) {
+  return buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength,
+  )
 }

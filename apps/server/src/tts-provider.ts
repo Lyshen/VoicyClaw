@@ -1,5 +1,6 @@
 import type { ClientHelloMessage } from "@voicyclaw/protocol"
 import {
+  AzureSpeechStreamingTTSProvider,
   AzureSpeechTTSProvider,
   createServerTTSAdapter,
   GoogleCloudBatchedTTSProvider,
@@ -8,6 +9,7 @@ import {
   type VolcengineTTSProviderOptions,
 } from "@voicyclaw/tts"
 import {
+  resolveAzureSpeechStreamingTTSConfig,
   resolveAzureSpeechTTSConfig,
   resolveDoubaoStreamTTSConfig,
   resolveGoogleCloudBatchedTTSConfig,
@@ -17,6 +19,7 @@ import {
 const DEFAULT_DEMO_SAMPLE_RATE = 16_000
 const DEFAULT_VOLCENGINE_SAMPLE_RATE = 16_000
 const DEFAULT_AZURE_SAMPLE_RATE = 24_000
+const DEFAULT_AZURE_STREAMING_SAMPLE_RATE = 24_000
 const DEFAULT_GOOGLE_SAMPLE_RATE = 24_000
 const DEFAULT_GOOGLE_BATCHED_SAMPLE_RATE = 24_000
 
@@ -28,6 +31,7 @@ export interface RuntimeTTSProvider {
     | "demo"
     | "volcengine-tts"
     | "azure-tts"
+    | "azure-streaming-tts"
     | "google-tts"
     | "google-batched-tts"
   sampleRate: number
@@ -58,6 +62,15 @@ export function createRuntimeTTSProvider(
         providerId: "azure-tts",
         sampleRate: options.sampleRate ?? DEFAULT_AZURE_SAMPLE_RATE,
         adapter: new AzureSpeechTTSProvider(options),
+      }
+    }
+    case "azure-streaming-tts": {
+      const options = resolveAzureSpeechStreamingTTSOptions(env)
+
+      return {
+        providerId: "azure-streaming-tts",
+        sampleRate: options.sampleRate ?? DEFAULT_AZURE_STREAMING_SAMPLE_RATE,
+        adapter: new AzureSpeechStreamingTTSProvider(options),
       }
     }
     case "google-tts": {
@@ -175,6 +188,68 @@ export function resolveGoogleCloudTTSOptions(env: RuntimeEnv = process.env) {
     speakingRate:
       parseFloatValue(env.VOICYCLAW_GOOGLE_TTS_SPEAKING_RATE) ??
       parseFloatValue(config?.speaking_rate),
+  }
+}
+
+export function resolveAzureSpeechStreamingTTSOptions(
+  env: RuntimeEnv = process.env,
+) {
+  const baseConfig = resolveAzureSpeechTTSConfig(env)
+  const config = resolveAzureSpeechStreamingTTSConfig(env)
+  const apiKey = pickFirstNonEmpty(
+    env.VOICYCLAW_AZURE_SPEECH_KEY,
+    env.AZURE_SPEECH_KEY,
+    config?.api_key,
+    baseConfig?.api_key,
+  )
+
+  if (!apiKey) {
+    throw new Error(
+      "Azure Speech streaming TTS is missing credentials. Set VOICYCLAW_AZURE_SPEECH_KEY, AzureSpeechStreamingTTS.api_key, or AzureSpeechTTS.api_key in config/providers.local.yaml.",
+    )
+  }
+
+  const region = pickFirstNonEmpty(
+    env.VOICYCLAW_AZURE_SPEECH_REGION,
+    env.AZURE_SPEECH_REGION,
+    config?.region,
+    baseConfig?.region,
+  )
+  const endpoint = pickFirstNonEmpty(
+    env.VOICYCLAW_AZURE_STREAMING_TTS_ENDPOINT,
+    env.VOICYCLAW_AZURE_TTS_ENDPOINT,
+    config?.endpoint,
+    baseConfig?.endpoint,
+  )
+
+  if (!region && !endpoint) {
+    throw new Error(
+      "Azure Speech streaming TTS is missing region or endpoint. Set VOICYCLAW_AZURE_SPEECH_REGION, VOICYCLAW_AZURE_STREAMING_TTS_ENDPOINT, VOICYCLAW_AZURE_TTS_ENDPOINT, or AzureSpeechStreamingTTS.region/endpoint in config/providers.local.yaml.",
+    )
+  }
+
+  return {
+    apiKey,
+    region,
+    endpoint,
+    voice: pickFirstNonEmpty(
+      env.VOICYCLAW_AZURE_STREAMING_TTS_VOICE,
+      env.VOICYCLAW_AZURE_TTS_VOICE,
+      config?.voice,
+      baseConfig?.voice,
+    ),
+    sampleRate:
+      parsePositiveInt(env.VOICYCLAW_AZURE_STREAMING_TTS_SAMPLE_RATE) ??
+      parsePositiveInt(env.VOICYCLAW_AZURE_TTS_SAMPLE_RATE) ??
+      parsePositiveInt(config?.sample_rate) ??
+      parsePositiveInt(baseConfig?.sample_rate),
+    flushTimeoutMs:
+      parsePositiveInt(env.VOICYCLAW_AZURE_STREAMING_TTS_FLUSH_TIMEOUT_MS) ??
+      parsePositiveInt(config?.flush_timeout_ms),
+    maxChunkCharacters:
+      parsePositiveInt(
+        env.VOICYCLAW_AZURE_STREAMING_TTS_MAX_CHUNK_CHARACTERS,
+      ) ?? parsePositiveInt(config?.max_chunk_characters),
   }
 }
 

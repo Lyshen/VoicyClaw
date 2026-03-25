@@ -131,6 +131,21 @@ describe("prototype settings helpers", () => {
       ttsProvider: "google-batched-tts",
     })
   })
+
+  it("keeps Azure segmented server TTS selections round-trippable", () => {
+    const storage = createMemoryStorage()
+    storage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ttsProvider: "azure-streaming-tts",
+      }),
+    )
+    globalThis.window = { localStorage: storage } as Window & typeof globalThis
+
+    expect(loadPrototypeSettings()).toMatchObject({
+      ttsProvider: "azure-streaming-tts",
+    })
+  })
 })
 
 function createMemoryStorage(): MemoryStorage {

@@ -8,6 +8,17 @@ AzureSpeechTTS:
   voice: en-US-JennyNeural
   sample_rate: 24000
 
+AzureSpeechStreamingTTS:
+  type: azure_speech_streaming_tts
+  # Credentials fall back to AzureSpeechTTS when omitted.
+  endpoint:
+  region:
+  api_key:
+  voice: en-US-JennyNeural
+  sample_rate: 24000
+  flush_timeout_ms: 450
+  max_chunk_characters: 220
+
 GoogleCloudTTS:
   type: google_cloud_tts
   endpoint: texttospeech.googleapis.com

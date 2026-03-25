@@ -15,6 +15,17 @@ type AzureSpeechTTSConfig = {
   sample_rate?: string | number
 }
 
+type AzureSpeechStreamingTTSConfig = {
+  type?: string
+  endpoint?: string
+  region?: string
+  api_key?: string
+  voice?: string
+  sample_rate?: string | number
+  flush_timeout_ms?: string | number
+  max_chunk_characters?: string | number
+}
+
 type GoogleCloudTTSConfig = {
   type?: string
   endpoint?: string
@@ -84,6 +95,18 @@ export function resolveAzureSpeechTTSConfig(
   }
 
   return config as AzureSpeechTTSConfig
+}
+
+export function resolveAzureSpeechStreamingTTSConfig(
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const config = loadProviderConfig(env).AzureSpeechStreamingTTS
+
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null
+  }
+
+  return config as AzureSpeechStreamingTTSConfig
 }
 
 export function resolveGoogleCloudTTSConfig(

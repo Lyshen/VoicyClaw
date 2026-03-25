@@ -136,21 +136,23 @@ budget providers.
 ### Done
 
 - `google-tts` real bidirectional streaming via `Chirp 3 HD`
+- `google-batched-tts` as the reference unary / sentence-batched provider
+- `azure-tts` upgraded to official Azure SDK audio streaming output
+- `azure-streaming-tts` added as the Azure segmented streaming-input style path
 - `volcengine-tts` improved bidirectional streaming behavior
 
 ### Next
 
-- add `google-batched-tts` as the reference implementation for unary / sentence
-  batched providers
-- validate that good sentence batching produces acceptable conversational
-  latency with `WaveNet` / `Neural2`
-- keep `google-tts` and `volcengine-tts` isolated from those changes
+- validate that sentence batching produces acceptable conversational latency
+  across the cheaper provider tier
+- keep the flagship realtime providers isolated from batched-provider changes
+- optionally add a unified provider capability matrix to `/settings`
 
 ### After That
 
-- add Azure classic batched TTS
 - evaluate AWS Polly batched TTS
-- optionally add a unified provider capability matrix to `/settings`
+- expand the budget-tier matrix with more providers once the capability model
+  is stable
 
 ---
 

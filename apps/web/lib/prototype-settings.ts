@@ -4,6 +4,7 @@ export type TtsProviderId =
   | "browser"
   | "demo"
   | "azure-tts"
+  | "azure-streaming-tts"
   | "google-tts"
   | "google-batched-tts"
   | "volcengine-tts"
@@ -105,11 +106,20 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
   {
     id: "azure-tts",
     mode: "server",
-    label: "Azure Speech TTS",
+    label: "Azure Speech TTS (Unary)",
     summary:
-      "Uses Azure Speech neural voices from the VoicyClaw server and returns raw PCM for browser playback.",
+      "Sends the full bot reply to Azure Speech once, then streams PCM audio chunks back from the server.",
     runtimeHint:
-      "Set Azure speech credentials on the server, then use this for global low-friction hosted speech.",
+      "Use this when you want the simplest Azure Speech path with official server-side streaming audio output.",
+  },
+  {
+    id: "azure-streaming-tts",
+    mode: "server",
+    label: "Azure Speech TTS (Segmented)",
+    summary:
+      "Batches the bot text stream into sentence-ish Azure Speech requests so playback can start earlier without changing the shared server pipeline.",
+    runtimeHint:
+      "Use this when you want Azure to feel closer to a realtime voice path, while keeping the batching logic isolated inside the provider adapter.",
   },
   {
     id: "google-tts",
@@ -301,6 +311,7 @@ function normalizeTtsProvider(
   legacyBrowserVoiceEnabled?: boolean,
 ): TtsProviderId {
   if (providerId === "azure-tts") return "azure-tts"
+  if (providerId === "azure-streaming-tts") return "azure-streaming-tts"
   if (providerId === "google-tts") return "google-tts"
   if (providerId === "google-batched-tts") return "google-batched-tts"
   if (providerId === "demo") return "demo"
