@@ -7,6 +7,8 @@ export type TtsProviderId =
   | "azure-streaming-tts"
   | "google-tts"
   | "google-batched-tts"
+  | "tencent-tts"
+  | "tencent-streaming-tts"
   | "volcengine-tts"
 export type ConversationBackendId = "local-bot" | "openclaw-gateway"
 
@@ -138,6 +140,24 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
       "Uses Google unary Text-to-Speech with sentence batching in the server for lower-cost WaveNet or Neural2 style playback.",
     runtimeHint:
       "Use this when you want cheaper Google voices with good conversational pacing, without changing the shared server pipeline.",
+  },
+  {
+    id: "tencent-tts",
+    mode: "server",
+    label: "Tencent Cloud TTS (Unary Streaming)",
+    summary:
+      "Sends the full bot reply into Tencent Cloud's one-way websocket TTS API and streams raw PCM audio back from the server.",
+    runtimeHint:
+      "Use this when you want Tencent Cloud's official streaming-audio output path without changing the shared server pipeline.",
+  },
+  {
+    id: "tencent-streaming-tts",
+    mode: "server",
+    label: "Tencent Cloud TTS (Bidirectional)",
+    summary:
+      "Uses Tencent Cloud's bidirectional websocket TTS API so text can stream in while PCM audio streams back out.",
+    runtimeHint:
+      "Use this when you want the closest Tencent Cloud match to a realtime voice path.",
   },
   {
     id: "volcengine-tts",
@@ -314,6 +334,8 @@ function normalizeTtsProvider(
   if (providerId === "azure-streaming-tts") return "azure-streaming-tts"
   if (providerId === "google-tts") return "google-tts"
   if (providerId === "google-batched-tts") return "google-batched-tts"
+  if (providerId === "tencent-tts") return "tencent-tts"
+  if (providerId === "tencent-streaming-tts") return "tencent-streaming-tts"
   if (providerId === "demo") return "demo"
   if (providerId === "browser") return "browser"
   if (providerId === "volcengine-tts") return "volcengine-tts"

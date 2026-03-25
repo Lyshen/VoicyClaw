@@ -137,6 +137,8 @@ budget providers.
 
 - `google-tts` real bidirectional streaming via `Chirp 3 HD`
 - `google-batched-tts` as the reference unary / sentence-batched provider
+- `tencent-tts` using Tencent Cloud's unary websocket streaming API
+- `tencent-streaming-tts` using Tencent Cloud's bidirectional websocket API
 - `azure-tts` upgraded to official Azure SDK audio streaming output
 - `azure-streaming-tts` added as the Azure segmented streaming-input style path
 - `volcengine-tts` improved bidirectional streaming behavior

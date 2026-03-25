@@ -132,6 +132,36 @@ describe("prototype settings helpers", () => {
     })
   })
 
+  it("keeps Tencent unary server TTS selections round-trippable", () => {
+    const storage = createMemoryStorage()
+    storage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ttsProvider: "tencent-tts",
+      }),
+    )
+    globalThis.window = { localStorage: storage } as Window & typeof globalThis
+
+    expect(loadPrototypeSettings()).toMatchObject({
+      ttsProvider: "tencent-tts",
+    })
+  })
+
+  it("keeps Tencent bidirectional server TTS selections round-trippable", () => {
+    const storage = createMemoryStorage()
+    storage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ttsProvider: "tencent-streaming-tts",
+      }),
+    )
+    globalThis.window = { localStorage: storage } as Window & typeof globalThis
+
+    expect(loadPrototypeSettings()).toMatchObject({
+      ttsProvider: "tencent-streaming-tts",
+    })
+  })
+
   it("keeps Azure segmented server TTS selections round-trippable", () => {
     const storage = createMemoryStorage()
     storage.setItem(
