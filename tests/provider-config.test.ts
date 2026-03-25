@@ -11,10 +11,12 @@ import {
   resolveDoubaoStreamTTSConfig,
   resolveGoogleCloudBatchedTTSConfig,
   resolveGoogleCloudTTSConfig,
+  resolveTencentCloudStreamingTTSConfig,
+  resolveTencentCloudTTSConfig,
 } from "../apps/server/src/provider-config"
 
 describe("provider config", () => {
-  it("loads Azure unary, Azure segmented, Google streaming, Google batched, and Doubao TTS YAML provider config", () => {
+  it("loads Azure, Google, Tencent, and Doubao TTS YAML provider config", () => {
     const cwd = mkdtempSync(
       path.join(os.tmpdir(), "voicyclaw-provider-config-"),
     )
@@ -58,6 +60,24 @@ describe("provider config", () => {
         "  pitch: -1",
         "  flush_timeout_ms: 450",
         "  max_chunk_characters: 220",
+        "",
+        "TencentCloudTTS:",
+        "  type: tencent_cloud_tts",
+        "  app_id: 1234567890",
+        "  secret_id: secret-id",
+        "  secret_key: secret-key",
+        "  voice_type: 502001",
+        "  sample_rate: 16000",
+        "  speed: 1",
+        "  volume: 5",
+        "",
+        "TencentCloudStreamingTTS:",
+        "  type: tencent_cloud_streaming_tts",
+        "  voice_type: 502001",
+        "  sample_rate: 24000",
+        "  speed: 1.1",
+        "  volume: 4",
+        "  enable_subtitle: true",
         "",
         "DoubaoStreamTTS:",
         "  type: doubao_stream",
@@ -104,6 +124,24 @@ describe("provider config", () => {
       voice: "en-US-Neural2-F",
       sample_rate: 24000,
       flush_timeout_ms: 450,
+    })
+    expect(resolveTencentCloudTTSConfig(env)).toMatchObject({
+      type: "tencent_cloud_tts",
+      app_id: 1234567890,
+      secret_id: "secret-id",
+      secret_key: "secret-key",
+      voice_type: 502001,
+      sample_rate: 16000,
+      speed: 1,
+      volume: 5,
+    })
+    expect(resolveTencentCloudStreamingTTSConfig(env)).toMatchObject({
+      type: "tencent_cloud_streaming_tts",
+      voice_type: 502001,
+      sample_rate: 24000,
+      speed: 1.1,
+      volume: 4,
+      enable_subtitle: true,
     })
     expect(resolveDoubaoStreamTTSConfig(env)).toMatchObject({
       type: "doubao_stream",

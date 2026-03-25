@@ -52,6 +52,38 @@ GoogleCloudBatchedTTS:
   flush_timeout_ms: 450
   max_chunk_characters: 220
 
+TencentCloudTTS:
+  type: tencent_cloud_tts
+  endpoint: wss://tts.cloud.tencent.com/stream_ws
+  app_id: "your-app-id"
+  secret_id: "your-secret-id"
+  secret_key: "your-secret-key"
+  voice_type: 502001
+  fast_voice_type:
+  sample_rate: 16000
+  codec: pcm
+  speed:
+  volume:
+  enable_subtitle: false
+  emotion_category:
+  emotion_intensity:
+  segment_rate:
+
+TencentCloudStreamingTTS:
+  type: tencent_cloud_streaming_tts
+  # Credentials fall back to TencentCloudTTS when omitted.
+  endpoint: wss://tts.cloud.tencent.com/stream_wsv2
+  app_id:
+  secret_id:
+  secret_key:
+  voice_type: 502001
+  fast_voice_type:
+  sample_rate: 24000
+  codec: pcm
+  speed:
+  volume:
+  enable_subtitle: false
+
 DoubaoStreamTTS:
   type: doubao_stream
   ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection

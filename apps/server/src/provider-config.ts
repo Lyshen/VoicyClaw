@@ -61,6 +61,39 @@ type GoogleCloudBatchedTTSConfig = {
   max_chunk_characters?: string | number
 }
 
+type TencentCloudTTSConfig = {
+  type?: string
+  endpoint?: string
+  app_id?: string | number
+  secret_id?: string
+  secret_key?: string
+  voice_type?: string | number
+  fast_voice_type?: string
+  sample_rate?: string | number
+  codec?: string
+  speed?: string | number
+  volume?: string | number
+  enable_subtitle?: string | boolean
+  emotion_category?: string
+  emotion_intensity?: string | number
+  segment_rate?: string | number
+}
+
+type TencentCloudStreamingTTSConfig = {
+  type?: string
+  endpoint?: string
+  app_id?: string | number
+  secret_id?: string
+  secret_key?: string
+  voice_type?: string | number
+  fast_voice_type?: string
+  sample_rate?: string | number
+  codec?: string
+  speed?: string | number
+  volume?: string | number
+  enable_subtitle?: string | boolean
+}
+
 type DoubaoStreamTTSConfig = {
   type?: string
   ws_url?: string
@@ -143,6 +176,30 @@ export function resolveGoogleCloudBatchedTTSConfig(
   }
 
   return config as GoogleCloudBatchedTTSConfig
+}
+
+export function resolveTencentCloudTTSConfig(
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const config = loadProviderConfig(env).TencentCloudTTS
+
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null
+  }
+
+  return config as TencentCloudTTSConfig
+}
+
+export function resolveTencentCloudStreamingTTSConfig(
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const config = loadProviderConfig(env).TencentCloudStreamingTTS
+
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null
+  }
+
+  return config as TencentCloudStreamingTTSConfig
 }
 
 export function resolveDoubaoStreamTTSConfig(

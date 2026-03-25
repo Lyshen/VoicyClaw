@@ -5,6 +5,10 @@ import {
   createServerTTSAdapter,
   GoogleCloudBatchedTTSProvider,
   GoogleCloudTTSProvider,
+  TencentCloudStreamingTTSProvider,
+  type TencentCloudStreamingTTSProviderOptions,
+  TencentCloudTTSProvider,
+  type TencentCloudTTSProviderOptions,
   type TTSAdapter,
   type VolcengineTTSProviderOptions,
 } from "@voicyclaw/tts"
@@ -14,6 +18,8 @@ import {
   resolveDoubaoStreamTTSConfig,
   resolveGoogleCloudBatchedTTSConfig,
   resolveGoogleCloudTTSConfig,
+  resolveTencentCloudStreamingTTSConfig,
+  resolveTencentCloudTTSConfig,
 } from "./provider-config"
 
 const DEFAULT_DEMO_SAMPLE_RATE = 16_000
@@ -22,6 +28,8 @@ const DEFAULT_AZURE_SAMPLE_RATE = 24_000
 const DEFAULT_AZURE_STREAMING_SAMPLE_RATE = 24_000
 const DEFAULT_GOOGLE_SAMPLE_RATE = 24_000
 const DEFAULT_GOOGLE_BATCHED_SAMPLE_RATE = 24_000
+const DEFAULT_TENCENT_SAMPLE_RATE = 16_000
+const DEFAULT_TENCENT_STREAMING_SAMPLE_RATE = 16_000
 
 type RuntimeTTSSettings = ClientHelloMessage["settings"] | undefined
 type RuntimeEnv = NodeJS.ProcessEnv
@@ -34,6 +42,8 @@ export interface RuntimeTTSProvider {
     | "azure-streaming-tts"
     | "google-tts"
     | "google-batched-tts"
+    | "tencent-tts"
+    | "tencent-streaming-tts"
   sampleRate: number
   adapter: TTSAdapter
 }
@@ -89,6 +99,24 @@ export function createRuntimeTTSProvider(
         providerId: "google-batched-tts",
         sampleRate: options.sampleRate ?? DEFAULT_GOOGLE_BATCHED_SAMPLE_RATE,
         adapter: new GoogleCloudBatchedTTSProvider(options),
+      }
+    }
+    case "tencent-tts": {
+      const options = resolveTencentCloudTTSOptions(env)
+
+      return {
+        providerId: "tencent-tts",
+        sampleRate: options.sampleRate ?? DEFAULT_TENCENT_SAMPLE_RATE,
+        adapter: new TencentCloudTTSProvider(options),
+      }
+    }
+    case "tencent-streaming-tts": {
+      const options = resolveTencentCloudStreamingTTSOptions(env)
+
+      return {
+        providerId: "tencent-streaming-tts",
+        sampleRate: options.sampleRate ?? DEFAULT_TENCENT_STREAMING_SAMPLE_RATE,
+        adapter: new TencentCloudStreamingTTSProvider(options),
       }
     }
     default:
@@ -358,6 +386,159 @@ export function resolveGoogleCloudBatchedTTSOptions(
   }
 }
 
+export function resolveTencentCloudTTSOptions(
+  env: RuntimeEnv = process.env,
+): TencentCloudTTSProviderOptions {
+  const config = resolveTencentCloudTTSConfig(env)
+  const appId = pickFirstNonEmpty(
+    env.VOICYCLAW_TENCENT_APP_ID,
+    stringify(config?.app_id),
+  )
+  const secretId = pickFirstNonEmpty(
+    env.VOICYCLAW_TENCENT_SECRET_ID,
+    config?.secret_id,
+  )
+  const secretKey = pickFirstNonEmpty(
+    env.VOICYCLAW_TENCENT_SECRET_KEY,
+    config?.secret_key,
+  )
+  const missing = [
+    !appId && "VOICYCLAW_TENCENT_APP_ID",
+    !secretId && "VOICYCLAW_TENCENT_SECRET_ID",
+    !secretKey && "VOICYCLAW_TENCENT_SECRET_KEY",
+  ].filter(Boolean) as string[]
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Tencent Cloud TTS requires ${missing.join(", ")} when ttsProvider=tencent-tts`,
+    )
+  }
+
+  return {
+    appId: appId as string,
+    secretId: secretId as string,
+    secretKey: secretKey as string,
+    endpoint: pickFirstNonEmpty(
+      env.VOICYCLAW_TENCENT_TTS_ENDPOINT,
+      config?.endpoint,
+    ),
+    voiceType: pickFirstNonEmpty(
+      env.VOICYCLAW_TENCENT_TTS_VOICE_TYPE,
+      stringify(config?.voice_type),
+    ),
+    fastVoiceType: pickFirstNonEmpty(
+      env.VOICYCLAW_TENCENT_TTS_FAST_VOICE_TYPE,
+      config?.fast_voice_type,
+    ),
+    sampleRate:
+      parsePositiveInt(env.VOICYCLAW_TENCENT_TTS_SAMPLE_RATE) ??
+      parsePositiveInt(config?.sample_rate),
+    codec: pickFirstNonEmpty(env.VOICYCLAW_TENCENT_TTS_CODEC, config?.codec),
+    speed:
+      parseFloatValue(env.VOICYCLAW_TENCENT_TTS_SPEED) ??
+      parseFloatValue(config?.speed),
+    volume:
+      parseFloatValue(env.VOICYCLAW_TENCENT_TTS_VOLUME) ??
+      parseFloatValue(config?.volume),
+    enableSubtitle:
+      parseBoolean(env.VOICYCLAW_TENCENT_TTS_ENABLE_SUBTITLE) ??
+      parseBoolean(config?.enable_subtitle),
+    emotionCategory: pickFirstNonEmpty(
+      env.VOICYCLAW_TENCENT_TTS_EMOTION_CATEGORY,
+      config?.emotion_category,
+    ),
+    emotionIntensity:
+      parseFloatValue(env.VOICYCLAW_TENCENT_TTS_EMOTION_INTENSITY) ??
+      parseFloatValue(config?.emotion_intensity),
+    segmentRate:
+      parsePositiveInt(env.VOICYCLAW_TENCENT_TTS_SEGMENT_RATE) ??
+      parsePositiveInt(config?.segment_rate),
+  }
+}
+
+export function resolveTencentCloudStreamingTTSOptions(
+  env: RuntimeEnv = process.env,
+): TencentCloudStreamingTTSProviderOptions {
+  const baseConfig = resolveTencentCloudTTSConfig(env)
+  const config = resolveTencentCloudStreamingTTSConfig(env)
+  const appId = pickFirstNonEmpty(
+    env.VOICYCLAW_TENCENT_APP_ID,
+    stringify(config?.app_id),
+    stringify(baseConfig?.app_id),
+  )
+  const secretId = pickFirstNonEmpty(
+    env.VOICYCLAW_TENCENT_SECRET_ID,
+    config?.secret_id,
+    baseConfig?.secret_id,
+  )
+  const secretKey = pickFirstNonEmpty(
+    env.VOICYCLAW_TENCENT_SECRET_KEY,
+    config?.secret_key,
+    baseConfig?.secret_key,
+  )
+  const missing = [
+    !appId && "VOICYCLAW_TENCENT_APP_ID",
+    !secretId && "VOICYCLAW_TENCENT_SECRET_ID",
+    !secretKey && "VOICYCLAW_TENCENT_SECRET_KEY",
+  ].filter(Boolean) as string[]
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Tencent Cloud TTS requires ${missing.join(", ")} when ttsProvider=tencent-streaming-tts`,
+    )
+  }
+
+  return {
+    appId: appId as string,
+    secretId: secretId as string,
+    secretKey: secretKey as string,
+    endpoint: pickFirstNonEmpty(
+      env.VOICYCLAW_TENCENT_STREAMING_TTS_ENDPOINT,
+      env.VOICYCLAW_TENCENT_TTS_ENDPOINT,
+      config?.endpoint,
+      baseConfig?.endpoint,
+    ),
+    voiceType: pickFirstNonEmpty(
+      env.VOICYCLAW_TENCENT_STREAMING_TTS_VOICE_TYPE,
+      env.VOICYCLAW_TENCENT_TTS_VOICE_TYPE,
+      stringify(config?.voice_type),
+      stringify(baseConfig?.voice_type),
+    ),
+    fastVoiceType: pickFirstNonEmpty(
+      env.VOICYCLAW_TENCENT_STREAMING_TTS_FAST_VOICE_TYPE,
+      env.VOICYCLAW_TENCENT_TTS_FAST_VOICE_TYPE,
+      config?.fast_voice_type,
+      baseConfig?.fast_voice_type,
+    ),
+    sampleRate:
+      parsePositiveInt(env.VOICYCLAW_TENCENT_STREAMING_TTS_SAMPLE_RATE) ??
+      parsePositiveInt(env.VOICYCLAW_TENCENT_TTS_SAMPLE_RATE) ??
+      parsePositiveInt(config?.sample_rate) ??
+      parsePositiveInt(baseConfig?.sample_rate),
+    codec: pickFirstNonEmpty(
+      env.VOICYCLAW_TENCENT_STREAMING_TTS_CODEC,
+      env.VOICYCLAW_TENCENT_TTS_CODEC,
+      config?.codec,
+      baseConfig?.codec,
+    ),
+    speed:
+      parseFloatValue(env.VOICYCLAW_TENCENT_STREAMING_TTS_SPEED) ??
+      parseFloatValue(env.VOICYCLAW_TENCENT_TTS_SPEED) ??
+      parseFloatValue(config?.speed) ??
+      parseFloatValue(baseConfig?.speed),
+    volume:
+      parseFloatValue(env.VOICYCLAW_TENCENT_STREAMING_TTS_VOLUME) ??
+      parseFloatValue(env.VOICYCLAW_TENCENT_TTS_VOLUME) ??
+      parseFloatValue(config?.volume) ??
+      parseFloatValue(baseConfig?.volume),
+    enableSubtitle:
+      parseBoolean(env.VOICYCLAW_TENCENT_STREAMING_TTS_ENABLE_SUBTITLE) ??
+      parseBoolean(env.VOICYCLAW_TENCENT_TTS_ENABLE_SUBTITLE) ??
+      parseBoolean(config?.enable_subtitle) ??
+      parseBoolean(baseConfig?.enable_subtitle),
+  }
+}
+
 export function resolveVolcengineTTSOptions(
   env: RuntimeEnv = process.env,
 ): VolcengineTTSProviderOptions {
@@ -435,6 +616,27 @@ function parseFloatValue(value: string | number | undefined) {
   const parsed =
     typeof value === "number" ? value : Number.parseFloat(value ?? "")
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function parseBoolean(value: string | boolean | undefined) {
+  if (typeof value === "boolean") {
+    return value
+  }
+
+  const normalized = value?.trim().toLowerCase()
+  if (!normalized) {
+    return undefined
+  }
+
+  if (normalized === "true" || normalized === "1" || normalized === "yes") {
+    return true
+  }
+
+  if (normalized === "false" || normalized === "0" || normalized === "no") {
+    return false
+  }
+
+  return undefined
 }
 
 function stringify(value: string | number | undefined) {

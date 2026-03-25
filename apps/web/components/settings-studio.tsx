@@ -311,8 +311,13 @@ export function SettingsStudio() {
             the shared <code>AzureSpeechTTS</code> credentials. Google Cloud
             streaming and batched TTS both work best with a service account file
             or JSON. The streaming path expects a Chirp 3 HD voice, while the
-            batched path expects a WaveNet or Neural2 style voice. Volcengine
-            TTS reads the same YAML file through the
+            batched path expects a WaveNet or Neural2 style voice. Tencent Cloud
+            unary and bidirectional TTS use the
+            <code> TencentCloudTTS </code>
+            and <code> TencentCloudStreamingTTS </code>
+            sections with an app ID, secret ID, and secret key; the
+            bidirectional Tencent path can reuse the base Tencent credentials.
+            Volcengine TTS reads the same YAML file through the
             <code> DoubaoStreamTTS </code>
             section and still supports <code>VOICYCLAW_VOLCENGINE_*</code>
             overrides. Azure also supports optional SSML-style tuning through
@@ -336,6 +341,14 @@ export function SettingsStudio() {
             GoogleCloudBatchedTTS.service_account_json
             {"\n"}
             GoogleCloudBatchedTTS.voice
+            {"\n"}
+            TencentCloudTTS.app_id
+            {"\n"}
+            TencentCloudTTS.secret_id
+            {"\n"}
+            TencentCloudTTS.secret_key
+            {"\n"}
+            TencentCloudStreamingTTS.voice_type
             {"\n"}
             DoubaoStreamTTS.appid
             {"\n"}

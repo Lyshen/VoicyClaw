@@ -147,7 +147,7 @@ This gives four valid combinations:
 | server | client | server-grade transcription + lightweight browser playback |
 | server | server | full managed media pipeline, best for production control |
 
-For the current runnable prototype, browser speech recognition and browser speech synthesis are already used as client providers, while demo server-side adapters keep the OpenClaw pipeline runnable. Volcengine bidirectional TTS is also available now as a server provider when the backend is configured through `config/providers.local.yaml` or `VOICYCLAW_VOLCENGINE_*` environment variables.
+For the current runnable prototype, browser speech recognition and browser speech synthesis are already used as client providers, while demo server-side adapters keep the OpenClaw pipeline runnable. Azure, Google Cloud, Tencent Cloud, and Volcengine server-side TTS paths are all available now when the backend is configured through `config/providers.local.yaml` or matching `VOICYCLAW_*` environment variables.
 
 ## Shared Output Turn Control
 
@@ -173,6 +173,7 @@ This keeps `client provider` and `server provider` modes behaviorally consistent
 | Azure Speech TTS (unary + segmented) | available now | official Azure audio streaming plus adapter-level segmented playback |
 | Google Cloud TTS (Chirp streaming) | available now | premium realtime Google path |
 | Google Cloud TTS (WaveNet / Neural2 batched) | available now | lower-cost unary Google path |
+| Tencent Cloud TTS (unary websocket + bidirectional websocket) | available now | Tencent official streaming APIs without changing the shared business contract |
 | Volcengine bidirectional TTS | available now | CN-market low-latency path |
 | OpenClaw Gateway backend | available now | real OpenClaw text backend integration |
 | OpenClaw `voicyclaw` plugin | in progress | connector/productization path for easier install |
@@ -256,7 +257,7 @@ Then open `http://localhost:3000`.
 - The root `dev` script starts the web app, the Fastify/WebSocket server, and a local demo ClawBot
 - Use **hold-to-talk** for microphone streaming, or type into the composer as a transcript fallback
 - Browser speech recognition and browser speech synthesis are treated as `client providers`
-- Add `config/providers.local.yaml` (or set `VOICYCLAW_PROVIDER_CONFIG`) before `pnpm dev` if you want to select `Volcengine TTS` on `/settings`
+- Add `config/providers.local.yaml` (or set `VOICYCLAW_PROVIDER_CONFIG`) before `pnpm dev` if you want to select Azure, Google, Tencent Cloud, or Volcengine TTS on `/settings`
 - Visit `/settings` to edit the channel/server defaults and mint platform keys for external bots
 - `pnpm build` verifies the server, web app, and local bot all compile successfully
 
@@ -286,6 +287,16 @@ GoogleCloudTTS:
 GoogleCloudBatchedTTS:
   service_account_file: /absolute/path/to/google-service-account.json
   voice: en-US-Neural2-F
+
+TencentCloudTTS:
+  app_id: your-tencent-app-id
+  secret_id: your-tencent-secret-id
+  secret_key: your-tencent-secret-key
+  voice_type: 502001
+
+TencentCloudStreamingTTS:
+  voice_type: 502001
+  sample_rate: 24000
 ```
 
 Copy [`config/providers.example.yaml`](config/providers.example.yaml) to
@@ -335,6 +346,19 @@ and the current `google-tts` / `volcengine-tts` streaming paths stay isolated.
 `azure-streaming-tts` follows the same adapter-level batching idea for Azure:
 the shared business-layer contract stays unchanged, while the provider handles
 sentence-ish segmentation and early playback internally.
+
+To enable Tencent Cloud unary websocket TTS, fill `TencentCloudTTS.app_id`,
+`TencentCloudTTS.secret_id`, and `TencentCloudTTS.secret_key`, then choose
+`Tencent Cloud TTS (Unary Streaming)` in `/settings`.
+
+To enable Tencent Cloud bidirectional websocket TTS, either add a dedicated
+`TencentCloudStreamingTTS` section or let it reuse the base
+`TencentCloudTTS` credentials, then choose
+`Tencent Cloud TTS (Bidirectional)` in `/settings`.
+
+The current VoicyClaw Tencent adapters keep the shared browser playback
+contract as raw PCM, so they intentionally lock Tencent codec selection to
+`pcm` inside the provider layer.
 
 Note: this runnable prototype uses `node:sqlite` instead of Prisma so it stays friction-free on the current Node toolchain, while the design docs still describe the longer-term Prisma-based plan.
 
