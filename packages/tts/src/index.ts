@@ -1,6 +1,7 @@
 export * from "./factory"
 export * from "./interface"
 export * from "./providers/azure-speech"
+export * from "./providers/azure-speech-streaming"
 export * from "./providers/demo"
 export * from "./providers/google-cloud"
 export * from "./providers/google-cloud-batched"

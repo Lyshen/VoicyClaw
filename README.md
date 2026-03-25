@@ -170,7 +170,7 @@ This keeps `client provider` and `server provider` modes behaviorally consistent
 |---|---|---|
 | browser speech recognition | available now | fastest zero-setup prototype path |
 | browser speech synthesis | available now | client-side playback option |
-| Azure Speech TTS | available now | server-side raw PCM playback |
+| Azure Speech TTS (unary + segmented) | available now | official Azure audio streaming plus adapter-level segmented playback |
 | Google Cloud TTS (Chirp streaming) | available now | premium realtime Google path |
 | Google Cloud TTS (WaveNet / Neural2 batched) | available now | lower-cost unary Google path |
 | Volcengine bidirectional TTS | available now | CN-market low-latency path |
@@ -268,7 +268,16 @@ AzureSpeechTTS:
   endpoint: https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1
   region: eastasia
   api_key: your-azure-speech-key
-  voice: en-US-JennyNeural
+  voice: en-US-AriaNeural
+  style: chat
+  rate: +4%
+
+AzureSpeechStreamingTTS:
+  voice: en-US-AriaNeural
+  style: chat
+  rate: +4%
+  flush_timeout_ms: 450
+  max_chunk_characters: 220
 
 GoogleCloudTTS:
   service_account_file: /absolute/path/to/google-service-account.json
@@ -286,9 +295,19 @@ exists. You can also point at another file with
 Environment variables still work as one-off overrides and win over YAML when
 both are present.
 
-To enable server-side Azure TTS, fill `AzureSpeechTTS.api_key` plus either
-`AzureSpeechTTS.region` or `AzureSpeechTTS.endpoint`, then choose `Azure Speech
-TTS` in `/settings`.
+To enable server-side Azure unary TTS, fill `AzureSpeechTTS.api_key` plus
+either `AzureSpeechTTS.region` or `AzureSpeechTTS.endpoint`, then choose
+`Azure Speech TTS (Unary)` in `/settings`.
+
+To enable the earlier-playback Azure segmented path, either add an
+`AzureSpeechStreamingTTS` section or let it reuse the base `AzureSpeechTTS`
+credentials, then choose `Azure Speech TTS (Segmented)` in `/settings`.
+
+Azure now also supports provider-level SSML tuning in config via fields such as
+`style`, `style_degree`, `role`, `rate`, `pitch`, and `volume`. The default
+English path now leans more conversational out of the box by preferring
+`en-US-AriaNeural` plus a chat-oriented style, while `en-US-JennyNeural` still
+gets a strong assistant-style default when you select it explicitly.
 
 To enable server-side Google Cloud TTS, fill one of
 `GoogleCloudTTS.service_account_file`,
@@ -312,6 +331,10 @@ To enable the cheaper Google batched path, fill one of
 `google-batched-tts` intentionally keeps its sentence batching inside the
 provider adapter so the existing business-layer flow does not need to change,
 and the current `google-tts` / `volcengine-tts` streaming paths stay isolated.
+
+`azure-streaming-tts` follows the same adapter-level batching idea for Azure:
+the shared business-layer contract stays unchanged, while the provider handles
+sentence-ish segmentation and early playback internally.
 
 Note: this runnable prototype uses `node:sqlite` instead of Prisma so it stays friction-free on the current Node toolchain, while the design docs still describe the longer-term Prisma-based plan.
 

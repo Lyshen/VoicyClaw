@@ -305,14 +305,20 @@ export function SettingsStudio() {
             browser local storage. The preferred path is
             <code> config/providers.local.yaml </code>
             in the repo root, with environment variables available as optional
-            overrides. Azure Speech needs a speech key plus region or endpoint.
-            Google Cloud streaming and batched TTS both work best with a service
-            account file or JSON. The streaming path expects a Chirp 3 HD voice,
-            while the batched path expects a WaveNet or Neural2 style voice.
-            Volcengine TTS reads the same YAML file through the
+            overrides. Azure Speech unary and segmented TTS both need a speech
+            key plus region or endpoint; the segmented Azure path can either use
+            its own <code>AzureSpeechStreamingTTS</code> section or fall back to
+            the shared <code>AzureSpeechTTS</code> credentials. Google Cloud
+            streaming and batched TTS both work best with a service account file
+            or JSON. The streaming path expects a Chirp 3 HD voice, while the
+            batched path expects a WaveNet or Neural2 style voice. Volcengine
+            TTS reads the same YAML file through the
             <code> DoubaoStreamTTS </code>
             section and still supports <code>VOICYCLAW_VOLCENGINE_*</code>
-            overrides.
+            overrides. Azure also supports optional SSML-style tuning through
+            <code> style </code>, <code> style_degree </code>,
+            <code> role </code>, <code> rate </code>, <code> pitch </code>, and
+            <code> volume </code>.
           </p>
           <div className="code-block">
             config/providers.local.yaml

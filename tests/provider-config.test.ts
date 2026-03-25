@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   loadProviderConfig,
+  resolveAzureSpeechStreamingTTSConfig,
   resolveAzureSpeechTTSConfig,
   resolveDoubaoStreamTTSConfig,
   resolveGoogleCloudBatchedTTSConfig,
@@ -13,7 +14,7 @@ import {
 } from "../apps/server/src/provider-config"
 
 describe("provider config", () => {
-  it("loads Azure, Google streaming, Google batched, and Doubao TTS YAML provider config", () => {
+  it("loads Azure unary, Azure segmented, Google streaming, Google batched, and Doubao TTS YAML provider config", () => {
     const cwd = mkdtempSync(
       path.join(os.tmpdir(), "voicyclaw-provider-config-"),
     )
@@ -26,8 +27,19 @@ describe("provider config", () => {
         "  endpoint: https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1",
         "  region: eastasia",
         "  api_key: azure-key",
-        "  voice: en-US-JennyNeural",
+        "  voice: en-US-AriaNeural",
         "  sample_rate: 24000",
+        "  style: chat",
+        "  rate: +4%",
+        "",
+        "AzureSpeechStreamingTTS:",
+        "  type: azure_speech_streaming_tts",
+        "  voice: en-US-AriaNeural",
+        "  sample_rate: 24000",
+        "  style: chat",
+        "  rate: +5%",
+        "  flush_timeout_ms: 450",
+        "  max_chunk_characters: 220",
         "",
         "GoogleCloudTTS:",
         "  type: google_cloud_tts",
@@ -67,7 +79,18 @@ describe("provider config", () => {
       type: "azure_speech_tts",
       region: "eastasia",
       api_key: "azure-key",
-      voice: "en-US-JennyNeural",
+      voice: "en-US-AriaNeural",
+      style: "chat",
+      rate: "+4%",
+    })
+    expect(resolveAzureSpeechStreamingTTSConfig(env)).toMatchObject({
+      type: "azure_speech_streaming_tts",
+      voice: "en-US-AriaNeural",
+      sample_rate: 24000,
+      style: "chat",
+      rate: "+5%",
+      flush_timeout_ms: 450,
+      max_chunk_characters: 220,
     })
     expect(resolveGoogleCloudTTSConfig(env)).toMatchObject({
       type: "google_cloud_tts",
