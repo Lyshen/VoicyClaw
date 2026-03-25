@@ -315,7 +315,10 @@ export function SettingsStudio() {
             TTS reads the same YAML file through the
             <code> DoubaoStreamTTS </code>
             section and still supports <code>VOICYCLAW_VOLCENGINE_*</code>
-            overrides.
+            overrides. Azure also supports optional SSML-style tuning through
+            <code> style </code>, <code> style_degree </code>,
+            <code> role </code>, <code> rate </code>, <code> pitch </code>, and
+            <code> volume </code>.
           </p>
           <div className="code-block">
             config/providers.local.yaml

@@ -24,7 +24,7 @@ import { GoogleCloudTTSProvider } from "../packages/tts/src/providers/google-clo
 import { GoogleCloudBatchedTTSProvider } from "../packages/tts/src/providers/google-cloud-batched"
 
 describe("AzureSpeechTTSProvider", () => {
-  it("streams Azure SDK audio chunks and yields raw PCM audio", async () => {
+  it("streams Azure SDK audio chunks and emits conversational SSML", async () => {
     const firstAudio = Buffer.from(Int16Array.from([1, -2]).buffer)
     const secondAudio = Buffer.from(Int16Array.from([3, -4]).buffer)
     const synthesizer = new FakeAzureSpeechSynthesizer([
@@ -55,8 +55,20 @@ describe("AzureSpeechTTSProvider", () => {
       voice: "en-US-JennyNeural",
       language: "en-US",
       sampleRate: 24_000,
+      style: "assistant",
+      styleDegree: undefined,
+      role: undefined,
+      rate: "+4.0%",
+      pitch: undefined,
+      volume: undefined,
     })
-    expect(synthesizer.requests).toEqual(["Hello world"])
+    expect(synthesizer.requests).toHaveLength(1)
+    expect(synthesizer.requests[0]).toContain('voice name="en-US-JennyNeural"')
+    expect(synthesizer.requests[0]).toContain(
+      'mstts:express-as style="assistant"',
+    )
+    expect(synthesizer.requests[0]).toContain('prosody rate="+4.0%"')
+    expect(synthesizer.requests[0]).toContain("Hello world")
     expect(synthesizer.closeCalls).toBe(1)
   })
 
@@ -80,7 +92,7 @@ describe("AzureSpeechTTSProvider", () => {
 })
 
 describe("AzureSpeechStreamingTTSProvider", () => {
-  it("batches sentence chunks into segmented Azure synth calls", async () => {
+  it("batches sentence chunks into segmented Azure SSML synth calls", async () => {
     const firstAudio = Buffer.from(Int16Array.from([11, -11]).buffer)
     const secondAudio = Buffer.from(Int16Array.from([12, -12]).buffer)
     const synthesizer = new FakeAzureSpeechSynthesizer([
@@ -94,7 +106,7 @@ describe("AzureSpeechStreamingTTSProvider", () => {
     const provider = new AzureSpeechStreamingTTSProvider({
       apiKey: "azure-key",
       region: "eastus",
-      voice: "en-US-AvaNeural",
+      voice: "en-US-AriaNeural",
       sampleRate: 24_000,
       createSynthesizer: () => synthesizer,
     })
@@ -106,7 +118,10 @@ describe("AzureSpeechStreamingTTSProvider", () => {
     )
 
     expect(chunks).toEqual([firstAudio, secondAudio])
-    expect(synthesizer.requests).toEqual(["Hello world.", "Next sentence!"])
+    expect(synthesizer.requests).toHaveLength(2)
+    expect(synthesizer.requests[0]).toContain('mstts:express-as style="chat"')
+    expect(synthesizer.requests[0]).toContain("Hello world.")
+    expect(synthesizer.requests[1]).toContain("Next sentence!")
     expect(synthesizer.closeCalls).toBe(1)
   })
 
@@ -124,7 +139,7 @@ describe("AzureSpeechStreamingTTSProvider", () => {
     const provider = new AzureSpeechStreamingTTSProvider({
       apiKey: "azure-key",
       region: "eastus",
-      voice: "en-US-AvaNeural",
+      voice: "en-US-AriaNeural",
       flushTimeoutMs: 10,
       createSynthesizer: () => synthesizer,
     })
@@ -143,7 +158,9 @@ describe("AzureSpeechStreamingTTSProvider", () => {
     )
 
     expect(chunks).toEqual([firstAudio, secondAudio])
-    expect(synthesizer.requests).toEqual(["Hello", "later."])
+    expect(synthesizer.requests).toHaveLength(2)
+    expect(synthesizer.requests[0]).toContain("Hello")
+    expect(synthesizer.requests[1]).toContain("later.")
     expect(synthesizer.closeCalls).toBe(1)
   })
 })
@@ -607,8 +624,10 @@ describe("runtime TTS provider selection", () => {
           "AzureSpeechTTS:",
           "  api_key: azure-key-from-yaml",
           "  region: eastasia",
-          "  voice: en-US-AvaNeural",
+          "  voice: en-US-AriaNeural",
           "  sample_rate: 48000",
+          "  style: chat",
+          "  rate: +6%",
         ]),
       },
     )
@@ -623,13 +642,17 @@ describe("runtime TTS provider selection", () => {
         "AzureSpeechTTS:",
         "  api_key: azure-key-from-yaml",
         "  region: eastasia",
-        "  voice: en-US-AvaNeural",
+        "  voice: en-US-AriaNeural",
         "  sample_rate: 24000",
+        "  style: chat",
+        "  rate: +6%",
       ]),
       VOICYCLAW_AZURE_SPEECH_KEY: "azure-key-from-env",
       VOICYCLAW_AZURE_SPEECH_REGION: "westus",
       VOICYCLAW_AZURE_TTS_VOICE: "en-US-JennyNeural",
       VOICYCLAW_AZURE_TTS_SAMPLE_RATE: "16000",
+      VOICYCLAW_AZURE_TTS_STYLE: "assistant",
+      VOICYCLAW_AZURE_TTS_RATE: "+3%",
     })
 
     expect(options).toMatchObject({
@@ -637,6 +660,8 @@ describe("runtime TTS provider selection", () => {
       region: "westus",
       voice: "en-US-JennyNeural",
       sampleRate: 16_000,
+      style: "assistant",
+      rate: "+3%",
     })
   })
 
@@ -655,10 +680,14 @@ describe("runtime TTS provider selection", () => {
           "AzureSpeechTTS:",
           "  api_key: azure-key-from-yaml",
           "  region: eastasia",
+          "  style: assistant",
+          "  rate: +3%",
           "",
           "AzureSpeechStreamingTTS:",
-          "  voice: en-US-AvaNeural",
+          "  voice: en-US-AriaNeural",
           "  sample_rate: 48000",
+          "  style: chat",
+          "  rate: +5%",
           "  flush_timeout_ms: 320",
           "  max_chunk_characters: 180",
         ]),
@@ -675,12 +704,16 @@ describe("runtime TTS provider selection", () => {
         "AzureSpeechTTS:",
         "  api_key: azure-key-from-yaml",
         "  region: eastasia",
-        "  voice: en-US-AvaNeural",
+        "  voice: en-US-AriaNeural",
         "  sample_rate: 24000",
+        "  style: assistant",
+        "  rate: +3%",
         "",
         "AzureSpeechStreamingTTS:",
         "  voice: en-US-AndrewNeural",
         "  sample_rate: 22050",
+        "  style: empathetic",
+        "  rate: +2%",
         "  flush_timeout_ms: 320",
         "  max_chunk_characters: 180",
       ]),
@@ -688,6 +721,8 @@ describe("runtime TTS provider selection", () => {
       VOICYCLAW_AZURE_SPEECH_REGION: "westus",
       VOICYCLAW_AZURE_STREAMING_TTS_VOICE: "en-US-JennyNeural",
       VOICYCLAW_AZURE_STREAMING_TTS_SAMPLE_RATE: "16000",
+      VOICYCLAW_AZURE_STREAMING_TTS_STYLE: "assistant",
+      VOICYCLAW_AZURE_STREAMING_TTS_RATE: "+3%",
       VOICYCLAW_AZURE_STREAMING_TTS_FLUSH_TIMEOUT_MS: "450",
       VOICYCLAW_AZURE_STREAMING_TTS_MAX_CHUNK_CHARACTERS: "240",
     })
@@ -697,6 +732,8 @@ describe("runtime TTS provider selection", () => {
       region: "westus",
       voice: "en-US-JennyNeural",
       sampleRate: 16_000,
+      style: "assistant",
+      rate: "+3%",
       flushTimeoutMs: 450,
       maxChunkCharacters: 240,
     })
@@ -860,13 +897,13 @@ class FakeAzureSpeechSynthesizer implements AzureSpeechSynthesizerLike {
     }>,
   ) {}
 
-  speakTextAsync(
-    text: string,
+  speakSsmlAsync(
+    ssml: string,
     cb?: (result: { reason?: number; errorDetails?: string }) => void,
     err?: (error: string) => void,
     stream?: AzurePushAudioStreamLike,
   ) {
-    this.requests.push(text)
+    this.requests.push(ssml)
 
     const response = this.responses[this.responseIndex]
     this.responseIndex += 1

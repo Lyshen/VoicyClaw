@@ -268,10 +268,14 @@ AzureSpeechTTS:
   endpoint: https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1
   region: eastasia
   api_key: your-azure-speech-key
-  voice: en-US-JennyNeural
+  voice: en-US-AriaNeural
+  style: chat
+  rate: +4%
 
 AzureSpeechStreamingTTS:
-  voice: en-US-JennyNeural
+  voice: en-US-AriaNeural
+  style: chat
+  rate: +4%
   flush_timeout_ms: 450
   max_chunk_characters: 220
 
@@ -298,6 +302,12 @@ either `AzureSpeechTTS.region` or `AzureSpeechTTS.endpoint`, then choose
 To enable the earlier-playback Azure segmented path, either add an
 `AzureSpeechStreamingTTS` section or let it reuse the base `AzureSpeechTTS`
 credentials, then choose `Azure Speech TTS (Segmented)` in `/settings`.
+
+Azure now also supports provider-level SSML tuning in config via fields such as
+`style`, `style_degree`, `role`, `rate`, `pitch`, and `volume`. The default
+English path now leans more conversational out of the box by preferring
+`en-US-AriaNeural` plus a chat-oriented style, while `en-US-JennyNeural` still
+gets a strong assistant-style default when you select it explicitly.
 
 To enable server-side Google Cloud TTS, fill one of
 `GoogleCloudTTS.service_account_file`,

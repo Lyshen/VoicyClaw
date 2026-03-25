@@ -5,8 +5,14 @@ AzureSpeechTTS:
   endpoint: https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1
   region: eastasia
   api_key: your-azure-speech-key
-  voice: en-US-JennyNeural
+  voice: en-US-AriaNeural
   sample_rate: 24000
+  style: chat
+  rate: +4%
+  pitch:
+  volume:
+  role:
+  style_degree:
 
 AzureSpeechStreamingTTS:
   type: azure_speech_streaming_tts
@@ -14,8 +20,14 @@ AzureSpeechStreamingTTS:
   endpoint:
   region:
   api_key:
-  voice: en-US-JennyNeural
+  voice: en-US-AriaNeural
   sample_rate: 24000
+  style: chat
+  rate: +4%
+  pitch:
+  volume:
+  role:
+  style_degree:
   flush_timeout_ms: 450
   max_chunk_characters: 220
 

@@ -140,6 +140,14 @@ export function resolveAzureSpeechTTSOptions(env: RuntimeEnv = process.env) {
     sampleRate:
       parsePositiveInt(env.VOICYCLAW_AZURE_TTS_SAMPLE_RATE) ??
       parsePositiveInt(config?.sample_rate),
+    style: pickFirstNonEmpty(env.VOICYCLAW_AZURE_TTS_STYLE, config?.style),
+    styleDegree:
+      parseFloatValue(env.VOICYCLAW_AZURE_TTS_STYLE_DEGREE) ??
+      parseFloatValue(config?.style_degree),
+    role: pickFirstNonEmpty(env.VOICYCLAW_AZURE_TTS_ROLE, config?.role),
+    rate: pickFirstNonEmpty(env.VOICYCLAW_AZURE_TTS_RATE, config?.rate),
+    pitch: pickFirstNonEmpty(env.VOICYCLAW_AZURE_TTS_PITCH, config?.pitch),
+    volume: pickFirstNonEmpty(env.VOICYCLAW_AZURE_TTS_VOLUME, config?.volume),
   }
 }
 
@@ -243,6 +251,41 @@ export function resolveAzureSpeechStreamingTTSOptions(
       parsePositiveInt(env.VOICYCLAW_AZURE_TTS_SAMPLE_RATE) ??
       parsePositiveInt(config?.sample_rate) ??
       parsePositiveInt(baseConfig?.sample_rate),
+    style: pickFirstNonEmpty(
+      env.VOICYCLAW_AZURE_STREAMING_TTS_STYLE,
+      env.VOICYCLAW_AZURE_TTS_STYLE,
+      config?.style,
+      baseConfig?.style,
+    ),
+    styleDegree:
+      parseFloatValue(env.VOICYCLAW_AZURE_STREAMING_TTS_STYLE_DEGREE) ??
+      parseFloatValue(env.VOICYCLAW_AZURE_TTS_STYLE_DEGREE) ??
+      parseFloatValue(config?.style_degree) ??
+      parseFloatValue(baseConfig?.style_degree),
+    role: pickFirstNonEmpty(
+      env.VOICYCLAW_AZURE_STREAMING_TTS_ROLE,
+      env.VOICYCLAW_AZURE_TTS_ROLE,
+      config?.role,
+      baseConfig?.role,
+    ),
+    rate: pickFirstNonEmpty(
+      env.VOICYCLAW_AZURE_STREAMING_TTS_RATE,
+      env.VOICYCLAW_AZURE_TTS_RATE,
+      config?.rate,
+      baseConfig?.rate,
+    ),
+    pitch: pickFirstNonEmpty(
+      env.VOICYCLAW_AZURE_STREAMING_TTS_PITCH,
+      env.VOICYCLAW_AZURE_TTS_PITCH,
+      config?.pitch,
+      baseConfig?.pitch,
+    ),
+    volume: pickFirstNonEmpty(
+      env.VOICYCLAW_AZURE_STREAMING_TTS_VOLUME,
+      env.VOICYCLAW_AZURE_TTS_VOLUME,
+      config?.volume,
+      baseConfig?.volume,
+    ),
     flushTimeoutMs:
       parsePositiveInt(env.VOICYCLAW_AZURE_STREAMING_TTS_FLUSH_TIMEOUT_MS) ??
       parsePositiveInt(config?.flush_timeout_ms),

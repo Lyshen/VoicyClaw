@@ -3,7 +3,8 @@ import * as speechSdk from "microsoft-cognitiveservices-speech-sdk"
 
 import type { AudioChunk, TTSConfig } from "../types"
 
-const DEFAULT_VOICE = "en-US-JennyNeural"
+const DEFAULT_VOICE = "en-US-AriaNeural"
+const DEFAULT_CONVERSATIONAL_RATE = "+4.0%"
 const AZURE_OUTPUT_FORMATS = new Map<
   number,
   speechSdk.SpeechSynthesisOutputFormat
@@ -25,6 +26,12 @@ export interface AzureSpeechSynthesisOptions {
   endpoint?: string
   voice?: string
   sampleRate?: number
+  style?: string
+  styleDegree?: number
+  role?: string
+  rate?: string
+  pitch?: string
+  volume?: string
   createSynthesizer?: AzureSpeechSynthesizerFactory
   createPushAudioStream?: AzurePushAudioStreamFactory
 }
@@ -36,6 +43,12 @@ export interface AzureSpeechRuntimeConfig {
   voice: string
   language: string
   sampleRate: number
+  style?: string
+  styleDegree?: number
+  role?: string
+  rate?: string
+  pitch?: string
+  volume?: string
 }
 
 export interface AzureSpeechSynthesisResultLike {
@@ -53,8 +66,8 @@ export type AzurePushAudioStreamFactory = (
 ) => AzurePushAudioStreamLike
 
 export interface AzureSpeechSynthesizerLike {
-  speakTextAsync: (
-    text: string,
+  speakSsmlAsync: (
+    ssml: string,
     cb?: (result: AzureSpeechSynthesisResultLike) => void,
     err?: (error: string) => void,
     stream?: AzurePushAudioStreamLike,
@@ -95,6 +108,13 @@ export function resolveAzureRuntimeConfig(
     voice,
     language: config?.language?.trim() || voiceLocale(voice),
     sampleRate,
+    style: options.style?.trim() || defaultStyleForVoice(voice),
+    styleDegree:
+      typeof options.styleDegree === "number" ? options.styleDegree : undefined,
+    role: options.role?.trim(),
+    rate: options.rate?.trim() || defaultRateForVoice(voice),
+    pitch: options.pitch?.trim(),
+    volume: options.volume?.trim(),
   }
 }
 
@@ -124,6 +144,7 @@ export function createDefaultAzurePushAudioStream(
 export async function* synthesizeAzureTextSegment(
   synthesizer: AzureSpeechSynthesizerLike,
   text: string,
+  config: AzureSpeechRuntimeConfig,
   createPushAudioStream: AzurePushAudioStreamFactory,
 ): AsyncGenerator<AudioChunk> {
   if (!text.trim()) {
@@ -144,8 +165,8 @@ export async function* synthesizeAzureTextSegment(
 
   const completion = new Promise<void>((resolve, reject) => {
     try {
-      synthesizer.speakTextAsync(
-        text,
+      synthesizer.speakSsmlAsync(
+        buildAzureSsml(text, config),
         (result) => {
           const error = normalizeAzureSynthesisResultError(result)
           if (error) {
@@ -298,6 +319,37 @@ function defaultVoiceForLanguage(language?: string) {
   return DEFAULT_VOICE
 }
 
+function defaultStyleForVoice(voice: string) {
+  if (/Jenny/i.test(voice)) {
+    return "assistant"
+  }
+
+  if (/Aria/i.test(voice)) {
+    return "chat"
+  }
+
+  if (/Guy/i.test(voice)) {
+    return "friendly"
+  }
+
+  if (/AndrewMultilingual/i.test(voice)) {
+    return "empathetic"
+  }
+
+  return undefined
+}
+
+function defaultRateForVoice(voice: string) {
+  if (
+    /Aria|Jenny|Guy|AndrewMultilingual/i.test(voice) &&
+    defaultStyleForVoice(voice)
+  ) {
+    return DEFAULT_CONVERSATIONAL_RATE
+  }
+
+  return undefined
+}
+
 function voiceLocale(voice: string) {
   const parts = voice.split("-")
   if (parts.length >= 2) {
@@ -309,6 +361,67 @@ function voiceLocale(voice: string) {
 
 function normalizeError(error: unknown) {
   return error instanceof Error ? error : new Error(String(error))
+}
+
+function buildAzureSsml(text: string, config: AzureSpeechRuntimeConfig) {
+  const escapedText = escapeXml(text)
+  const inner = buildAzureSsmlInner(escapedText, config)
+
+  return [
+    `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="${escapeXml(config.language)}">`,
+    `<voice name="${escapeXml(config.voice)}">`,
+    inner,
+    "</voice>",
+    "</speak>",
+  ].join("")
+}
+
+function buildAzureSsmlInner(text: string, config: AzureSpeechRuntimeConfig) {
+  const content = buildAzureProsodyBlock(text, config)
+
+  if (!config.style && !config.role && !config.styleDegree) {
+    return content
+  }
+
+  const attributes = [
+    config.style && `style="${escapeXml(config.style)}"`,
+    config.style &&
+      typeof config.styleDegree === "number" &&
+      `styledegree="${escapeXml(String(config.styleDegree))}"`,
+    config.role && `role="${escapeXml(config.role)}"`,
+  ]
+    .filter(Boolean)
+    .join(" ")
+
+  return `<mstts:express-as ${attributes}>${content}</mstts:express-as>`
+}
+
+function buildAzureProsodyBlock(
+  text: string,
+  config: AzureSpeechRuntimeConfig,
+) {
+  if (!config.rate && !config.pitch && !config.volume) {
+    return text
+  }
+
+  const attributes = [
+    config.rate && `rate="${escapeXml(config.rate)}"`,
+    config.pitch && `pitch="${escapeXml(config.pitch)}"`,
+    config.volume && `volume="${escapeXml(config.volume)}"`,
+  ]
+    .filter(Boolean)
+    .join(" ")
+
+  return `<prosody ${attributes}>${text}</prosody>`
+}
+
+function escapeXml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;")
 }
 
 class AzurePushAudioStream extends speechSdk.PushAudioOutputStreamCallback {

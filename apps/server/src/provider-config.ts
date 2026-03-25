@@ -13,6 +13,12 @@ type AzureSpeechTTSConfig = {
   api_key?: string
   voice?: string
   sample_rate?: string | number
+  style?: string
+  style_degree?: string | number
+  role?: string
+  rate?: string
+  pitch?: string
+  volume?: string
 }
 
 type AzureSpeechStreamingTTSConfig = {
@@ -22,6 +28,12 @@ type AzureSpeechStreamingTTSConfig = {
   api_key?: string
   voice?: string
   sample_rate?: string | number
+  style?: string
+  style_degree?: string | number
+  role?: string
+  rate?: string
+  pitch?: string
+  volume?: string
   flush_timeout_ms?: string | number
   max_chunk_characters?: string | number
 }

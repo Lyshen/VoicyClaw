@@ -43,6 +43,7 @@ export class AzureSpeechStreamingTTSProvider implements TTSAdapter {
         yield* synthesizeAzureTextSegment(
           synthesizer,
           segment,
+          runtime,
           this.options.createPushAudioStream ??
             createDefaultAzurePushAudioStream,
         )
