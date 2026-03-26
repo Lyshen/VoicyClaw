@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   color-scheme: dark;
   --bg: #07141b;
@@ -38,6 +40,10 @@ body {
     linear-gradient(180deg, #07141b 0%, #0a1e29 55%, #07141b 100%);
   color: var(--text);
   font-family: var(--font-sans);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {

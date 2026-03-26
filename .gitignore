@@ -10,6 +10,7 @@ test-results
 .env
 .env.local
 .artifacts
+voicyclaw-landing-page/
 volcengine_bidirection_demo*/
 config/*.local.yaml
 config/*.local.yml
