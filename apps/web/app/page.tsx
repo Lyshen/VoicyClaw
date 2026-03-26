@@ -1,5 +1,5 @@
-import { ChannelStudio } from "../components/channel-studio"
+import { LandingPage } from "../components/landing-page"
 
 export default function Page() {
-  return <ChannelStudio />
+  return <LandingPage />
 }

@@ -488,12 +488,11 @@ export function ChannelStudio() {
     <div className="page-stack">
       <section className="hero-card card">
         <div>
-          <p className="hero-eyebrow">Runnable prototype</p>
-          <h1 className="hero-title">OpenClaw voice channel cockpit</h1>
+          <p className="hero-eyebrow">Voice studio</p>
+          <h1 className="hero-title">Talk to your OpenClaw agent</h1>
           <p className="hero-copy">
-            This screen now simulates a preview stream plus a final bot text
-            stream, so you can watch the mock bot think, answer in blocks, and
-            hand those blocks to client TTS.
+            This is the live demo room. Speak or type, watch the reply stream
+            in, and hear it back through the voice path you picked.
           </p>
         </div>
         <div className="status-row">
@@ -516,7 +515,7 @@ export function ChannelStudio() {
           <div className="card-heading">
             <div>
               <p className="card-kicker">Channel</p>
-              <h2>Conversation stream</h2>
+              <h2>Live conversation</h2>
             </div>
             <button
               className="ghost-button"
@@ -530,8 +529,7 @@ export function ChannelStudio() {
           <div className="timeline" ref={timelineRef}>
             {timeline.length === 0 ? (
               <div className="timeline-empty">
-                Hold the push-to-talk button or type into the composer to send
-                the first utterance.
+                Hold the talk button or type your first message below.
               </div>
             ) : (
               timeline.map((entry) => (
@@ -559,7 +557,7 @@ export function ChannelStudio() {
                   sendTextUtterance()
                 }
               }}
-              placeholder="Speak or type here. The draft doubles as a transcript assist for the current prototype."
+              placeholder="Speak or type here."
             />
             <div className="composer-actions">
               <button
@@ -567,7 +565,7 @@ export function ChannelStudio() {
                 type="button"
                 onClick={sendTextUtterance}
               >
-                Send text
+                Send message
               </button>
               <button
                 className={`record-button ${isRecording ? "active" : ""}`}
@@ -581,10 +579,8 @@ export function ChannelStudio() {
               </button>
             </div>
             <p className="composer-hint">
-              ASR: {asrProvider.label} ({getProviderModeLabel(asrProvider.mode)}
-              ) · TTS: {ttsProvider.label} (
-              {getProviderModeLabel(ttsProvider.mode)}) · speech API:{" "}
-              {speechStatus}
+              ASR: {asrProvider.label} · TTS: {ttsProvider.label} · browser
+              speech: {speechStatus}
             </p>
           </div>
         </section>
@@ -594,7 +590,7 @@ export function ChannelStudio() {
             <div className="card-heading compact">
               <div>
                 <p className="card-kicker">Runtime</p>
-                <h2>Signal monitor</h2>
+                <h2>Live signal</h2>
               </div>
             </div>
             <div className="radar-orb">
@@ -638,25 +634,23 @@ export function ChannelStudio() {
             <div className="card-heading compact">
               <div>
                 <p className="card-kicker">Checklist</p>
-                <h2>What this proves</h2>
+                <h2>What to test</h2>
               </div>
             </div>
             <ul className="note-list">
               <li>
-                Client websocket still sends control JSON plus binary PCM
-                microphone frames.
+                Voice input and typed input both reach the same agent flow.
               </li>
               <li>
-                The mock bot now emits a preview stream before it commits final
-                answer blocks.
+                Replies can show up in pieces before the full answer is done.
               </li>
               <li>
-                Final bot blocks keep streaming over the channel while client
-                TTS can speak them locally.
+                Browser-owned and server-owned voice paths can both be tested
+                here.
               </li>
               <li>
-                Settings let you flip the prototype between browser-owned and
-                server-owned media paths.
+                Settings lets you switch providers without changing the main
+                demo flow.
               </li>
             </ul>
           </section>
