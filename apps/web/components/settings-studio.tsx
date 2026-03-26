@@ -102,12 +102,11 @@ export function SettingsStudio() {
     <div className="page-stack">
       <section className="hero-card card">
         <div>
-          <p className="hero-eyebrow">Prototype settings</p>
-          <h1 className="hero-title">Control the local demo surface</h1>
+          <p className="hero-eyebrow">Voice setup</p>
+          <h1 className="hero-title">Set up your VoicyClaw demo</h1>
           <p className="hero-copy">
-            Configure the current ASR and TTS path explicitly. Client providers
-            run in the browser, while server providers keep the transport inside
-            VoicyClaw.
+            Point VoicyClaw at your agent, choose where speech runs, and test
+            the voice path you want.
           </p>
         </div>
         <div className="status-row">
@@ -130,12 +129,12 @@ export function SettingsStudio() {
         <section className="card stack-card">
           <div className="card-heading compact">
             <div>
-              <p className="card-kicker">Conversation backend</p>
-              <h2>Agent bridge mode</h2>
+              <p className="card-kicker">Agent source</p>
+              <h2>How VoicyClaw reaches your agent</h2>
             </div>
           </div>
           <p className="support-copy">
-            Active backend: <strong>{activeBackend.label}</strong>.{" "}
+            Active path: <strong>{activeBackend.label}</strong>.{" "}
             {activeBackend.runtimeHint}
           </p>
           <div className="provider-option-grid">
@@ -157,16 +156,16 @@ export function SettingsStudio() {
             ))}
           </div>
           <p className="support-copy">
-            This switch changes how VoicyClaw reaches the agent runtime. The ASR
-            and TTS cards below still decide where speech processing happens.
+            This switch decides how VoicyClaw finds the agent. The ASR and TTS
+            cards below still decide where the speech work happens.
           </p>
         </section>
 
         <section className="card stack-card">
           <div className="card-heading compact">
             <div>
-              <p className="card-kicker">Channel setup</p>
-              <h2>Connection defaults</h2>
+              <p className="card-kicker">Basics</p>
+              <h2>Connection settings</h2>
             </div>
           </div>
           <div className="form-grid">
@@ -208,9 +207,8 @@ export function SettingsStudio() {
             </label>
           </div>
           <p className="support-copy">
-            The channel view reconnects automatically after you switch an ASR or
-            TTS path here, so the runtime follows the latest selection without a
-            manual refresh.
+            The studio reconnects automatically after you switch an ASR or TTS
+            path here, so you can keep testing without a manual refresh.
           </p>
         </section>
 
@@ -218,7 +216,7 @@ export function SettingsStudio() {
           <div className="card-heading compact">
             <div>
               <p className="card-kicker">OpenClaw bridge</p>
-              <h2>Gateway connection</h2>
+              <h2>Gateway settings</h2>
             </div>
             <span
               className={`status-pill ${settings.conversationBackend === "openclaw-gateway" ? "warn" : "neutral"}`}
@@ -263,9 +261,8 @@ export function SettingsStudio() {
             </label>
           </div>
           <p className="support-copy">
-            For the first local test, run OpenClaw on the same machine and use
-            the local Gateway WebSocket plus a manually configured Gateway
-            token.
+            For a first local test, run OpenClaw on the same machine and use a
+            local Gateway WebSocket plus a manually set Gateway token.
           </p>
         </section>
 
@@ -301,29 +298,17 @@ export function SettingsStudio() {
             </div>
           </div>
           <p className="support-copy">
-            Server-side providers read credentials from server config, not
-            browser local storage. The preferred path is
+            Server-side providers read credentials from server config, not from
+            browser storage. The easiest setup is
             <code> config/providers.local.yaml </code>
-            in the repo root, with environment variables available as optional
-            overrides. Azure Speech unary and segmented TTS both need a speech
-            key plus region or endpoint; the segmented Azure path can either use
-            its own <code>AzureSpeechStreamingTTS</code> section or fall back to
-            the shared <code>AzureSpeechTTS</code> credentials. Google Cloud
-            streaming and batched TTS both work best with a service account file
-            or JSON. The streaming path expects a Chirp 3 HD voice, while the
-            batched path expects a WaveNet or Neural2 style voice. Tencent Cloud
-            unary and bidirectional TTS use the
+            in the repo root, with env vars as optional overrides. Azure uses
+            <code> AzureSpeechTTS </code>
+            or <code> AzureSpeechStreamingTTS </code>. Google uses
+            <code> GoogleCloudTTS </code>
+            or <code> GoogleCloudBatchedTTS </code>. Tencent uses
             <code> TencentCloudTTS </code>
-            and <code> TencentCloudStreamingTTS </code>
-            sections with an app ID, secret ID, and secret key; the
-            bidirectional Tencent path can reuse the base Tencent credentials.
-            Volcengine TTS reads the same YAML file through the
-            <code> DoubaoStreamTTS </code>
-            section and still supports <code>VOICYCLAW_VOLCENGINE_*</code>
-            overrides. Azure also supports optional SSML-style tuning through
-            <code> style </code>, <code> style_degree </code>,
-            <code> role </code>, <code> rate </code>, <code> pitch </code>, and
-            <code> volume </code>.
+            and <code> TencentCloudStreamingTTS </code>. Volcengine uses
+            <code> DoubaoStreamTTS </code>.
           </p>
           <div className="code-block">
             config/providers.local.yaml
@@ -362,7 +347,7 @@ export function SettingsStudio() {
           <div className="card-heading compact">
             <div>
               <p className="card-kicker">Platform keys</p>
-              <h2>Bot onboarding</h2>
+              <h2>Create a bot key</h2>
             </div>
             <button
               className="ghost-button"
@@ -468,7 +453,7 @@ function ProviderConfigurator<T extends string>({
         <div className="card-heading compact provider-guide-heading">
           <div>
             <p className="card-kicker">Provider guide</p>
-            <h2>Next adapters</h2>
+            <h2>What to try next</h2>
           </div>
         </div>
         <div className="guide-card-grid">

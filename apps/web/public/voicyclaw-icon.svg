@@ -1,0 +1,67 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="voicyclaw-gradient" x1="36" y1="28" x2="224" y2="228" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+    <linearGradient id="voicyclaw-highlight" x1="92" y1="68" x2="192" y2="184" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.36"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="voicyclaw-shadow" x="0" y="0" width="256" height="256" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#F59E0B" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#voicyclaw-shadow)">
+    <rect x="24" y="24" width="208" height="208" rx="56" fill="url(#voicyclaw-gradient)"/>
+    <rect x="24" y="24" width="208" height="208" rx="56" fill="url(#voicyclaw-highlight)"/>
+  </g>
+
+  <path
+    d="M174 74C160.464 65.611 144.496 61 127.5 61C79.176 61 40 100.176 40 148.5C40 180.34 56.826 208.25 84 223.526"
+    stroke="white"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.92"
+  />
+
+  <path
+    d="M92 82L128 174L164 82"
+    stroke="white"
+    stroke-width="17"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <path
+    d="M170 92C184.359 102.227 193.7 119.03 193.7 138C193.7 168.928 168.628 194 137.7 194"
+    stroke="white"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <path
+    d="M175 58L199 82"
+    stroke="white"
+    stroke-width="10"
+    stroke-linecap="round"
+    opacity="0.92"
+  />
+  <path
+    d="M191 50L213 72"
+    stroke="white"
+    stroke-width="10"
+    stroke-linecap="round"
+    opacity="0.84"
+  />
+  <path
+    d="M206 42L226 62"
+    stroke="white"
+    stroke-width="10"
+    stroke-linecap="round"
+    opacity="0.72"
+  />
+</svg>

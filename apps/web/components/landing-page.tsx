@@ -15,6 +15,8 @@ import {
 import { motion } from "motion/react"
 import Link from "next/link"
 
+import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
+
 const waveformBars = Array.from({ length: 60 }, (_, index) => ({
   key: index,
   peakHeight: 40 + ((index * 37) % 120),
@@ -26,48 +28,42 @@ const listeningBars = ["bar-1", "bar-2", "bar-3", "bar-4", "bar-5"] as const
 const valueProps = [
   {
     icon: MessageSquare,
-    title: "Natural conversations",
-    description:
-      "Speak naturally and hear responses instantly. It feels like talking to a real assistant, not filling in a form.",
+    title: "Talk, don't type",
+    description: "Speak to your agent and hear it answer back.",
   },
   {
     icon: Zap,
-    title: "Streaming by default",
-    description:
-      "VoicyClaw is built for real-time voice. Replies can start playing while your agent is still thinking.",
+    title: "Real-time replies",
+    description: "Replies can start playing before the full answer is done.",
   },
   {
     icon: ShieldCheck,
-    title: "Your keys, your control",
-    description:
-      "Use your own provider keys for Google, Azure, Tencent Cloud, Volcengine, and more without handing them to a hosted black box.",
+    title: "Your own keys",
+    description: "Use your own provider keys and stay in control of the setup.",
   },
 ]
 
 const featureCards = [
   {
     icon: Radio,
-    title: "Real-time listening",
-    description:
-      "Handle live spoken turns, interruptions, and quick back-and-forth exchanges without leaving the browser.",
+    title: "Live voice studio",
+    description: "Open one page to talk, listen, and watch replies stream in.",
   },
   {
     icon: Layers,
-    title: "Multiple TTS providers",
+    title: "More than one voice",
     description:
-      "Switch between premium bidirectional streaming and lower-cost single-request voices depending on your use case.",
+      "Switch between Google, Azure, Tencent Cloud, Volcengine, or browser voices.",
   },
   {
     icon: Globe,
-    title: "Ready for real channels",
-    description:
-      "Start in the web studio today, then connect VoicyClaw to the channels where your OpenClaw agents already work.",
+    title: "Built for OpenClaw",
+    description: "OpenClaw runs the agent. VoicyClaw handles the voice.",
   },
   {
     icon: Settings,
-    title: "Simple setup",
-    description:
-      "Bring your existing OpenClaw agent, choose a provider, paste your keys, and start testing voice in minutes.",
+    title: "Quick setup",
+    description: "Pick a provider, paste your keys, and start.",
   },
 ]
 
@@ -125,9 +121,10 @@ function Navbar() {
           href="/"
           className="flex items-center gap-2 text-2xl font-bold tracking-tight text-zinc-900"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500 shadow-lg shadow-amber-500/20">
-            <Mic className="h-6 w-6 text-white" />
-          </div>
+          <VoicyClawBrandIcon
+            alt="VoicyClaw"
+            className="h-10 w-10 rounded-2xl shadow-lg shadow-amber-500/20"
+          />
           VoicyClaw
         </Link>
         <div className="hidden items-center gap-8 md:flex">
@@ -155,9 +152,9 @@ function Navbar() {
         <div className="flex items-center gap-4">
           <Link
             href="/studio"
-            className="rounded-2xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-zinc-800 active:scale-95"
+            className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:from-amber-600 hover:to-orange-600 active:scale-95"
           >
-            Try for free
+            Try the demo
           </Link>
         </div>
       </div>
@@ -176,19 +173,19 @@ function Hero() {
           className="mb-8 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-100 px-4 py-1.5 text-sm font-medium text-amber-700"
         >
           <Sparkles className="h-4 w-4" />
-          Open-source voice for OpenClaw agents
+          Voice for OpenClaw
         </motion.div>
 
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="mx-auto mb-8 max-w-5xl text-5xl leading-[1.1] font-bold tracking-tight text-zinc-900 lg:text-8xl"
+          className="mx-auto mb-8 max-w-6xl text-5xl leading-[1.1] font-bold tracking-tight text-zinc-900 lg:text-8xl"
         >
-          Give OpenClaw agents a voice.
+          Give OpenClaw a voice.
           <br />
           <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
-            Talk like a real person.
+            Speak in. Hear it answer.
           </span>
         </motion.h1>
 
@@ -198,9 +195,7 @@ function Hero() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mx-auto mb-12 max-w-3xl text-xl leading-relaxed text-zinc-500 lg:text-2xl"
         >
-          VoicyClaw turns your OpenClaw bot into a live voice experience. Speak,
-          listen, interrupt, and hear answers back in real time with your own
-          provider keys.
+          Speak to your OpenClaw agent. Hear the reply right away.
         </motion.p>
 
         <motion.div
@@ -213,15 +208,15 @@ function Hero() {
             href="/studio"
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-10 py-5 text-lg font-bold text-white shadow-xl shadow-amber-500/30 transition-all hover:bg-amber-600 active:scale-95 sm:w-auto"
           >
-            Get Started Now <ArrowRight className="h-5 w-5" />
+            Open the Studio <ArrowRight className="h-5 w-5" />
           </Link>
           <a
-            href="https://github.com/Lyshen/VoicyClaw"
+            href="https://github.com/Lyshen/VoicyClaw/blob/main/README.md"
             target="_blank"
             rel="noreferrer"
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-10 py-5 text-lg font-bold text-zinc-900 transition-all hover:bg-zinc-50 active:scale-95 sm:w-auto"
           >
-            <Globe className="h-5 w-5" /> View Source
+            <Globe className="h-5 w-5" /> View README
           </a>
         </motion.div>
       </div>
@@ -293,18 +288,16 @@ function Features() {
         <div className="mb-20 flex flex-col items-end justify-between gap-8 lg:flex-row">
           <div className="max-w-2xl">
             <h2 className="mb-6 text-4xl font-bold tracking-tight lg:text-5xl">
-              Everything you need for a{" "}
-              <span className="text-amber-500">voice-first</span> OpenClaw
-              experience.
+              Everything you need to{" "}
+              <span className="text-amber-500">hear your agent work</span>.
             </h2>
             <p className="text-xl text-zinc-500">
-              Start with the studio, test providers side by side, and keep the
-              path open for real production channels later.
+              Mic in, agent runs, voice out. The whole loop stays in one place.
             </p>
           </div>
           <div className="hidden lg:block">
             <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-6 py-3 font-semibold text-zinc-900">
-              Web Studio Beta
+              Live Demo
             </div>
           </div>
         </div>
@@ -344,19 +337,17 @@ function HowItWorks() {
       step: "01",
       title: "Connect your agent",
       description:
-        "Bring your OpenClaw setup and point VoicyClaw at the same backend you already use.",
+        "Use the local demo bot or point VoicyClaw at your OpenClaw setup.",
     },
     {
       step: "02",
       title: "Choose a voice path",
-      description:
-        "Pick the provider and voice you want to test, from premium streaming TTS to cheaper single-request voices.",
+      description: "Pick the provider and voice path you want to test.",
     },
     {
       step: "03",
       title: "Start talking",
-      description:
-        "Open the web studio, speak naturally, and hear your agent respond with live voice output.",
+      description: "Speak naturally and hear the reply back.",
     },
   ]
 
@@ -370,9 +361,9 @@ function HowItWorks() {
       <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-20 px-6 lg:grid-cols-2">
         <div>
           <h2 className="mb-10 text-4xl leading-tight font-bold lg:text-6xl">
-            Simple to launch,
+            Three steps to make
             <br />
-            powerful to use.
+            your agent speak.
           </h2>
 
           <div className="space-y-12">
@@ -442,11 +433,11 @@ function CallToAction() {
 
           <div className="relative z-10">
             <h2 className="mb-8 text-4xl font-bold lg:text-6xl">
-              Ready to start talking?
+              Try the live studio now.
             </h2>
             <p className="mx-auto mb-12 max-w-2xl text-xl text-amber-50 opacity-90 lg:text-2xl">
-              Open the current studio build and start testing the voice
-              experience right away.
+              The demo is already live. Open the studio first, then fine-tune
+              the voice path in Settings.
             </p>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -456,19 +447,16 @@ function CallToAction() {
               >
                 Open Studio
               </Link>
-              <a
-                href="https://github.com/Lyshen/VoicyClaw/blob/main/README.md"
-                target="_blank"
-                rel="noreferrer"
-                className="w-full rounded-2xl bg-white px-10 py-5 text-xl font-bold text-amber-600 shadow-xl transition-all hover:bg-amber-50 active:scale-95 sm:w-auto"
+              <Link
+                href="/settings"
+                className="w-full rounded-2xl border border-white/40 bg-white/14 px-10 py-5 text-xl font-bold text-white shadow-xl backdrop-blur-sm transition-all hover:bg-white/20 active:scale-95 sm:w-auto"
               >
-                Read the Docs
-              </a>
+                Open Settings
+              </Link>
             </div>
 
             <p className="mt-10 font-medium text-amber-100 opacity-80">
-              The current flow stays the same. This page is just the new front
-              door.
+              Same demo flow. Cleaner front door.
             </p>
           </div>
         </div>
@@ -484,14 +472,15 @@ function Footer() {
         <div className="mb-16 flex flex-col items-start justify-between gap-12 md:flex-row">
           <div className="max-w-xs">
             <div className="mb-6 flex items-center gap-2 text-2xl font-bold">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500">
-                <Mic className="h-5 w-5 text-white" />
-              </div>
+              <VoicyClawBrandIcon
+                alt="VoicyClaw"
+                className="h-8 w-8 rounded-lg"
+              />
               VoicyClaw
             </div>
             <p className="leading-relaxed text-zinc-500">
-              Voice-first infrastructure for OpenClaw agents, with a polished
-              studio today and real delivery channels on the roadmap.
+              VoicyClaw is the voice layer for OpenClaw. It turns agent replies
+              into something you can actually hear.
             </p>
           </div>
 
