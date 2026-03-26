@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="apps/web/public/voicyclaw-icon.svg" alt="VoicyClaw" width="88" />
+</p>
+
 # VoicyClaw
 
 [![CI](https://github.com/Lyshen/VoicyClaw/actions/workflows/ci.yml/badge.svg)](https://github.com/Lyshen/VoicyClaw/actions/workflows/ci.yml)
