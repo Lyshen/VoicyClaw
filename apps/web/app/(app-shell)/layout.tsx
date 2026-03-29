@@ -1,4 +1,5 @@
 import { AppShellHeader } from "../../components/app-shell-header"
+import { getResolvedAuthMode } from "../../lib/auth-mode"
 
 export default function AppShellLayout({
   children,
@@ -9,7 +10,7 @@ export default function AppShellLayout({
     <div className="shell">
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
-      <AppShellHeader />
+      <AppShellHeader authMode={getResolvedAuthMode()} />
       <main className="site-main">{children}</main>
     </div>
   )

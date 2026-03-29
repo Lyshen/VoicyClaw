@@ -259,11 +259,25 @@ pnpm dev
 Then open `http://localhost:3000`.
 
 - The root `dev` script starts the web app, the Fastify/WebSocket server, and a local demo ClawBot
+- By default, VoicyClaw runs in `local` auth mode: no account setup, one browser-local default workspace/demo flow
 - Use **hold-to-talk** for microphone streaming, or type into the composer as a transcript fallback
 - Browser speech recognition and browser speech synthesis are treated as `client providers`
 - Add `config/providers.local.yaml` (or set `VOICYCLAW_PROVIDER_CONFIG`) before `pnpm dev` if you want to select Azure, Google, Tencent Cloud, or Volcengine TTS on `/settings`
 - Visit `/settings` to edit the channel/server defaults and mint platform keys for external bots
 - `pnpm build` verifies the server, web app, and local bot all compile successfully
+
+To turn on hosted account flows, set:
+
+```bash
+NEXT_PUBLIC_VOICYCLAW_AUTH_MODE=clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+```
+
+With Clerk enabled, `/studio` and `/settings` are protected. When auth is
+disabled, VoicyClaw stays in the current self-host-friendly single default
+workspace mode so local demos and open-source images still work with zero
+account setup.
 
 For server-side TTS providers, prefer a repo-local YAML file:
 

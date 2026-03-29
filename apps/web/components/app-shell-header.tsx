@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+import type { AuthMode } from "../lib/auth-mode"
+import { AppShellAuthControls } from "./auth-controls"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
 
 const shellLinks = [
@@ -16,7 +18,7 @@ const shellLinks = [
   },
 ] as const
 
-export function AppShellHeader() {
+export function AppShellHeader({ authMode }: { authMode: AuthMode }) {
   const pathname = usePathname()
 
   return (
@@ -45,9 +47,7 @@ export function AppShellHeader() {
       </nav>
 
       <div className="site-header-actions">
-        <Link href="/" className="site-header-button">
-          Back to home
-        </Link>
+        <AppShellAuthControls authMode={authMode} />
       </div>
     </header>
   )
