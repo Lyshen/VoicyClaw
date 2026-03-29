@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  ArrowRight,
   Globe,
   Layers,
   MessageSquare,
@@ -15,6 +14,12 @@ import {
 import { motion } from "motion/react"
 import Link from "next/link"
 
+import type { AuthMode } from "../lib/auth-mode"
+import {
+  LandingCallToActionControls,
+  LandingHeroAuthControls,
+  LandingNavbarAuthControls,
+} from "./auth-controls"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
 
 const waveformBars = Array.from({ length: 60 }, (_, index) => ({
@@ -97,23 +102,23 @@ const footerGroups = [
   },
 ]
 
-export function LandingPage() {
+export function LandingPage({ authMode }: { authMode: AuthMode }) {
   return (
     <div className="min-h-screen bg-white text-zinc-900 [color-scheme:light] selection:bg-amber-200">
-      <Navbar />
+      <Navbar authMode={authMode} />
       <main>
-        <Hero />
+        <Hero authMode={authMode} />
         <ValueProps />
         <Features />
         <HowItWorks />
-        <CallToAction />
+        <CallToAction authMode={authMode} />
       </main>
       <Footer />
     </div>
   )
 }
 
-function Navbar() {
+function Navbar({ authMode }: { authMode: AuthMode }) {
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-zinc-100 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
@@ -150,19 +155,14 @@ function Navbar() {
           </a>
         </div>
         <div className="flex items-center gap-4">
-          <Link
-            href="/studio"
-            className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:from-amber-600 hover:to-orange-600 active:scale-95"
-          >
-            Try the demo
-          </Link>
+          <LandingNavbarAuthControls authMode={authMode} />
         </div>
       </div>
     </nav>
   )
 }
 
-function Hero() {
+function Hero({ authMode }: { authMode: AuthMode }) {
   return (
     <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-amber-50 via-white to-white pb-20 pt-32 lg:pb-40 lg:pt-48">
       <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
@@ -204,20 +204,7 @@ function Hero() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="flex flex-col items-center justify-center gap-5 sm:flex-row"
         >
-          <Link
-            href="/studio"
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-10 py-5 text-lg font-bold text-white shadow-xl shadow-amber-500/30 transition-all hover:bg-amber-600 active:scale-95 sm:w-auto"
-          >
-            Open the Studio <ArrowRight className="h-5 w-5" />
-          </Link>
-          <a
-            href="https://github.com/Lyshen/VoicyClaw/blob/main/README.md"
-            target="_blank"
-            rel="noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-10 py-5 text-lg font-bold text-zinc-900 transition-all hover:bg-zinc-50 active:scale-95 sm:w-auto"
-          >
-            <Globe className="h-5 w-5" /> View README
-          </a>
+          <LandingHeroAuthControls authMode={authMode} />
         </motion.div>
       </div>
 
@@ -424,7 +411,7 @@ function HowItWorks() {
   )
 }
 
-function CallToAction() {
+function CallToAction({ authMode }: { authMode: AuthMode }) {
   return (
     <section id="get-started" className="bg-white py-32">
       <div className="mx-auto max-w-5xl px-6">
@@ -441,18 +428,7 @@ function CallToAction() {
             </p>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                href="/studio"
-                className="w-full rounded-2xl bg-zinc-900 px-10 py-5 text-xl font-bold text-white shadow-xl transition-all hover:bg-zinc-800 active:scale-95 sm:w-auto"
-              >
-                Open Studio
-              </Link>
-              <Link
-                href="/settings"
-                className="w-full rounded-2xl border border-white/40 bg-white/14 px-10 py-5 text-xl font-bold text-white shadow-xl backdrop-blur-sm transition-all hover:bg-white/20 active:scale-95 sm:w-auto"
-              >
-                Open Settings
-              </Link>
+              <LandingCallToActionControls authMode={authMode} />
             </div>
 
             <p className="mt-10 font-medium text-amber-100 opacity-80">
