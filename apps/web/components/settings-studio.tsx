@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 
 import {
@@ -22,8 +23,12 @@ import {
 import { usePrototypeSettings } from "../lib/use-prototype-settings"
 
 export function SettingsStudio() {
-  const { settings, ready, updateSetting } = usePrototypeSettings()
+  const { settings, ready, updateSetting, onboarding } = usePrototypeSettings()
   const [serverStatus, setServerStatus] = useState("Checking server...")
+  const [starterProjectStatus, setStarterProjectStatus] = useState(
+    "Checking starter project...",
+  )
+  const [starterBotOnline, setStarterBotOnline] = useState<boolean | null>(null)
   const [issuedKey, setIssuedKey] = useState("")
   const [keyMessage, setKeyMessage] = useState(
     "Issue a platform key here to test external ClawBots.",
@@ -39,6 +44,11 @@ export function SettingsStudio() {
     if (!ready) return
     void pingServer()
   }, [ready, settings.serverUrl])
+
+  useEffect(() => {
+    if (!ready || !onboarding) return
+    void pingStarterProject()
+  }, [onboarding, ready, settings.serverUrl])
 
   async function pingServer() {
     try {
@@ -59,6 +69,36 @@ export function SettingsStudio() {
     } catch {
       setServerStatus(
         "Server is unreachable right now. Start `pnpm dev` or confirm the server URL.",
+      )
+    }
+  }
+
+  async function pingStarterProject() {
+    if (!onboarding) {
+      return
+    }
+
+    try {
+      const response = await fetch(
+        buildApiUrl(settings, `/api/channels/${onboarding.project.channelId}`),
+      )
+      if (!response.ok) {
+        throw new Error(`channel ${response.status}`)
+      }
+
+      const payload = (await response.json()) as {
+        botCount: number
+        clientCount: number
+      }
+
+      setStarterBotOnline(payload.botCount > 0)
+      setStarterProjectStatus(
+        `${payload.botCount} bot / ${payload.clientCount} client on ${onboarding.project.channelId}`,
+      )
+    } catch {
+      setStarterBotOnline(null)
+      setStarterProjectStatus(
+        "Starter project status is unavailable right now. The setup data is still ready.",
       )
     }
   }
@@ -102,11 +142,11 @@ export function SettingsStudio() {
     <div className="page-stack">
       <section className="hero-card card">
         <div>
-          <p className="hero-eyebrow">Voice setup</p>
-          <h1 className="hero-title">Set up your VoicyClaw demo</h1>
+          <p className="hero-eyebrow">Advanced settings</p>
+          <h1 className="hero-title">Tune voice and connector settings</h1>
           <p className="hero-copy">
-            Point VoicyClaw at your agent, choose where speech runs, and test
-            the voice path you want.
+            Adjust provider choices, connector details, and low-level runtime
+            behavior. Your main product flow stays in Studio.
           </p>
         </div>
         <div className="status-row">
@@ -126,6 +166,78 @@ export function SettingsStudio() {
       </section>
 
       <div className="settings-grid">
+        {onboarding ? (
+          <section className="card stack-card">
+            <div className="card-heading compact">
+              <div>
+                <p className="card-kicker">Starter setup</p>
+                <h2>Your first voice project is ready</h2>
+              </div>
+              <span
+                className={`status-pill ${
+                  starterBotOnline === null
+                    ? "neutral"
+                    : starterBotOnline
+                      ? "live"
+                      : "warn"
+                }`}
+              >
+                {starterBotOnline === null
+                  ? "Checking status"
+                  : starterBotOnline
+                    ? "Bot online"
+                    : "Waiting for bot"}
+              </span>
+            </div>
+            <p className="support-copy">{starterProjectStatus}</p>
+            <div className="stats-grid">
+              <div className="stat">
+                <span className="stat-label">Workspace</span>
+                <strong className="stat-value">
+                  {onboarding.workspace.name}
+                </strong>
+              </div>
+              <div className="stat">
+                <span className="stat-label">Voice project</span>
+                <strong className="stat-value">
+                  {onboarding.project.name}
+                </strong>
+              </div>
+              <div className="stat">
+                <span className="stat-label">Room / Channel</span>
+                <strong className="stat-value">
+                  {onboarding.project.channelId}
+                </strong>
+              </div>
+              <div className="stat">
+                <span className="stat-label">Bot ID</span>
+                <strong className="stat-value">
+                  {onboarding.project.botId}
+                </strong>
+              </div>
+            </div>
+            <p className="support-copy">{onboarding.allowance.note}</p>
+            <p className="support-copy">
+              Preferred connector package:{" "}
+              <strong>{onboarding.connectorPackageName}</strong>
+            </p>
+            {onboarding.starterKeyProvisioningError ? (
+              <p className="support-copy">
+                Starter key provisioning is still pending:{" "}
+                {onboarding.starterKeyProvisioningError}
+              </p>
+            ) : null}
+            <div className="code-block">
+              {onboarding.starterKey?.value ??
+                "Starter API key is still provisioning."}
+            </div>
+            <div className="code-block">
+              {onboarding.connectorConfigJson ??
+                "Connector config becomes available as soon as the starter API key is ready."}
+            </div>
+          </section>
+        ) : null}
+
         <section className="card stack-card">
           <div className="card-heading compact">
             <div>
@@ -346,15 +458,19 @@ export function SettingsStudio() {
         <aside className="card stack-card">
           <div className="card-heading compact">
             <div>
-              <p className="card-kicker">Platform keys</p>
-              <h2>Create a bot key</h2>
+              <p className="card-kicker">
+                {onboarding ? "Extra platform keys" : "Platform keys"}
+              </p>
+              <h2>
+                {onboarding ? "Issue another bot key" : "Create a bot key"}
+              </h2>
             </div>
             <button
               className="ghost-button"
               type="button"
               onClick={() => void issueKey()}
             >
-              Issue key
+              {onboarding ? "Issue another key" : "Issue key"}
             </button>
           </div>
           <p className="support-copy">{keyMessage}</p>
@@ -375,6 +491,11 @@ export function SettingsStudio() {
               TTS.
             </li>
           </ul>
+          <div className="support-actions support-actions-single">
+            <Link href="/console" className="ghost-button">
+              Open debug console
+            </Link>
+          </div>
         </aside>
       </div>
     </div>

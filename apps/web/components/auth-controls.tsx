@@ -7,11 +7,7 @@ import type { AuthMode } from "../lib/auth-mode"
 
 export function AppShellAuthControls({ authMode }: { authMode: AuthMode }) {
   if (authMode !== "clerk") {
-    return (
-      <Link href="/" className="site-header-button">
-        Back to home
-      </Link>
-    )
+    return null
   }
 
   return <ClerkAppShellAuthControls />
@@ -20,17 +16,22 @@ export function AppShellAuthControls({ authMode }: { authMode: AuthMode }) {
 function ClerkAppShellAuthControls() {
   const { isSignedIn } = useAuth()
 
+  if (isSignedIn) {
+    return (
+      <div className="landing-user-button">
+        <UserButton />
+      </div>
+    )
+  }
+
   return (
-    <>
-      <Link href="/" className="site-header-button">
-        Back to home
-      </Link>
-      {isSignedIn ? (
-        <div className="site-user-button">
-          <UserButton />
-        </div>
-      ) : null}
-    </>
+    <Link
+      href="/sign-in"
+      prefetch={false}
+      className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:from-amber-600 hover:to-orange-600 active:scale-95"
+    >
+      Log in
+    </Link>
   )
 }
 

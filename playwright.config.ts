@@ -16,6 +16,10 @@ export default defineConfig({
   },
   webServer: {
     command: "pnpm start:demo",
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_VOICYCLAW_AUTH_MODE: "local",
+    },
     url: baseUrl,
     reuseExistingServer: !process.env.CI,
     stdout: "pipe",

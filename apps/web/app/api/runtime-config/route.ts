@@ -5,6 +5,6 @@ import { getRuntimeConfig } from "../../../lib/runtime-config"
 
 export const dynamic = "force-dynamic"
 
-export function GET(request: NextRequest) {
-  return NextResponse.json(getRuntimeConfig(request))
+export async function GET(request: NextRequest) {
+  return NextResponse.json(await getRuntimeConfig(request))
 }

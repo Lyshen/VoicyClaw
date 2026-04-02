@@ -243,6 +243,12 @@ export function getProviderModeLabel(mode: ProviderMode) {
   return mode === "client" ? "Client provider" : "Server provider"
 }
 
+export function getPrototypeSettingsStorageKey(storageNamespace?: string) {
+  return storageNamespace
+    ? `${SETTINGS_STORAGE_KEY}.${storageNamespace}`
+    : SETTINGS_STORAGE_KEY
+}
+
 export function getAsrProviderOption(providerId: string | undefined) {
   return (
     ASR_PROVIDER_OPTIONS.find((option) => option.id === providerId) ??
@@ -356,6 +362,7 @@ function normalizeConversationBackend(
 
 export function loadPrototypeSettings(
   runtimeDefaults?: Partial<PrototypeSettings>,
+  storageNamespace?: string,
 ) {
   const defaults = {
     ...defaultSettings,
@@ -366,7 +373,9 @@ export function loadPrototypeSettings(
   }
 
   try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
+    const raw = window.localStorage.getItem(
+      getPrototypeSettingsStorageKey(storageNamespace),
+    )
     if (!raw) return defaults
 
     const parsed = JSON.parse(raw) as Partial<PrototypeSettings> & {
@@ -400,10 +409,17 @@ export function loadPrototypeSettings(
 }
 
 export function persistPrototypeSettings(settings: PrototypeSettings) {
+  persistPrototypeSettingsWithNamespace(settings)
+}
+
+export function persistPrototypeSettingsWithNamespace(
+  settings: PrototypeSettings,
+  storageNamespace?: string,
+) {
   if (typeof window === "undefined") return
 
   window.localStorage.setItem(
-    SETTINGS_STORAGE_KEY,
+    getPrototypeSettingsStorageKey(storageNamespace),
     JSON.stringify({
       ...settings,
       serverUrl: normalizeServerUrl(settings.serverUrl),

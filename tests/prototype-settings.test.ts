@@ -3,10 +3,12 @@ import { afterEach, describe, expect, it } from "vitest"
 import {
   buildWsUrl,
   defaultSettings,
+  getPrototypeSettingsStorageKey,
   loadPrototypeSettings,
   normalizeOpenClawGatewayUrl,
   normalizeServerUrl,
   persistPrototypeSettings,
+  persistPrototypeSettingsWithNamespace,
   SETTINGS_STORAGE_KEY,
   sanitizeChannelId,
 } from "../apps/web/lib/prototype-settings"
@@ -175,6 +177,30 @@ describe("prototype settings helpers", () => {
     expect(loadPrototypeSettings()).toMatchObject({
       ttsProvider: "azure-streaming-tts",
     })
+  })
+
+  it("isolates hosted settings by namespace", () => {
+    const storage = createMemoryStorage()
+    globalThis.window = { localStorage: storage } as Window & typeof globalThis
+
+    persistPrototypeSettingsWithNamespace(
+      {
+        ...defaultSettings,
+        channelId: "Hosted Room",
+      },
+      "ws-demo.sayhello-demo",
+    )
+
+    expect(
+      JSON.parse(
+        storage.getItem(
+          getPrototypeSettingsStorageKey("ws-demo.sayhello-demo"),
+        ) ?? "",
+      ),
+    ).toMatchObject({
+      channelId: "hosted-room",
+    })
+    expect(storage.getItem(SETTINGS_STORAGE_KEY)).toBeNull()
   })
 })
 
