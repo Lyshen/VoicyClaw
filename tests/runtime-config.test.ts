@@ -16,18 +16,84 @@ describe("runtime config", () => {
     ).toBe("https://voice.example.com/api")
   })
 
-  it("derives the public server url from forwarded headers", () => {
+  it("derives the public server url from forwarded headers", async () => {
     const request = createRequest("http://localhost:3000/settings", {
       "x-forwarded-host": "demo.example.com",
       "x-forwarded-proto": "https",
     })
 
     expect(
-      getRuntimeConfig(request, {
-        VOICYCLAW_PUBLIC_SERVER_PORT: "443",
-      }),
+      await getRuntimeConfig(
+        request,
+        {
+          VOICYCLAW_PUBLIC_SERVER_PORT: "443",
+        },
+        {
+          getHostedOnboardingState: async () => null,
+        },
+      ),
     ).toEqual({
-      serverUrl: "https://demo.example.com",
+      settingsDefaults: {
+        serverUrl: "https://demo.example.com",
+        channelId: undefined,
+        conversationBackend: undefined,
+      },
+      settingsStorageNamespace: undefined,
+      onboarding: null,
+    })
+  })
+
+  it("returns starter project defaults when hosted onboarding is available", async () => {
+    const request = createRequest("https://voice.example.com/studio", {
+      host: "voice.example.com",
+    })
+
+    const onboarding = {
+      version: 1 as const,
+      workspace: {
+        id: "ws-demo",
+        name: "My Workspace",
+      },
+      project: {
+        id: "sayhello-demo",
+        name: "SayHello",
+        channelId: "sayhello-demo",
+        botId: "openclaw-demo",
+        displayName: "SayHello Connector",
+      },
+      starterKey: {
+        value: "vc_demo",
+        label: "Starter key",
+      },
+      allowance: {
+        label: "Free preview allowance",
+        status: "preview" as const,
+        note: "Starter preview allowance is active.",
+      },
+      connectorConfigJson: "{}",
+      connectorConfigLine: "{}",
+      connectorPackageName: "@voicyclaw/voicyclaw",
+      settingsStorageNamespace: "ws-demo.sayhello-demo",
+    }
+
+    expect(
+      await getRuntimeConfig(
+        request,
+        {
+          VOICYCLAW_PUBLIC_SERVER_URL: "https://voice.example.com",
+        },
+        {
+          getHostedOnboardingState: async () => onboarding,
+        },
+      ),
+    ).toEqual({
+      settingsDefaults: {
+        serverUrl: "https://voice.example.com",
+        channelId: "sayhello-demo",
+        conversationBackend: "local-bot",
+      },
+      settingsStorageNamespace: "ws-demo.sayhello-demo",
+      onboarding,
     })
   })
 

@@ -3,7 +3,11 @@ import { NextResponse } from "next/server"
 
 import { getResolvedAuthMode } from "./lib/auth-mode"
 
-const isProtectedRoute = createRouteMatcher(["/studio(.*)", "/settings(.*)"])
+const isProtectedRoute = createRouteMatcher([
+  "/studio(.*)",
+  "/settings(.*)",
+  "/console(.*)",
+])
 
 const proxy =
   getResolvedAuthMode() === "clerk"

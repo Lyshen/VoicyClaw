@@ -1,3 +1,9 @@
+import {
+  getHostedOnboardingState,
+  type HostedOnboardingState,
+} from "./hosted-onboarding"
+import type { PrototypeSettings } from "./prototype-settings"
+
 type HeaderLookup = {
   get: (name: string) => string | null
 }
@@ -15,12 +21,44 @@ type RuntimeConfigEnv = {
   [key: string]: string | undefined
 }
 
+export interface RuntimeConfigPayload {
+  settingsDefaults: Partial<PrototypeSettings>
+  settingsStorageNamespace?: string
+  onboarding: HostedOnboardingState | null
+}
+
+type RuntimeConfigOptions = {
+  getHostedOnboardingState?: (
+    serverUrl: string,
+  ) => Promise<HostedOnboardingState | null>
+}
+
 export function getRuntimeConfig(
   request: RuntimeConfigRequest,
   env: RuntimeConfigEnv = process.env,
+  options: RuntimeConfigOptions = {},
+): Promise<RuntimeConfigPayload> {
+  return getResolvedRuntimeConfig(request, env, options)
+}
+
+async function getResolvedRuntimeConfig(
+  request: RuntimeConfigRequest,
+  env: RuntimeConfigEnv,
+  options: RuntimeConfigOptions,
 ) {
+  const serverUrl = resolvePublicServerUrl(request, env)
+  const onboardingResolver =
+    options.getHostedOnboardingState ?? getHostedOnboardingState
+  const onboarding = await onboardingResolver(serverUrl)
+
   return {
-    serverUrl: resolvePublicServerUrl(request, env),
+    settingsDefaults: {
+      serverUrl,
+      channelId: onboarding?.project.channelId,
+      conversationBackend: onboarding ? ("local-bot" as const) : undefined,
+    },
+    settingsStorageNamespace: onboarding?.settingsStorageNamespace,
+    onboarding,
   }
 }
 

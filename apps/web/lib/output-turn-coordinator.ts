@@ -3,6 +3,14 @@ interface OutputTurnCoordinatorLogger {
   warn: (message: string, payload: Record<string, unknown>) => void
 }
 
+type OutputPlaybackSource = "client" | "server"
+
+type OutputPlaybackStateChange = {
+  isPlaying: boolean
+  source: OutputPlaybackSource
+  utteranceId: string
+}
+
 interface OutputTurnPlayer {
   enqueueBase64: (audioBase64: string, sampleRate?: number) => Promise<void>
   reset: () => void
@@ -13,16 +21,22 @@ interface OutputTurnCoordinatorOptions {
   player: OutputTurnPlayer
   getSpeechSynthesis?: () => SpeechSynthesis | null
   logger?: OutputTurnCoordinatorLogger
+  onPlaybackStateChange?: (event: OutputPlaybackStateChange) => void
 }
 
 export class OutputTurnCoordinator {
   private currentTurnId: string | null = null
   private speechGeneration = 0
   private speechQueue = Promise.resolve()
+  private queuedClientChunks = 0
+  private clientPlaybackTurnId: string | null = null
+  private serverPlaybackTurnId: string | null = null
 
   constructor(private readonly options: OutputTurnCoordinatorOptions) {}
 
   reset() {
+    this.flushClientPlayback()
+    this.flushServerPlayback()
     this.currentTurnId = null
     this.speechGeneration += 1
     this.speechQueue = Promise.resolve()
@@ -56,11 +70,13 @@ export class OutputTurnCoordinator {
 
     const generation = this.ensureActiveTurn(utteranceId)
     if (generation === null) return
+    this.queuedClientChunks += 1
 
     this.speechQueue = this.speechQueue.then(
       () =>
         new Promise<void>((resolve) => {
           if (!this.isActiveTurn(utteranceId, generation)) {
+            this.finishClientChunk(utteranceId)
             resolve()
             return
           }
@@ -69,6 +85,14 @@ export class OutputTurnCoordinator {
           utterance.lang = language
           utterance.onstart = () => {
             if (!this.isActiveTurn(utteranceId, generation)) return
+            if (this.clientPlaybackTurnId !== utteranceId) {
+              this.clientPlaybackTurnId = utteranceId
+              this.options.onPlaybackStateChange?.({
+                isPlaying: true,
+                source: "client",
+                utteranceId,
+              })
+            }
 
             this.options.logger?.info("start", {
               utteranceId,
@@ -77,28 +101,26 @@ export class OutputTurnCoordinator {
             })
           }
           utterance.onend = () => {
-            if (!this.isActiveTurn(utteranceId, generation)) {
-              resolve()
-              return
-            }
+            this.finishClientChunk(utteranceId)
 
-            this.options.logger?.info("end", {
-              utteranceId,
-              text: clipTextForLog(trimmed),
-            })
+            if (this.isActiveTurn(utteranceId, generation)) {
+              this.options.logger?.info("end", {
+                utteranceId,
+                text: clipTextForLog(trimmed),
+              })
+            }
             resolve()
           }
           utterance.onerror = (event) => {
-            if (!this.isActiveTurn(utteranceId, generation)) {
-              resolve()
-              return
-            }
+            this.finishClientChunk(utteranceId)
 
-            this.options.logger?.warn("error", {
-              utteranceId,
-              error: event.error,
-              text: clipTextForLog(trimmed),
-            })
+            if (this.isActiveTurn(utteranceId, generation)) {
+              this.options.logger?.warn("error", {
+                utteranceId,
+                error: event.error,
+                text: clipTextForLog(trimmed),
+              })
+            }
             resolve()
           }
 
@@ -116,11 +138,28 @@ export class OutputTurnCoordinator {
     if (generation === null || !this.isActiveTurn(utteranceId, generation))
       return
 
+    if (this.serverPlaybackTurnId !== utteranceId) {
+      this.serverPlaybackTurnId = utteranceId
+      this.options.onPlaybackStateChange?.({
+        isPlaying: true,
+        source: "server",
+        utteranceId,
+      })
+    }
+
     await this.options.player.enqueueBase64(audioBase64, sampleRate)
   }
 
   completeServerAudio(utteranceId: string) {
     if (this.currentTurnId !== utteranceId) return
+    if (this.serverPlaybackTurnId === utteranceId) {
+      this.options.onPlaybackStateChange?.({
+        isPlaying: false,
+        source: "server",
+        utteranceId,
+      })
+      this.serverPlaybackTurnId = null
+    }
     this.options.player.reset()
   }
 
@@ -145,6 +184,50 @@ export class OutputTurnCoordinator {
     return (
       this.currentTurnId === utteranceId && this.speechGeneration === generation
     )
+  }
+
+  private finishClientChunk(utteranceId: string) {
+    this.queuedClientChunks = Math.max(0, this.queuedClientChunks - 1)
+    if (
+      this.queuedClientChunks > 0 ||
+      this.clientPlaybackTurnId !== utteranceId
+    ) {
+      return
+    }
+
+    this.options.onPlaybackStateChange?.({
+      isPlaying: false,
+      source: "client",
+      utteranceId,
+    })
+    this.clientPlaybackTurnId = null
+  }
+
+  private flushClientPlayback() {
+    this.queuedClientChunks = 0
+    if (!this.clientPlaybackTurnId) {
+      return
+    }
+
+    this.options.onPlaybackStateChange?.({
+      isPlaying: false,
+      source: "client",
+      utteranceId: this.clientPlaybackTurnId,
+    })
+    this.clientPlaybackTurnId = null
+  }
+
+  private flushServerPlayback() {
+    if (!this.serverPlaybackTurnId) {
+      return
+    }
+
+    this.options.onPlaybackStateChange?.({
+      isPlaying: false,
+      source: "server",
+      utteranceId: this.serverPlaybackTurnId,
+    })
+    this.serverPlaybackTurnId = null
   }
 }
 

@@ -38,25 +38,18 @@ test.beforeEach(async ({ page }) => {
 test("streams the mock bot reply from the channel view", async ({ page }) => {
   await page.goto("/studio")
 
-  await expect(page.getByText("websocket connected")).toBeVisible({
+  await expect(page.getByPlaceholder(/Speak or type here/i)).toBeVisible({
     timeout: 60_000,
   })
-  await expect(page.getByText(/1 bot online/)).toBeVisible({ timeout: 60_000 })
 
   await page.getByPlaceholder(/Speak or type here/i).fill("hello")
   await page.getByRole("button", { name: /Send (message|text)/i }).click()
 
-  await expect(page.getByText(/demo-clawbot preview/i)).toBeVisible({
-    timeout: 60_000,
-  })
   await expect(
     page.getByText(
       /Hello from Studio Claw\. I am running locally through the OpenClaw websocket channel/i,
     ),
   ).toBeVisible({ timeout: 60_000 })
-  await expect(page.getByText(/bot stream complete/i)).toBeVisible({
-    timeout: 60_000,
-  })
 })
 
 test("persists server provider settings back into the channel runtime", async ({
@@ -70,13 +63,28 @@ test("persists server provider settings back into the channel runtime", async ({
   await expect(page.getByText("ASR Server provider")).toBeVisible()
   await expect(page.getByText("TTS Server provider")).toBeVisible()
 
+  const persistedSettings = await page.evaluate(() => {
+    const storageKey = Object.keys(window.localStorage).find((key) =>
+      key.startsWith("voicyclaw.prototype.settings"),
+    )
+    if (!storageKey) {
+      return null
+    }
+
+    const raw = window.localStorage.getItem(storageKey)
+    return raw ? JSON.parse(raw) : null
+  })
+
+  expect(persistedSettings).toMatchObject({
+    asrProvider: "demo",
+    ttsProvider: "demo",
+  })
+
   await page.goto("/studio")
 
-  await expect(page.getByText("websocket connected")).toBeVisible({
+  await expect(page.getByPlaceholder(/Speak or type here/i)).toBeVisible({
     timeout: 60_000,
   })
-  await expect(page.getByText(/ASR: Demo Server ASR/)).toBeVisible()
-  await expect(page.getByText(/TTS: Demo Server TTS/)).toBeVisible()
 
   await page.getByPlaceholder(/Speak or type here/i).fill("design prototype")
   await page.getByRole("button", { name: /Send (message|text)/i }).click()

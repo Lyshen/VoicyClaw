@@ -6,23 +6,36 @@ import {
   defaultSettings,
   loadPrototypeSettings,
   type PrototypeSettings,
-  persistPrototypeSettings,
+  persistPrototypeSettingsWithNamespace,
 } from "./prototype-settings"
+import type { RuntimeConfigPayload } from "./runtime-config"
 
 export function usePrototypeSettings() {
   const [settings, setSettings] = useState<PrototypeSettings>(defaultSettings)
+  const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfigPayload>({
+    settingsDefaults: {
+      serverUrl: defaultSettings.serverUrl,
+    },
+    onboarding: null,
+  })
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     let active = true
 
     const bootstrap = async () => {
-      const runtimeDefaults = await loadRuntimeDefaults()
+      const nextRuntimeConfig = await loadRuntimeDefaults()
       if (!active) {
         return
       }
 
-      setSettings(loadPrototypeSettings(runtimeDefaults))
+      setRuntimeConfig(nextRuntimeConfig)
+      setSettings(
+        loadPrototypeSettings(
+          nextRuntimeConfig.settingsDefaults,
+          nextRuntimeConfig.settingsStorageNamespace,
+        ),
+      )
       setReady(true)
     }
 
@@ -35,8 +48,11 @@ export function usePrototypeSettings() {
 
   useEffect(() => {
     if (!ready) return
-    persistPrototypeSettings(settings)
-  }, [ready, settings])
+    persistPrototypeSettingsWithNamespace(
+      settings,
+      runtimeConfig.settingsStorageNamespace,
+    )
+  }, [ready, runtimeConfig.settingsStorageNamespace, settings])
 
   function updateSetting<Key extends keyof PrototypeSettings>(
     key: Key,
@@ -53,21 +69,28 @@ export function usePrototypeSettings() {
     setSettings,
     updateSetting,
     ready,
+    onboarding: runtimeConfig.onboarding,
   }
 }
 
-async function loadRuntimeDefaults(): Promise<Partial<PrototypeSettings>> {
+async function loadRuntimeDefaults(): Promise<RuntimeConfigPayload> {
   try {
     const response = await fetch("/api/runtime-config", {
       cache: "no-store",
     })
     if (!response.ok) {
-      return {}
+      return {
+        settingsDefaults: {},
+        onboarding: null,
+      }
     }
 
-    const payload = (await response.json()) as Partial<PrototypeSettings>
+    const payload = (await response.json()) as RuntimeConfigPayload
     return payload
   } catch {
-    return {}
+    return {
+      settingsDefaults: {},
+      onboarding: null,
+    }
   }
 }

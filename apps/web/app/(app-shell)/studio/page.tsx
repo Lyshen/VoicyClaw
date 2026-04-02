@@ -1,5 +1,5 @@
-import { ChannelStudio } from "../../../components/channel-studio"
+import { ProductStudio } from "../../../components/product-studio"
 
 export default function StudioPage() {
-  return <ChannelStudio />
+  return <ProductStudio />
 }
