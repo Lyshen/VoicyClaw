@@ -55,9 +55,17 @@ describe("OutputTurnCoordinator", () => {
   it("drops stale queued client speech when a newer turn begins", async () => {
     const speech = new FakeSpeechSynthesis()
     const player = createFakePlayer()
+    const playbackEvents: Array<{
+      isPlaying: boolean
+      source: "client" | "server"
+      utteranceId: string
+    }> = []
     const coordinator = new OutputTurnCoordinator({
       player,
       getSpeechSynthesis: () => speech as unknown as SpeechSynthesis,
+      onPlaybackStateChange: (event) => {
+        playbackEvents.push(event)
+      },
     })
 
     coordinator.beginTurn("turn-1")
@@ -76,6 +84,23 @@ describe("OutputTurnCoordinator", () => {
       "replacement sentence",
     ])
     expect(player.cancelCalls).toBe(1)
+    expect(playbackEvents).toEqual([
+      {
+        isPlaying: true,
+        source: "client",
+        utteranceId: "turn-1",
+      },
+      {
+        isPlaying: false,
+        source: "client",
+        utteranceId: "turn-1",
+      },
+      {
+        isPlaying: true,
+        source: "client",
+        utteranceId: "turn-2",
+      },
+    ])
 
     speech.completeActive()
     await flushPromises()
@@ -84,13 +109,26 @@ describe("OutputTurnCoordinator", () => {
       "first sentence",
       "replacement sentence",
     ])
+    expect(playbackEvents.at(-1)).toEqual({
+      isPlaying: false,
+      source: "client",
+      utteranceId: "turn-2",
+    })
   })
 
   it("ignores stale server audio after a newer turn becomes active", async () => {
     const player = createFakePlayer()
+    const playbackEvents: Array<{
+      isPlaying: boolean
+      source: "client" | "server"
+      utteranceId: string
+    }> = []
     const coordinator = new OutputTurnCoordinator({
       player,
       getSpeechSynthesis: () => null,
+      onPlaybackStateChange: (event) => {
+        playbackEvents.push(event)
+      },
     })
 
     coordinator.beginTurn("turn-1")
@@ -107,6 +145,28 @@ describe("OutputTurnCoordinator", () => {
       { audioBase64: "audio-2", sampleRate: 16_000 },
     ])
     expect(player.resetCalls).toBe(1)
+    expect(playbackEvents).toEqual([
+      {
+        isPlaying: true,
+        source: "server",
+        utteranceId: "turn-1",
+      },
+      {
+        isPlaying: false,
+        source: "server",
+        utteranceId: "turn-1",
+      },
+      {
+        isPlaying: true,
+        source: "server",
+        utteranceId: "turn-2",
+      },
+      {
+        isPlaying: false,
+        source: "server",
+        utteranceId: "turn-2",
+      },
+    ])
   })
 })
 

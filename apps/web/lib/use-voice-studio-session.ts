@@ -53,6 +53,12 @@ export function useVoiceStudioSession(
   const [isRecording, setIsRecording] = useState(false)
   const [speechSupported, setSpeechSupported] = useState(false)
   const [reconnectIndex, setReconnectIndex] = useState(0)
+  const [pendingReplyUtteranceId, setPendingReplyUtteranceId] = useState<
+    string | null
+  >(null)
+  const [playingUtteranceId, setPlayingUtteranceId] = useState<string | null>(
+    null,
+  )
 
   const wsRef = useRef<WebSocket | null>(null)
   const playerRef = useRef<PcmStreamPlayer | null>(null)
@@ -66,6 +72,7 @@ export function useVoiceStudioSession(
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const introShownRef = useRef(false)
   const demoAssistNoticeRef = useRef(false)
+  const playbackIdleTimeoutRef = useRef<number | null>(null)
 
   const asrProvider = getAsrProviderOption(settings.asrProvider)
   const ttsProvider = getTtsProviderOption(settings.ttsProvider)
@@ -108,6 +115,24 @@ export function useVoiceStudioSession(
           typeof window !== "undefined" && "speechSynthesis" in window
             ? window.speechSynthesis
             : null,
+        onPlaybackStateChange: ({ isPlaying, utteranceId }) => {
+          if (playbackIdleTimeoutRef.current !== null) {
+            window.clearTimeout(playbackIdleTimeoutRef.current)
+            playbackIdleTimeoutRef.current = null
+          }
+
+          if (isPlaying) {
+            setPlayingUtteranceId(utteranceId)
+            return
+          }
+
+          playbackIdleTimeoutRef.current = window.setTimeout(() => {
+            setPlayingUtteranceId((current) =>
+              current === utteranceId ? null : current,
+            )
+            playbackIdleTimeoutRef.current = null
+          }, 180)
+        },
         logger: {
           info: (message, payload) => {
             console.info(`[voicyclaw][output-turn] ${message}`, payload)
@@ -135,6 +160,10 @@ export function useVoiceStudioSession(
       micRef.current?.stop()
       outputRef.current?.reset()
       recognitionRef.current?.stop?.()
+      if (playbackIdleTimeoutRef.current !== null) {
+        window.clearTimeout(playbackIdleTimeoutRef.current)
+        playbackIdleTimeoutRef.current = null
+      }
     }
   }, [])
 
@@ -177,6 +206,9 @@ export function useVoiceStudioSession(
           break
         }
         case "BOT_PREVIEW": {
+          setPendingReplyUtteranceId((current) =>
+            current === message.utteranceId ? null : current,
+          )
           upsertEntry({
             id: `preview-${message.utteranceId}`,
             role: "preview",
@@ -197,6 +229,9 @@ export function useVoiceStudioSession(
           break
         }
         case "BOT_TEXT": {
+          setPendingReplyUtteranceId((current) =>
+            current === message.utteranceId ? null : current,
+          )
           const previous = botSpeechBufferRef.current[message.utteranceId] ?? ""
           const combined = [previous, message.text]
             .filter(Boolean)
@@ -226,6 +261,9 @@ export function useVoiceStudioSession(
           break
         }
         case "AUDIO_CHUNK": {
+          setPendingReplyUtteranceId((current) =>
+            current === message.utteranceId ? null : current,
+          )
           if (ttsProvider.mode === "server") {
             void outputRef.current?.enqueueServerAudio(
               message.utteranceId,
@@ -315,10 +353,14 @@ export function useVoiceStudioSession(
 
     ws.onerror = () => {
       setConnectionState("error")
+      setPendingReplyUtteranceId(null)
+      setPlayingUtteranceId(null)
     }
 
     ws.onclose = () => {
       setConnectionState("disconnected")
+      setPendingReplyUtteranceId(null)
+      setPlayingUtteranceId(null)
     }
 
     return () => {
@@ -467,12 +509,16 @@ export function useVoiceStudioSession(
     micRef.current?.stop()
     stopRecognition()
 
-    sendControl({
-      type: "COMMIT_UTTERANCE",
-      utteranceId,
-      transcript: draftRef.current.trim(),
-      source: "microphone",
-    })
+    if (
+      sendControl({
+        type: "COMMIT_UTTERANCE",
+        utteranceId,
+        transcript: draftRef.current.trim(),
+        source: "microphone",
+      })
+    ) {
+      setPendingReplyUtteranceId(utteranceId)
+    }
   }, [sendControl, stopRecognition])
 
   const sendTextUtterance = useCallback(
@@ -492,6 +538,7 @@ export function useVoiceStudioSession(
         })
       ) {
         outputRef.current?.beginTurn(utteranceId)
+        setPendingReplyUtteranceId(utteranceId)
         setDraftText("")
       }
     },
@@ -506,6 +553,8 @@ export function useVoiceStudioSession(
   const adapterSummary = `${asrProvider.label} / ${ttsProvider.label}`
   const speechStatus = speechSupported ? "available" : "not available"
   const starterBotOnline = (channelState?.botCount ?? 0) > 0
+  const isBotThinking = pendingReplyUtteranceId !== null
+  const isBotSpeaking = playingUtteranceId !== null
 
   return {
     settings,
@@ -527,6 +576,8 @@ export function useVoiceStudioSession(
     adapterSummary,
     speechStatus,
     starterBotOnline,
+    isBotThinking,
+    isBotSpeaking,
     beginCapture,
     finishCapture,
     sendTextUtterance,

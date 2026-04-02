@@ -49,6 +49,8 @@ export function ProductStudio() {
     draftText,
     setDraftText,
     isRecording,
+    isBotThinking,
+    isBotSpeaking,
     timelineRef,
     botDisplayName,
     starterBotOnline,
@@ -202,12 +204,15 @@ export function ProductStudio() {
               draftText={draftText}
               setDraftText={setDraftText}
               isRecording={isRecording}
+              isBotThinking={isBotThinking}
+              isBotSpeaking={isBotSpeaking}
               timelineRef={timelineRef}
               entries={conversationEntries}
               quickPrompts={quickPrompts}
               beginCapture={beginCapture}
               finishCapture={finishCapture}
               sendTextUtterance={sendTextUtterance}
+              botDisplayName={botDisplayName}
             />
           ) : (
             <RoomConnectionCard
@@ -476,22 +481,28 @@ function ConversationCard({
   draftText,
   setDraftText,
   isRecording,
+  isBotThinking,
+  isBotSpeaking,
   timelineRef,
   entries,
   quickPrompts,
   beginCapture,
   finishCapture,
   sendTextUtterance,
+  botDisplayName,
 }: {
   draftText: string
   setDraftText: (value: string) => void
   isRecording: boolean
+  isBotThinking: boolean
+  isBotSpeaking: boolean
   timelineRef: RefObject<HTMLDivElement | null>
   entries: ConversationBubble[]
   quickPrompts: readonly string[]
   beginCapture: () => Promise<void>
   finishCapture: () => void
   sendTextUtterance: (overrideText?: string) => void
+  botDisplayName: string
 }) {
   return (
     <RoomShell
@@ -502,11 +513,7 @@ function ConversationCard({
       <div className="flex min-h-0 flex-1 flex-col px-3 pt-12 pb-3">
         <div className="shrink-0 pb-3">
           <div className="flex items-center justify-center">
-            <VoicePulseOrb
-              active={
-                isRecording || entries.some((entry) => entry.role === "preview")
-              }
-            />
+            <VoicePulseOrb active={isRecording || isBotSpeaking} />
           </div>
         </div>
 
@@ -557,6 +564,10 @@ function ConversationCard({
               </article>
             ))
           )}
+
+          {isBotThinking ? (
+            <ThinkingBubble botDisplayName={botDisplayName} />
+          ) : null}
         </div>
 
         <div className="mt-4 shrink-0 border-t border-white/10 pt-4">
@@ -616,6 +627,30 @@ function ConversationCard({
         </div>
       </div>
     </RoomShell>
+  )
+}
+
+function ThinkingBubble({ botDisplayName }: { botDisplayName: string }) {
+  return (
+    <article className="flex justify-start">
+      <div className="max-w-[88%] rounded-[1.75rem] border border-white/8 bg-white/[0.05] px-4 py-3 text-white">
+        <p className="text-xs font-medium tracking-[0.22em] text-zinc-500 uppercase">
+          {botDisplayName}
+        </p>
+        <div className="mt-2 flex items-center gap-2 text-sm leading-6 text-zinc-300">
+          <span>is thinking</span>
+          <div className="flex items-center gap-1">
+            {[0, 1, 2].map((index) => (
+              <span
+                key={index}
+                className="voice-thinking-dot h-1.5 w-1.5 rounded-full bg-orange-200"
+                style={{ animationDelay: `${index * 120}ms` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </article>
   )
 }
 
@@ -794,12 +829,11 @@ function VoicePulseOrb({ active }: { active: boolean }) {
         {VOICE_BARS.slice(1, 6).map((height, index) => (
           <span
             key={height}
-            className={`w-1.5 rounded-full ${
-              active ? "bg-orange-50 animate-pulse" : "bg-orange-200/90"
-            }`}
+            className={`w-1.5 rounded-full ${active ? "voice-eq-bar bg-orange-50" : "bg-orange-200/90"}`}
             style={{
-              height: active ? height : Math.max(10, height / 3),
-              animationDelay: `${index * 120}ms`,
+              height: active ? `${height}px` : `${Math.max(10, height / 3)}px`,
+              animationDelay: active ? `${index * 110}ms` : undefined,
+              animationDuration: active ? `${760 + index * 90}ms` : undefined,
             }}
           />
         ))}
