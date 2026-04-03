@@ -68,7 +68,11 @@ describe("runtime config", () => {
       allowance: {
         label: "Free preview allowance",
         status: "preview" as const,
-        note: "Starter preview allowance is active.",
+        note: "Starter preview allowance is active. 500.000 voice credits remaining. Billing is not enforced yet.",
+        currency: "voice-credits" as const,
+        grantedCreditsMillis: 500_000,
+        usedCreditsMillis: 0,
+        remainingCreditsMillis: 500_000,
       },
       connectorConfigJson: "{}",
       connectorConfigLine: "{}",

@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto"
-
+import {
+  buildHostedAllowanceSnapshot,
+  ensureStarterPreviewAllowance,
+} from "./billing"
 import {
   createPlatformKey,
   createProject,
@@ -18,9 +21,6 @@ const STARTER_KEY_LABEL = "Starter key"
 const STARTER_PROJECT_NAME = "SayHello"
 const STARTER_PROJECT_SLUG = "sayhello"
 const STARTER_PROJECT_DISPLAY_NAME = "SayHello Connector"
-const PREVIEW_ALLOWANCE_LABEL = "Free preview allowance"
-const PREVIEW_ALLOWANCE_NOTE =
-  "Starter preview allowance is active. Billing is not enforced yet."
 
 export interface HostedBootstrapInput {
   provider: "clerk"
@@ -54,6 +54,10 @@ export interface HostedBootstrapRecord {
     label: string
     status: "preview"
     note: string
+    currency: "voice-credits"
+    grantedCreditsMillis: number
+    usedCreditsMillis: number
+    remainingCreditsMillis: number
   }
 }
 
@@ -93,6 +97,8 @@ export function bootstrapHostedResources(
       keyType: "starter",
       createdByUserId: user.id,
     })
+
+  ensureStarterPreviewAllowance(workspace.id)
 
   return buildHostedBootstrapRecord(workspace, project, starterKey)
 }
@@ -135,6 +141,8 @@ function buildHostedBootstrapRecord(
   project: ProjectRecord,
   starterKey: PlatformKeyRecord,
 ): HostedBootstrapRecord {
+  const allowance = buildHostedAllowanceSnapshot(workspace.id)
+
   return {
     version: 1,
     workspace: {
@@ -153,11 +161,7 @@ function buildHostedBootstrapRecord(
       label: starterKey.label ?? STARTER_KEY_LABEL,
       createdAt: starterKey.createdAt,
     },
-    allowance: {
-      label: PREVIEW_ALLOWANCE_LABEL,
-      status: "preview",
-      note: PREVIEW_ALLOWANCE_NOTE,
-    },
+    allowance,
   }
 }
 

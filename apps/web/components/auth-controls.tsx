@@ -18,8 +18,16 @@ function ClerkAppShellAuthControls() {
 
   if (isSignedIn) {
     return (
-      <div className="landing-user-button">
-        <UserButton />
+      <div className="flex items-center gap-3">
+        <Link
+          href="/account"
+          className="rounded-full border border-zinc-200 bg-white/90 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_12px_30px_rgba(24,24,27,0.06)] transition hover:border-amber-300 hover:text-amber-700"
+        >
+          Account
+        </Link>
+        <div className="landing-user-button">
+          <UserButton />
+        </div>
       </div>
     )
   }
@@ -60,8 +68,16 @@ function ClerkLandingNavbarAuthControls() {
 
   if (isSignedIn) {
     return (
-      <div className="landing-user-button">
-        <UserButton />
+      <div className="flex items-center gap-3">
+        <Link
+          href="/account"
+          className="rounded-full border border-zinc-200 bg-white/90 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_12px_30px_rgba(24,24,27,0.06)] transition hover:border-amber-300 hover:text-amber-700"
+        >
+          Account
+        </Link>
+        <div className="landing-user-button">
+          <UserButton />
+        </div>
       </div>
     )
   }

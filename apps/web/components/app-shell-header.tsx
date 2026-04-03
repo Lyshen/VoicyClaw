@@ -11,6 +11,7 @@ export function AppShellHeader({ authMode }: { authMode: AuthMode }) {
   const pathname = usePathname()
   const links = [
     { href: "/studio", label: "Studio" },
+    ...(authMode === "clerk" ? [{ href: "/account", label: "Account" }] : []),
     { href: "/settings", label: "Settings" },
     { href: "/console", label: "Console" },
   ]

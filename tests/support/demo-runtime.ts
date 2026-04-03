@@ -44,7 +44,9 @@ type ClosableSocket = {
   close: () => Promise<void>
 }
 
-export async function startServerRuntime() {
+export async function startServerRuntime(options?: {
+  env?: NodeJS.ProcessEnv
+}) {
   const tempDir = await mkdtemp(join(tmpdir(), "voicyclaw-integration-"))
   const databaseFile = join(tempDir, "voicyclaw.sqlite")
   const port = await getFreePort()
@@ -53,6 +55,7 @@ export async function startServerRuntime() {
   const server = spawnTsxProcess("apps/server/src/index.ts", {
     PORT: String(port),
     VOICYCLAW_SQLITE_FILE: databaseFile,
+    ...options?.env,
   })
 
   await waitFor(
@@ -369,7 +372,7 @@ async function openJsonSocket<TMessage>(url: string) {
   return new JsonSocket<TMessage>(socket)
 }
 
-function spawnTsxProcess(scriptPath: string, env: Record<string, string>) {
+function spawnTsxProcess(scriptPath: string, env: NodeJS.ProcessEnv) {
   const repoRoot = resolve(process.cwd())
   const tsxCli = resolve(repoRoot, "node_modules", "tsx", "dist", "cli.mjs")
   const child = spawn(process.execPath, [tsxCli, scriptPath], {
