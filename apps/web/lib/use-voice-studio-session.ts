@@ -7,7 +7,6 @@ import type {
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { MicrophoneStreamer, PcmStreamPlayer } from "./audio"
-import type { HostedOnboardingState } from "./hosted-onboarding-shared"
 import { OutputTurnCoordinator } from "./output-turn-coordinator"
 import {
   buildWsUrl,
@@ -17,20 +16,13 @@ import {
   getTtsProviderOption,
 } from "./prototype-settings"
 import { usePrototypeSettings } from "./use-prototype-settings"
-
-export type ConnectionState =
-  | "connecting"
-  | "connected"
-  | "disconnected"
-  | "error"
-
-export type TimelineEntry = {
-  id: string
-  role: "user" | "bot" | "system" | "preview"
-  title: string
-  text: string
-  meta: string
-}
+import {
+  buildClientHelloMessage,
+  type ConnectionState,
+  createTimelineEntry,
+  handleVoiceStudioServerMessage,
+  type TimelineEntry,
+} from "./voice-studio-session-helpers"
 
 type UseVoiceStudioSessionOptions = {
   introMessage?: string | null
@@ -173,7 +165,7 @@ export function useVoiceStudioSession(
 
   const appendSystemMessage = useCallback((text: string) => {
     setTimeline((current) =>
-      [...current, createEntry("system", "Runtime", text)].slice(-40),
+      [...current, createTimelineEntry("system", "Runtime", text)].slice(-40),
     )
   }, [])
 
@@ -192,94 +184,18 @@ export function useVoiceStudioSession(
 
   const handleServerMessage = useCallback(
     (message: ServerToClientMessage) => {
-      switch (message.type) {
-        case "SESSION_READY": {
-          setConnectionState("connected")
-          break
-        }
-        case "CHANNEL_STATE": {
-          setChannelState(message)
-          break
-        }
-        case "NOTICE": {
-          appendSystemMessage(message.message)
-          break
-        }
-        case "BOT_PREVIEW": {
-          setPendingReplyUtteranceId((current) =>
-            current === message.utteranceId ? null : current,
-          )
-          upsertEntry({
-            id: `preview-${message.utteranceId}`,
-            role: "preview",
-            title: `${message.botId} preview`,
-            text: message.text,
-            meta: message.isFinal ? "preview locked" : "preview streaming",
-          })
-          break
-        }
-        case "TRANSCRIPT": {
-          upsertEntry({
-            id: `user-${message.utteranceId}`,
-            role: "user",
-            title: "You",
-            text: message.text,
-            meta: message.isFinal ? "ASR final" : "ASR interim",
-          })
-          break
-        }
-        case "BOT_TEXT": {
-          setPendingReplyUtteranceId((current) =>
-            current === message.utteranceId ? null : current,
-          )
-          const previous = botSpeechBufferRef.current[message.utteranceId] ?? ""
-          const combined = [previous, message.text]
-            .filter(Boolean)
-            .join(" ")
-            .replace(/\s+/g, " ")
-            .trim()
-
-          botSpeechBufferRef.current[message.utteranceId] = combined
-
-          upsertEntry({
-            id: `bot-${message.utteranceId}`,
-            role: "bot",
-            title: message.botId,
-            text: combined,
-            meta: message.isFinal
-              ? "bot stream complete"
-              : "bot block streaming",
-          })
-
-          if (browserTtsEnabled) {
-            outputRef.current?.queueClientSpeech(
-              message.utteranceId,
-              message.text,
-              settings.language,
-            )
-          }
-          break
-        }
-        case "AUDIO_CHUNK": {
-          setPendingReplyUtteranceId((current) =>
-            current === message.utteranceId ? null : current,
-          )
-          if (ttsProvider.mode === "server") {
-            void outputRef.current?.enqueueServerAudio(
-              message.utteranceId,
-              message.audioBase64,
-              message.sampleRate,
-            )
-          }
-          break
-        }
-        case "AUDIO_END": {
-          if (ttsProvider.mode === "server") {
-            outputRef.current?.completeServerAudio(message.utteranceId)
-          }
-          break
-        }
-      }
+      handleVoiceStudioServerMessage(message, {
+        browserTtsEnabled,
+        language: settings.language,
+        ttsMode: ttsProvider.mode,
+        output: outputRef.current,
+        botSpeechBuffer: botSpeechBufferRef.current,
+        appendSystemMessage,
+        upsertEntry,
+        setChannelState,
+        setConnectionState,
+        setPendingReplyUtteranceId,
+      })
     },
     [
       appendSystemMessage,
@@ -318,26 +234,14 @@ export function useVoiceStudioSession(
 
     ws.onopen = () => {
       ws.send(
-        JSON.stringify({
-          type: "CLIENT_HELLO",
-          clientId: clientIdRef.current,
-          channelId: settings.channelId,
-          settings: {
-            conversationBackend: settings.conversationBackend,
-            asrMode: asrProvider.mode,
-            asrProvider: asrProvider.id,
-            ttsMode: ttsProvider.mode,
-            ttsProvider: ttsProvider.id,
-            language: settings.language,
-            openClawGateway:
-              settings.conversationBackend === "openclaw-gateway"
-                ? {
-                    url: settings.openClawGatewayUrl,
-                    token: settings.openClawGatewayToken,
-                  }
-                : undefined,
-          },
-        }),
+        JSON.stringify(
+          buildClientHelloMessage({
+            clientId: clientIdRef.current,
+            settings,
+            asrProvider,
+            ttsProvider,
+          }),
+        ),
       )
     }
 
@@ -585,36 +489,8 @@ export function useVoiceStudioSession(
   }
 }
 
-function createEntry(
-  role: TimelineEntry["role"],
-  title: string,
-  text: string,
-): TimelineEntry {
-  return {
-    id: `${role}-${crypto.randomUUID()}`,
-    role,
-    title,
-    text,
-    meta: new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  }
-}
-
-export function badgeTone(state: ConnectionState) {
-  switch (state) {
-    case "connected":
-      return "live"
-    case "connecting":
-      return "neutral"
-    case "disconnected":
-      return "warn"
-    case "error":
-      return "danger"
-  }
-}
-
-export function getStarterTitle(onboarding: HostedOnboardingState | null) {
-  return onboarding?.project.name ?? "Demo Room"
-}
+export type {
+  ConnectionState,
+  TimelineEntry,
+} from "./voice-studio-session-helpers"
+export { badgeTone, getStarterTitle } from "./voice-studio-session-helpers"
