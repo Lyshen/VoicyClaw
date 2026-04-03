@@ -7,7 +7,7 @@ import type {
 } from "./backends/conversation-backend"
 import { getConversationBackendId } from "./backends/conversation-backend"
 import { OpenClawGatewayConversationBackend } from "./backends/openclaw-gateway"
-import { recordTtsUsageForChannel } from "./billing"
+import { recordTtsUsageForChannel } from "./domains/billing/service"
 import type {
   ActiveUtterance,
   ClientSession,

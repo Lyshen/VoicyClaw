@@ -11,11 +11,11 @@ import type { FastifyBaseLogger, FastifyInstance } from "fastify"
 import type WebSocket from "ws"
 import { WebSocketServer } from "ws"
 
+import { upsertBotRegistrationRecord } from "./domains/bot-registrations/service"
 import {
-  findPlatformKeyByToken,
-  touchPlatformKey,
-  upsertBotRegistration,
-} from "./db"
+  authorizePlatformKeyForChannel,
+  markPlatformKeyUsed,
+} from "./domains/platform-keys/service"
 import { createClientMessageHandler } from "./realtime-client-session"
 import {
   type ClientSession,
@@ -92,28 +92,28 @@ export function createRealtimeGateway(
           return
         }
 
-        const apiKey = findPlatformKeyByToken(hello.api_key ?? "")
+        const authorization = authorizePlatformKeyForChannel(
+          hello.api_key ?? "",
+          hello.channel_id ?? "",
+        )
 
-        if (!apiKey) {
+        if (!authorization.ok) {
           runtime.sendJson(ws, {
             type: "ERROR",
-            code: "AUTH_FAILED",
-            message: "Invalid or expired API key.",
+            code:
+              authorization.reason === "not-found"
+                ? "AUTH_FAILED"
+                : "CHANNEL_NOT_FOUND",
+            message:
+              authorization.reason === "not-found"
+                ? "Invalid or expired API key."
+                : "The provided API key does not match this channel.",
           })
           ws.close()
           return
         }
 
-        if (apiKey.channelId !== hello.channel_id) {
-          runtime.sendJson(ws, {
-            type: "ERROR",
-            code: "CHANNEL_NOT_FOUND",
-            message: "The provided API key does not match this channel.",
-          })
-          ws.close()
-          return
-        }
-
+        const apiKey = authorization.key
         const channelRuntime = runtime.getOrCreateRuntimeChannel(
           apiKey.channelId,
         )
@@ -133,9 +133,9 @@ export function createRealtimeGateway(
         const botName = titleFromChannelId(botId)
         const sessionId = randomUUID()
 
-        touchPlatformKey(apiKey.id)
+        markPlatformKeyUsed(apiKey.id)
 
-        upsertBotRegistration({
+        upsertBotRegistrationRecord({
           botId,
           botName,
           channelId,

@@ -1,3 +1,3 @@
-import { getDatabaseFile } from "./db"
+import { storage } from "./storage"
 
-console.log(`SQLite ready at ${getDatabaseFile()}`)
+console.log(`SQLite ready at ${storage.system.getDatabaseFile()}`)
