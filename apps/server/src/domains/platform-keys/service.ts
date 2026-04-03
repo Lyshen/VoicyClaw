@@ -3,12 +3,33 @@ import {
   type PlatformKeyType,
   storage,
 } from "../../storage"
+import { findProjectByChannelId } from "../projects/service"
 
 export function findPlatformKeyByProjectIdAndType(
   projectId: string,
   keyType: PlatformKeyType,
 ) {
   return storage.platformKeys.findByProjectIdAndType(projectId, keyType)
+}
+
+export function ensureStarterPlatformKey(input: {
+  channelId: string
+  workspaceId: string
+  projectId: string
+  createdByUserId: string
+  label?: string | null
+}) {
+  return (
+    findPlatformKeyByProjectIdAndType(input.projectId, "starter") ??
+    issuePlatformKeyForChannel({
+      channelId: input.channelId,
+      label: input.label,
+      workspaceId: input.workspaceId,
+      projectId: input.projectId,
+      keyType: "starter",
+      createdByUserId: input.createdByUserId,
+    })
+  )
 }
 
 export function issuePlatformKeyForChannel(input: {
@@ -22,7 +43,7 @@ export function issuePlatformKeyForChannel(input: {
   const project =
     input.projectId || input.workspaceId
       ? null
-      : storage.projects.findByChannelId(input.channelId)
+      : findProjectByChannelId(input.channelId)
 
   return storage.platformKeys.create(input.channelId, input.label, {
     workspaceId: input.workspaceId ?? project?.workspaceId ?? null,

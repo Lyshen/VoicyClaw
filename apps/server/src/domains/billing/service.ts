@@ -4,6 +4,8 @@ import {
   storage,
   type UsageEventRecord,
 } from "../../storage"
+import { findProjectByChannelId } from "../projects/service"
+import { findWorkspaceById } from "../workspaces/service"
 
 const STARTER_PREVIEW_ALLOWANCE_SOURCE = "starter-preview"
 const STARTER_PREVIEW_ALLOWANCE_VERSION = "starter-preview-v1"
@@ -136,7 +138,7 @@ export function buildHostedAllowanceSnapshot(
 export function getWorkspaceBillingSummary(workspaceId: string) {
   ensurePreviewBillingRates()
 
-  const workspace = storage.workspaces.findById(workspaceId)
+  const workspace = findWorkspaceById(workspaceId)
   if (!workspace) {
     return null
   }
@@ -161,7 +163,7 @@ export function recordTtsUsageForChannel(input: {
 }) {
   ensurePreviewBillingRates()
 
-  const ownership = storage.projects.findByChannelId(input.channelId)
+  const ownership = findProjectByChannelId(input.channelId)
   const rate = storage.billingRates.findActive("tts", input.providerId)
   const chargedCreditsMillis =
     input.status === "succeeded"
