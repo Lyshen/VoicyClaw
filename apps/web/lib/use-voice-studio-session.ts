@@ -15,6 +15,7 @@ import {
   getTtsProviderOption,
 } from "./prototype-settings"
 import { usePrototypeSettings } from "./use-prototype-settings"
+import { useVoiceStudioCapture } from "./use-voice-studio-capture"
 import {
   type ConnectionState,
   createTimelineEntry,
@@ -72,8 +73,6 @@ export function useVoiceStudioSession(
   )
   const browserAsrEnabled = asrProvider.mode === "client"
   const browserTtsEnabled = ttsProvider.mode === "client"
-  const canUseRecognitionAssist =
-    speechSupported && (browserAsrEnabled || asrProvider.id === "demo")
 
   if (!clientIdRef.current) {
     clientIdRef.current =
@@ -93,74 +92,6 @@ export function useVoiceStudioSession(
         ),
     )
   }, [])
-
-  useEffect(() => {
-    if (!playerRef.current) {
-      playerRef.current = new PcmStreamPlayer()
-    }
-
-    if (!outputRef.current && playerRef.current) {
-      outputRef.current = new OutputTurnCoordinator({
-        player: playerRef.current,
-        getSpeechSynthesis: () =>
-          typeof window !== "undefined" && "speechSynthesis" in window
-            ? window.speechSynthesis
-            : null,
-        onPlaybackStateChange: ({ isPlaying, utteranceId }) => {
-          if (playbackIdleTimeoutRef.current !== null) {
-            window.clearTimeout(playbackIdleTimeoutRef.current)
-            playbackIdleTimeoutRef.current = null
-          }
-
-          if (isPlaying) {
-            setPlayingUtteranceId(utteranceId)
-            return
-          }
-
-          playbackIdleTimeoutRef.current = window.setTimeout(() => {
-            setPlayingUtteranceId((current) =>
-              current === utteranceId ? null : current,
-            )
-            playbackIdleTimeoutRef.current = null
-          }, 180)
-        },
-        logger: {
-          info: (message, payload) => {
-            console.info(`[voicyclaw][output-turn] ${message}`, payload)
-          },
-          warn: (message, payload) => {
-            console.warn(`[voicyclaw][output-turn] ${message}`, payload)
-          },
-        },
-      })
-    }
-
-    if (!micRef.current) {
-      micRef.current = new MicrophoneStreamer({
-        onChunk: (chunk) => {
-          const ws = wsRef.current
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(chunk)
-          }
-        },
-        onLevel: setMicLevel,
-      })
-    }
-
-    return () => {
-      micRef.current?.stop()
-      outputRef.current?.reset()
-      recognitionRef.current?.stop?.()
-      if (playbackIdleTimeoutRef.current !== null) {
-        window.clearTimeout(playbackIdleTimeoutRef.current)
-        playbackIdleTimeoutRef.current = null
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    outputRef.current?.reset()
-  }, [ttsProvider.id, ttsProvider.mode])
 
   const appendSystemMessage = useCallback((text: string) => {
     setTimeline((current) =>
@@ -283,121 +214,93 @@ export function useVoiceStudioSession(
     [appendSystemMessage],
   )
 
-  const startRecognition = useCallback(() => {
-    if (!canUseRecognitionAssist) return
-
-    const Recognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition
-    if (!Recognition) return
-
-    const recognition = new Recognition()
-    recognition.lang = settings.language
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.onresult = (event: any) => {
-      let transcript = ""
-      for (let index = 0; index < event.results.length; index += 1) {
-        transcript += `${event.results[index][0]?.transcript ?? ""} `
-      }
-      setDraftText(transcript.trim())
-    }
-    recognition.onend = () => {
-      if (recognitionRef.current === recognition) {
-        recognitionRef.current = null
-      }
-    }
-    recognition.start()
-    recognitionRef.current = recognition
-  }, [canUseRecognitionAssist, settings.language])
-
-  const stopRecognition = useCallback(() => {
-    recognitionRef.current?.stop?.()
-    recognitionRef.current = null
-  }, [])
-
-  const beginCapture = useCallback(async () => {
-    if (isRecording) return
-    if (!micRef.current) return
-
-    if (browserAsrEnabled && !speechSupported) {
-      appendSystemMessage(
-        "Browser SpeechRecognition is unavailable here. Switch ASR to the server demo path or use the text composer.",
-      )
-      return
-    }
-
-    if (asrProvider.id === "demo" && !speechSupported) {
-      appendSystemMessage(
-        "Demo Server ASR still relies on browser transcript assist in this prototype. Use the text composer or switch back to Browser SpeechRecognition on this device.",
-      )
-      return
-    }
-
-    if (
-      asrProvider.id === "demo" &&
-      speechSupported &&
-      !demoAssistNoticeRef.current
-    ) {
-      appendSystemMessage(
-        "Demo Server ASR is active. Until a real server ASR adapter lands, the browser transcript assist stays on so this path remains runnable.",
-      )
-      demoAssistNoticeRef.current = true
-    }
-
-    const utteranceId = crypto.randomUUID()
-    const started = sendControl({
-      type: "START_UTTERANCE",
-      utteranceId,
+  const { beginCapture, finishCapture, stopRecognition } =
+    useVoiceStudioCapture({
+      asrProviderId: asrProvider.id,
+      browserAsrEnabled,
+      speechSupported,
+      language: settings.language,
+      isRecording,
+      appendSystemMessage,
+      sendControl,
+      setDraftText,
+      setIsRecording,
+      setPendingReplyUtteranceId,
+      micRef,
+      outputRef,
+      recognitionRef,
+      activeUtteranceRef,
+      draftRef,
+      demoAssistNoticeRef,
     })
 
-    if (!started) return
-
-    outputRef.current?.beginTurn(utteranceId)
-
-    activeUtteranceRef.current = utteranceId
-    setIsRecording(true)
-
-    try {
-      await micRef.current.start()
-      startRecognition()
-    } catch {
-      activeUtteranceRef.current = null
-      setIsRecording(false)
-      appendSystemMessage(
-        "Microphone access was denied. You can still use the text composer below.",
-      )
+  useEffect(() => {
+    if (!playerRef.current) {
+      playerRef.current = new PcmStreamPlayer()
     }
-  }, [
-    appendSystemMessage,
-    asrProvider.id,
-    browserAsrEnabled,
-    isRecording,
-    sendControl,
-    speechSupported,
-    startRecognition,
-  ])
 
-  const finishCapture = useCallback(() => {
-    if (!activeUtteranceRef.current) return
+    if (!outputRef.current && playerRef.current) {
+      outputRef.current = new OutputTurnCoordinator({
+        player: playerRef.current,
+        getSpeechSynthesis: () =>
+          typeof window !== "undefined" && "speechSynthesis" in window
+            ? window.speechSynthesis
+            : null,
+        onPlaybackStateChange: ({ isPlaying, utteranceId }) => {
+          if (playbackIdleTimeoutRef.current !== null) {
+            window.clearTimeout(playbackIdleTimeoutRef.current)
+            playbackIdleTimeoutRef.current = null
+          }
 
-    const utteranceId = activeUtteranceRef.current
-    activeUtteranceRef.current = null
-    setIsRecording(false)
-    micRef.current?.stop()
-    stopRecognition()
+          if (isPlaying) {
+            setPlayingUtteranceId(utteranceId)
+            return
+          }
 
-    if (
-      sendControl({
-        type: "COMMIT_UTTERANCE",
-        utteranceId,
-        transcript: draftRef.current.trim(),
-        source: "microphone",
+          playbackIdleTimeoutRef.current = window.setTimeout(() => {
+            setPlayingUtteranceId((current) =>
+              current === utteranceId ? null : current,
+            )
+            playbackIdleTimeoutRef.current = null
+          }, 180)
+        },
+        logger: {
+          info: (message, payload) => {
+            console.info(`[voicyclaw][output-turn] ${message}`, payload)
+          },
+          warn: (message, payload) => {
+            console.warn(`[voicyclaw][output-turn] ${message}`, payload)
+          },
+        },
       })
-    ) {
-      setPendingReplyUtteranceId(utteranceId)
     }
-  }, [sendControl, stopRecognition])
+
+    if (!micRef.current) {
+      micRef.current = new MicrophoneStreamer({
+        onChunk: (chunk) => {
+          const ws = wsRef.current
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(chunk)
+          }
+        },
+        onLevel: setMicLevel,
+      })
+    }
+
+    return () => {
+      micRef.current?.stop()
+      outputRef.current?.reset()
+      stopRecognition()
+      if (playbackIdleTimeoutRef.current !== null) {
+        window.clearTimeout(playbackIdleTimeoutRef.current)
+        playbackIdleTimeoutRef.current = null
+      }
+    }
+  }, [stopRecognition])
+
+  useEffect(() => {
+    outputRef.current?.reset()
+  }, [ttsProvider.id, ttsProvider.mode])
 
   const sendTextUtterance = useCallback(
     (overrideText?: string) => {
