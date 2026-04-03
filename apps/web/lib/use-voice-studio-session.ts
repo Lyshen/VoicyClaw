@@ -9,7 +9,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { MicrophoneStreamer, PcmStreamPlayer } from "./audio"
 import { OutputTurnCoordinator } from "./output-turn-coordinator"
 import {
-  buildWsUrl,
   getAsrProviderOption,
   getConversationBackendOption,
   getProviderModeLabel,
@@ -17,12 +16,12 @@ import {
 } from "./prototype-settings"
 import { usePrototypeSettings } from "./use-prototype-settings"
 import {
-  buildClientHelloMessage,
   type ConnectionState,
   createTimelineEntry,
   handleVoiceStudioServerMessage,
   type TimelineEntry,
 } from "./voice-studio-session-helpers"
+import { openVoiceStudioSocket } from "./voice-studio-transport"
 
 type UseVoiceStudioSessionOptions = {
   introMessage?: string | null
@@ -227,45 +226,20 @@ export function useVoiceStudioSession(
       )
     }
 
-    const ws = new WebSocket(buildWsUrl(settings))
-    ws.binaryType = "arraybuffer"
+    const ws = openVoiceStudioSocket({
+      settings,
+      clientId: clientIdRef.current,
+      asrProvider,
+      ttsProvider,
+      handleServerMessage,
+      appendSystemMessage,
+      setConnectionState,
+      clearReplyPlaybackState: () => {
+        setPendingReplyUtteranceId(null)
+        setPlayingUtteranceId(null)
+      },
+    })
     wsRef.current = ws
-    setConnectionState("connecting")
-
-    ws.onopen = () => {
-      ws.send(
-        JSON.stringify(
-          buildClientHelloMessage({
-            clientId: clientIdRef.current,
-            settings,
-            asrProvider,
-            ttsProvider,
-          }),
-        ),
-      )
-    }
-
-    ws.onmessage = (event) => {
-      if (typeof event.data !== "string") return
-
-      try {
-        handleServerMessage(JSON.parse(event.data) as ServerToClientMessage)
-      } catch {
-        appendSystemMessage("Received an unreadable server message.")
-      }
-    }
-
-    ws.onerror = () => {
-      setConnectionState("error")
-      setPendingReplyUtteranceId(null)
-      setPlayingUtteranceId(null)
-    }
-
-    ws.onclose = () => {
-      setConnectionState("disconnected")
-      setPendingReplyUtteranceId(null)
-      setPlayingUtteranceId(null)
-    }
 
     return () => {
       ws.close()
