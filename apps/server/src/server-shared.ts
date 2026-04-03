@@ -1,6 +1,6 @@
 import type { FastifyRequest } from "fastify"
 
-import { ensureChannel } from "./db"
+import { ensureStoredChannel } from "./domains/channels/service"
 
 export const DEFAULT_PORT = Number(process.env.PORT ?? 3001)
 export const DEFAULT_CHANNEL_ID = "demo-room"
@@ -35,7 +35,7 @@ export function titleFromChannelId(channelId: string) {
 }
 
 export function ensureChannelRecord(channelId: string) {
-  ensureChannel(
+  ensureStoredChannel(
     channelId,
     channelId === DEFAULT_CHANNEL_ID
       ? DEFAULT_CHANNEL_NAME

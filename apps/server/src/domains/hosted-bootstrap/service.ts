@@ -1,21 +1,19 @@
 import { randomUUID } from "node:crypto"
+import type {
+  PlatformKeyRecord,
+  ProjectRecord,
+  WorkspaceRecord,
+} from "../../storage"
+import { storage } from "../../storage"
 import {
   buildHostedAllowanceSnapshot,
   ensureStarterPreviewAllowance,
-} from "./billing"
+} from "../billing/service"
+import { ensureStoredChannel } from "../channels/service"
 import {
-  createPlatformKey,
-  createProject,
-  createWorkspace,
-  ensureChannel,
-  findDefaultWorkspaceByOwnerUserId,
   findPlatformKeyByProjectIdAndType,
-  findStarterProjectByWorkspaceId,
-  type PlatformKeyRecord,
-  type ProjectRecord,
-  upsertUserForIdentity,
-  type WorkspaceRecord,
-} from "./db"
+  issuePlatformKeyForChannel,
+} from "../platform-keys/service"
 
 const STARTER_KEY_LABEL = "Starter key"
 const STARTER_PROJECT_NAME = "SayHello"
@@ -64,7 +62,7 @@ export interface HostedBootstrapRecord {
 export function bootstrapHostedResources(
   input: HostedBootstrapInput,
 ): HostedBootstrapRecord {
-  const { user } = upsertUserForIdentity({
+  const { user } = storage.users.upsertForIdentity({
     provider: input.provider,
     providerSubject: input.providerSubject,
     email: input.email,
@@ -76,22 +74,24 @@ export function bootstrapHostedResources(
   })
 
   const workspace =
-    findDefaultWorkspaceByOwnerUserId(user.id) ??
-    createWorkspace({
+    storage.workspaces.findDefaultByOwnerUserId(user.id) ??
+    storage.workspaces.create({
       ownerUserId: user.id,
       name: buildStarterWorkspaceName(input),
       isDefault: true,
     })
 
   const project =
-    findStarterProjectByWorkspaceId(workspace.id) ??
+    storage.projects.findStarterByWorkspaceId(workspace.id) ??
     createStarterProject(workspace.id)
 
-  ensureChannel(project.channelId, STARTER_PROJECT_NAME)
+  ensureStoredChannel(project.channelId, STARTER_PROJECT_NAME)
 
   const starterKey =
     findPlatformKeyByProjectIdAndType(project.id, "starter") ??
-    createPlatformKey(project.channelId, STARTER_KEY_LABEL, {
+    issuePlatformKeyForChannel({
+      channelId: project.channelId,
+      label: STARTER_KEY_LABEL,
       workspaceId: workspace.id,
       projectId: project.id,
       keyType: "starter",
@@ -124,9 +124,9 @@ function createStarterProject(workspaceId: string) {
   const suffix = randomUUID().replace(/-/g, "").slice(0, 8)
   const channelId = `${STARTER_PROJECT_SLUG}-${suffix}`
 
-  ensureChannel(channelId, STARTER_PROJECT_NAME)
+  ensureStoredChannel(channelId, STARTER_PROJECT_NAME)
 
-  return createProject({
+  return storage.projects.create({
     workspaceId,
     name: STARTER_PROJECT_NAME,
     projectType: "starter",

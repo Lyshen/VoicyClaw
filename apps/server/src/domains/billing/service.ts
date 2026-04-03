@@ -1,17 +1,9 @@
 import {
   type BillingFeature,
   type BillingMetric,
-  createUsageEvent,
-  ensureWorkspaceAllowanceLedgerEntry,
-  findActiveBillingRate,
-  findProjectByChannelId,
-  findWorkspaceById,
-  getWorkspaceAllowanceSummary,
-  getWorkspaceUsageSummary,
-  listWorkspaceUsageEvents,
+  storage,
   type UsageEventRecord,
-  upsertBillingRate,
-} from "./db"
+} from "../../storage"
 
 const STARTER_PREVIEW_ALLOWANCE_SOURCE = "starter-preview"
 const STARTER_PREVIEW_ALLOWANCE_VERSION = "starter-preview-v1"
@@ -115,7 +107,7 @@ export function formatCreditsMillis(value: number) {
 
 export function ensureStarterPreviewAllowance(workspaceId: string) {
   ensurePreviewBillingRates()
-  ensureWorkspaceAllowanceLedgerEntry({
+  storage.allowanceLedger.ensureEntry({
     workspaceId,
     entryType: "grant",
     sourceType: STARTER_PREVIEW_ALLOWANCE_SOURCE,
@@ -128,7 +120,7 @@ export function ensureStarterPreviewAllowance(workspaceId: string) {
 export function buildHostedAllowanceSnapshot(
   workspaceId: string,
 ): HostedAllowanceSnapshot {
-  const summary = getWorkspaceAllowanceSummary(workspaceId)
+  const summary = storage.allowanceLedger.summarizeByWorkspace(workspaceId)
 
   return {
     label: STARTER_PREVIEW_ALLOWANCE_LABEL,
@@ -144,7 +136,7 @@ export function buildHostedAllowanceSnapshot(
 export function getWorkspaceBillingSummary(workspaceId: string) {
   ensurePreviewBillingRates()
 
-  const workspace = findWorkspaceById(workspaceId)
+  const workspace = storage.workspaces.findById(workspaceId)
   if (!workspace) {
     return null
   }
@@ -152,8 +144,8 @@ export function getWorkspaceBillingSummary(workspaceId: string) {
   return {
     workspaceId,
     allowance: buildHostedAllowanceSnapshot(workspaceId),
-    usage: getWorkspaceUsageSummary(workspaceId, "tts"),
-    recentEvents: listWorkspaceUsageEvents(workspaceId, 10),
+    usage: storage.usageEvents.summarizeByWorkspace(workspaceId, "tts"),
+    recentEvents: storage.usageEvents.listByWorkspace(workspaceId, 10),
   } satisfies WorkspaceBillingSummary
 }
 
@@ -169,8 +161,8 @@ export function recordTtsUsageForChannel(input: {
 }) {
   ensurePreviewBillingRates()
 
-  const ownership = findProjectByChannelId(input.channelId)
-  const rate = findActiveBillingRate("tts", input.providerId)
+  const ownership = storage.projects.findByChannelId(input.channelId)
+  const rate = storage.billingRates.findActive("tts", input.providerId)
   const chargedCreditsMillis =
     input.status === "succeeded"
       ? calculateCharge(
@@ -196,7 +188,7 @@ export function recordTtsUsageForChannel(input: {
         )
       : 0
 
-  const usageEvent = createUsageEvent({
+  const usageEvent = storage.usageEvents.create({
     workspaceId: ownership?.workspaceId ?? null,
     projectId: ownership?.id ?? null,
     channelId: input.channelId,
@@ -218,7 +210,7 @@ export function recordTtsUsageForChannel(input: {
     ownership?.workspaceId &&
     chargedCreditsMillis > 0
   ) {
-    ensureWorkspaceAllowanceLedgerEntry({
+    storage.allowanceLedger.ensureEntry({
       workspaceId: ownership.workspaceId,
       entryType: "usage",
       sourceType: "tts-usage",
@@ -237,7 +229,7 @@ function ensurePreviewBillingRates() {
   }
 
   for (const rate of DEFAULT_TTS_BILLING_RATES) {
-    upsertBillingRate({
+    storage.billingRates.upsert({
       id: buildBillingRateId("tts", rate.providerId, rate.billingMetric),
       feature: "tts",
       providerId: rate.providerId,

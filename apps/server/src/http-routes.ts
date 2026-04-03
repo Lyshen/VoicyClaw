@@ -1,14 +1,12 @@
 import { PROTOCOL_VERSION } from "@voicyclaw/protocol"
 import type { FastifyInstance } from "fastify"
-import { getWorkspaceBillingSummary } from "./billing"
+import { getWorkspaceBillingSummary } from "./domains/billing/service"
+import { upsertBotRegistrationRecord } from "./domains/bot-registrations/service"
+import { bootstrapHostedResources } from "./domains/hosted-bootstrap/service"
 import {
-  createPlatformKey,
-  findPlatformKeyByToken,
-  findProjectByChannelId,
-  findWorkspaceById,
-  upsertBotRegistration,
-} from "./db"
-import { bootstrapHostedResources } from "./hosted-resources"
+  authorizePlatformKeyForChannel,
+  issuePlatformKeyForChannel,
+} from "./domains/platform-keys/service"
 import type { RealtimeGateway } from "./realtime-gateway"
 import {
   DEFAULT_CHANNEL_ID,
@@ -46,7 +44,9 @@ export function registerApiRoutes(
       "",
     )
 
-    if (!workspaceId || !findWorkspaceById(workspaceId)) {
+    const summary = workspaceId ? getWorkspaceBillingSummary(workspaceId) : null
+
+    if (!summary) {
       reply.code(404)
       return {
         ok: false,
@@ -54,7 +54,7 @@ export function registerApiRoutes(
       }
     }
 
-    return getWorkspaceBillingSummary(workspaceId)
+    return summary
   })
 
   server.post("/api/hosted/bootstrap", async (request, reply) => {
@@ -96,10 +96,9 @@ export function registerApiRoutes(
       (request.body as { channelId?: string; label?: string } | null) ?? {}
     const channelId = sanitizeId(body.channelId, DEFAULT_CHANNEL_ID)
     ensureChannelRecord(channelId)
-    const project = findProjectByChannelId(channelId)
-    const key = createPlatformKey(channelId, body.label, {
-      workspaceId: project?.workspaceId ?? null,
-      projectId: project?.id ?? null,
+    const key = issuePlatformKeyForChannel({
+      channelId,
+      label: body.label,
     })
     const baseUrl = getRequestBaseUrl(request)
 
@@ -134,9 +133,9 @@ export function registerApiRoutes(
       }
     }
 
-    const keyRecord = findPlatformKeyByToken(apiKey)
+    const authorization = authorizePlatformKeyForChannel(apiKey, channelId)
 
-    if (!keyRecord || keyRecord.channelId !== channelId) {
+    if (!authorization.ok) {
       reply.code(401)
       return {
         ok: false,
@@ -147,11 +146,11 @@ export function registerApiRoutes(
     const botName = body.botName?.trim() || titleFromChannelId(botId)
     ensureChannelRecord(channelId)
 
-    upsertBotRegistration({
+    upsertBotRegistrationRecord({
       botId,
       botName,
       channelId,
-      platformKeyId: keyRecord.id,
+      platformKeyId: authorization.key.id,
     })
 
     return {
