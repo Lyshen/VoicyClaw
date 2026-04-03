@@ -1,9 +1,11 @@
 import { PROTOCOL_VERSION } from "@voicyclaw/protocol"
 import type { FastifyInstance } from "fastify"
-
+import { getWorkspaceBillingSummary } from "./billing"
 import {
   createPlatformKey,
   findPlatformKeyByToken,
+  findProjectByChannelId,
+  findWorkspaceById,
   upsertBotRegistration,
 } from "./db"
 import { bootstrapHostedResources } from "./hosted-resources"
@@ -36,6 +38,23 @@ export function registerApiRoutes(
     )
 
     return realtimeGateway.getChannelSnapshot(channelId)
+  })
+
+  server.get("/api/workspaces/:workspaceId/billing", async (request, reply) => {
+    const workspaceId = sanitizeId(
+      (request.params as { workspaceId: string }).workspaceId,
+      "",
+    )
+
+    if (!workspaceId || !findWorkspaceById(workspaceId)) {
+      reply.code(404)
+      return {
+        ok: false,
+        message: "Workspace not found",
+      }
+    }
+
+    return getWorkspaceBillingSummary(workspaceId)
   })
 
   server.post("/api/hosted/bootstrap", async (request, reply) => {
@@ -77,7 +96,11 @@ export function registerApiRoutes(
       (request.body as { channelId?: string; label?: string } | null) ?? {}
     const channelId = sanitizeId(body.channelId, DEFAULT_CHANNEL_ID)
     ensureChannelRecord(channelId)
-    const key = createPlatformKey(channelId, body.label)
+    const project = findProjectByChannelId(channelId)
+    const key = createPlatformKey(channelId, body.label, {
+      workspaceId: project?.workspaceId ?? null,
+      projectId: project?.id ?? null,
+    })
     const baseUrl = getRequestBaseUrl(request)
 
     reply.code(201)

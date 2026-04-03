@@ -26,6 +26,10 @@ export interface HostedAllowance {
   label: string
   status: "preview"
   note: string
+  currency: "voice-credits"
+  grantedCreditsMillis: number
+  usedCreditsMillis: number
+  remainingCreditsMillis: number
 }
 
 export interface HostedOnboardingRecord {
@@ -156,7 +160,12 @@ export function buildStarterOnboardingRecord(
       status: "preview",
       note:
         readString(allowance.note) ??
-        "Starter preview allowance is active. Billing is not enforced yet.",
+        "Starter preview allowance is active. 0.000 voice credits remaining. Billing is not enforced yet.",
+      currency: "voice-credits",
+      grantedCreditsMillis: readInteger(allowance.grantedCreditsMillis) ?? 0,
+      usedCreditsMillis: readInteger(allowance.usedCreditsMillis) ?? 0,
+      remainingCreditsMillis:
+        readInteger(allowance.remainingCreditsMillis) ?? 0,
     },
   }
 }
@@ -237,4 +246,12 @@ function readString(value: unknown) {
 
   const normalized = value.trim()
   return normalized || undefined
+}
+
+function readInteger(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined
+  }
+
+  return Math.trunc(value)
 }

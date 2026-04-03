@@ -7,6 +7,7 @@ import type {
 } from "./backends/conversation-backend"
 import { getConversationBackendId } from "./backends/conversation-backend"
 import { OpenClawGatewayConversationBackend } from "./backends/openclaw-gateway"
+import { recordTtsUsageForChannel } from "./billing"
 import type {
   ActiveUtterance,
   ClientSession,
@@ -161,6 +162,32 @@ async function resolveTranscript(
   return transcript
 }
 
+function calculateAudioDurationMs(audioBytes: number, sampleRate: number) {
+  if (audioBytes <= 0 || sampleRate <= 0) {
+    return 0
+  }
+
+  return Math.round((audioBytes / (sampleRate * 2)) * 1000)
+}
+
+function recordTtsUsageSafely(
+  runtime: RealtimeRuntime,
+  input: Parameters<typeof recordTtsUsageForChannel>[0],
+) {
+  try {
+    return recordTtsUsageForChannel(input)
+  } catch (error) {
+    runtime.logPipeline("TTS_USAGE_RECORD_FAILED", {
+      channelId: input.channelId,
+      requestId: input.requestId,
+      providerId: input.providerId,
+      status: input.status,
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return null
+  }
+}
+
 export async function processUtterance(
   runtime: RealtimeRuntime,
   client: ClientSession,
@@ -235,49 +262,93 @@ export async function processUtterance(
       return
     }
 
-    const tts = createRuntimeTTSProvider(client.settings)
+    let inputChars = 0
     let audioChunkCount = 0
     let audioBytes = 0
+    let ttsProviderId = client.settings?.ttsProvider ?? "demo"
+    let ttsSampleRate = 0
 
-    for await (const audioChunk of tts.adapter.synthesize(textStream, {
-      language: client.settings?.language,
-      sampleRate: tts.sampleRate,
-    })) {
-      audioChunkCount += 1
-      audioBytes += audioChunk.byteLength
-      runtime.logPipeline("TTS_AUDIO_CHUNK", {
+    try {
+      const tts = createRuntimeTTSProvider(client.settings)
+      ttsProviderId = tts.providerId
+      ttsSampleRate = tts.sampleRate
+
+      async function* meteredTextStream() {
+        for await (const text of textStream) {
+          inputChars += text.length
+          yield text
+        }
+      }
+
+      for await (const audioChunk of tts.adapter.synthesize(
+        meteredTextStream(),
+        {
+          language: client.settings?.language,
+          sampleRate: tts.sampleRate,
+        },
+      )) {
+        audioChunkCount += 1
+        audioBytes += audioChunk.byteLength
+        runtime.logPipeline("TTS_AUDIO_CHUNK", {
+          channelId: client.channelId,
+          clientId: client.id,
+          utteranceId: utterance.utteranceId,
+          chunkIndex: audioChunkCount,
+          bytes: audioChunk.byteLength,
+          sampleRate: tts.sampleRate,
+          ttsProvider: tts.providerId,
+        })
+
+        runtime.sendJson(client.ws, {
+          type: "AUDIO_CHUNK",
+          utteranceId: utterance.utteranceId,
+          audioBase64: audioChunk.toString("base64"),
+          sampleRate: tts.sampleRate,
+        })
+      }
+
+      runtime.logPipeline("TTS_AUDIO_END", {
         channelId: client.channelId,
         clientId: client.id,
         utteranceId: utterance.utteranceId,
-        chunkIndex: audioChunkCount,
-        bytes: audioChunk.byteLength,
+        chunkCount: audioChunkCount,
+        audioBytes,
         sampleRate: tts.sampleRate,
         ttsProvider: tts.providerId,
       })
 
       runtime.sendJson(client.ws, {
-        type: "AUDIO_CHUNK",
+        type: "AUDIO_END",
         utteranceId: utterance.utteranceId,
-        audioBase64: audioChunk.toString("base64"),
         sampleRate: tts.sampleRate,
       })
+
+      recordTtsUsageSafely(runtime, {
+        channelId: client.channelId,
+        requestId: utterance.utteranceId,
+        providerId: tts.providerId,
+        status: "succeeded",
+        inputChars,
+        outputAudioBytes: audioBytes,
+        outputAudioMs: calculateAudioDurationMs(audioBytes, tts.sampleRate),
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown server TTS failure"
+
+      recordTtsUsageSafely(runtime, {
+        channelId: client.channelId,
+        requestId: utterance.utteranceId,
+        providerId: ttsProviderId,
+        status: "failed",
+        inputChars,
+        outputAudioBytes: audioBytes,
+        outputAudioMs: calculateAudioDurationMs(audioBytes, ttsSampleRate),
+        errorMessage: message,
+      })
+
+      throw error
     }
-
-    runtime.logPipeline("TTS_AUDIO_END", {
-      channelId: client.channelId,
-      clientId: client.id,
-      utteranceId: utterance.utteranceId,
-      chunkCount: audioChunkCount,
-      audioBytes,
-      sampleRate: tts.sampleRate,
-      ttsProvider: tts.providerId,
-    })
-
-    runtime.sendJson(client.ws, {
-      type: "AUDIO_END",
-      utteranceId: utterance.utteranceId,
-      sampleRate: tts.sampleRate,
-    })
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown bot pipeline failure"

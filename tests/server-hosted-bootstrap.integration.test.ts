@@ -69,6 +69,10 @@ describe.sequential("server hosted bootstrap", () => {
         label: string
         status: "preview"
         note: string
+        currency: "voice-credits"
+        grantedCreditsMillis: number
+        usedCreditsMillis: number
+        remainingCreditsMillis: number
       }
     }
 
@@ -96,7 +100,11 @@ describe.sequential("server hosted bootstrap", () => {
     expect(first.allowance).toEqual({
       label: "Free preview allowance",
       status: "preview",
-      note: "Starter preview allowance is active. Billing is not enforced yet.",
+      note: "Starter preview allowance is active. 500.000 voice credits remaining. Billing is not enforced yet.",
+      currency: "voice-credits",
+      grantedCreditsMillis: 500_000,
+      usedCreditsMillis: 0,
+      remainingCreditsMillis: 500_000,
     })
     expect(second).toEqual(first)
 
