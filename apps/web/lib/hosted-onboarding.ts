@@ -3,16 +3,11 @@ import { auth, clerkClient } from "@clerk/nextjs/server"
 import { getResolvedAuthMode } from "./auth-mode"
 import {
   buildHostedOnboardingState,
-  buildStarterOnboardingRecord,
+  type HostedOnboardingRecord,
   type HostedOnboardingState,
-  recordsEqual,
-  STARTER_KEY_LABEL,
-  withHostedStarterKey,
 } from "./hosted-onboarding-shared"
 
 export type { HostedOnboardingState } from "./hosted-onboarding-shared"
-
-const METADATA_KEY = "voicyclaw"
 
 export async function getHostedOnboardingState(
   serverUrl: string,
@@ -28,77 +23,46 @@ export async function getHostedOnboardingState(
 
   const client = await clerkClient()
   const user = await client.users.getUser(userId)
-  const existing = asRecord(user.privateMetadata)[METADATA_KEY]
-  const record = buildStarterOnboardingRecord(userId, user, existing)
-  let nextRecord = record
-  let starterKeyProvisioningError: string | undefined
-
-  if (!record.starterKey?.value) {
-    try {
-      const starterKey = await issueStarterKey(
-        serverUrl,
-        record.project.channelId,
-      )
-      nextRecord = withHostedStarterKey(record, starterKey)
-    } catch (error) {
-      starterKeyProvisioningError =
-        error instanceof Error
-          ? error.message
-          : "VoicyClaw could not issue the starter API key yet."
-    }
-  }
-
-  if (!recordsEqual(existing, nextRecord)) {
-    await client.users.updateUserMetadata(userId, {
-      privateMetadata: {
-        ...asRecord(user.privateMetadata),
-        [METADATA_KEY]: nextRecord,
-      },
-    })
-  }
-
-  return buildHostedOnboardingState(
-    nextRecord,
-    serverUrl,
-    starterKeyProvisioningError,
-  )
-}
-
-async function issueStarterKey(serverUrl: string, channelId: string) {
-  const response = await fetch(new URL("/api/keys", serverUrl), {
+  const response = await fetch(new URL("/api/hosted/bootstrap", serverUrl), {
     method: "POST",
     headers: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      channelId,
-      label: STARTER_KEY_LABEL,
+      provider: "clerk",
+      providerSubject: user.id,
+      email:
+        user.primaryEmailAddress?.emailAddress ??
+        user.emailAddresses[0]?.emailAddress ??
+        null,
+      displayName: user.fullName ?? user.username ?? user.firstName ?? null,
+      firstName: user.firstName,
+      fullName: user.fullName,
+      username: user.username,
     }),
     cache: "no-store",
   })
 
   if (!response.ok) {
+    let message = `${response.status}`
+
+    try {
+      const payload = (await response.json()) as {
+        message?: string
+      }
+
+      if (payload.message?.trim()) {
+        message = `${message}: ${payload.message.trim()}`
+      }
+    } catch {
+      // Ignore JSON parse failures and keep the HTTP status in the error text.
+    }
+
     throw new Error(
-      `VoicyClaw server returned ${response.status} while issuing the starter API key.`,
+      `VoicyClaw server returned ${message} while bootstrapping hosted resources.`,
     )
   }
 
-  const payload = (await response.json()) as {
-    apiKey?: string
-  }
-  const apiKey = payload.apiKey?.trim()
-
-  if (!apiKey) {
-    throw new Error("VoicyClaw server did not return a starter API key.")
-  }
-
-  return apiKey
-}
-
-function asRecord(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {}
-  }
-
-  return value as Record<string, unknown>
+  const record = (await response.json()) as HostedOnboardingRecord
+  return buildHostedOnboardingState(record, serverUrl)
 }

@@ -33,6 +33,7 @@ import {
   touchPlatformKey,
   upsertBotRegistration,
 } from "./db"
+import { bootstrapHostedResources } from "./hosted-resources"
 import { AsyncIterableQueue } from "./lib/async-queue"
 import { createRuntimeTTSProvider } from "./tts-provider"
 
@@ -991,6 +992,40 @@ fastify.get("/api/channels/:channelId", async (request) => {
     clientCount: runtime.clients.size,
     bots: Array.from(runtime.bots.values(), (bot) => bot.toRuntimeInfo()),
   }
+})
+
+fastify.post("/api/hosted/bootstrap", async (request, reply) => {
+  const body =
+    (request.body as {
+      provider?: string
+      providerSubject?: string
+      email?: string | null
+      displayName?: string | null
+      firstName?: string | null
+      fullName?: string | null
+      username?: string | null
+    } | null) ?? {}
+
+  const provider = body.provider === "clerk" ? "clerk" : null
+  const providerSubject = body.providerSubject?.trim()
+
+  if (!provider || !providerSubject) {
+    reply.code(400)
+    return {
+      ok: false,
+      message: "provider and providerSubject are required",
+    }
+  }
+
+  return bootstrapHostedResources({
+    provider,
+    providerSubject,
+    email: body.email,
+    displayName: body.displayName,
+    firstName: body.firstName,
+    fullName: body.fullName,
+    username: body.username,
+  })
 })
 
 fastify.post("/api/keys", async (request, reply) => {
