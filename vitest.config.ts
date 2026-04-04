@@ -21,7 +21,7 @@ export default defineConfig({
         "docs/**",
         "e2e/**",
         "apps/web/lib/audio.ts",
-        "apps/web/lib/use-prototype-settings.ts",
+        "apps/web/lib/use-studio-settings.ts",
         "playwright-report/**",
         "packages/*/src/client.ts",
         "packages/*/src/index.ts",

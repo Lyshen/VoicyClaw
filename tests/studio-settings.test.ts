@@ -2,16 +2,15 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import {
   buildWsUrl,
-  defaultSettings,
-  getPrototypeSettingsStorageKey,
-  loadPrototypeSettings,
+  defaultStudioSettings,
+  getStudioSettingsStorageKey,
+  loadStudioSettings,
   normalizeOpenClawGatewayUrl,
   normalizeServerUrl,
-  persistPrototypeSettings,
-  persistPrototypeSettingsWithNamespace,
-  SETTINGS_STORAGE_KEY,
+  persistStudioSettings,
+  STUDIO_SETTINGS_STORAGE_KEY,
   sanitizeChannelId,
-} from "../apps/web/lib/prototype-settings"
+} from "../apps/web/lib/studio-settings"
 
 type MemoryStorage = {
   getItem: (key: string) => string | null
@@ -31,7 +30,7 @@ afterEach(() => {
   delete (globalThis as { window?: Window }).window
 })
 
-describe("prototype settings helpers", () => {
+describe("studio settings helpers", () => {
   it("normalizes server urls and sanitizes channel ids", () => {
     expect(normalizeServerUrl("https://demo.example.com/path")).toBe(
       "https://demo.example.com",
@@ -42,7 +41,7 @@ describe("prototype settings helpers", () => {
     expect(sanitizeChannelId(" Demo Room! 42 ")).toBe("demo-room-42")
     expect(
       buildWsUrl({
-        ...defaultSettings,
+        ...defaultStudioSettings,
         serverUrl: "https://demo.example.com/app",
         channelId: "Demo Room",
       }),
@@ -52,7 +51,7 @@ describe("prototype settings helpers", () => {
   it("migrates legacy browser toggles from local storage", () => {
     const storage = createMemoryStorage()
     storage.setItem(
-      SETTINGS_STORAGE_KEY,
+      STUDIO_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         serverUrl: "http://localhost:3001/path",
         channelId: "Alpha Room",
@@ -62,7 +61,7 @@ describe("prototype settings helpers", () => {
     )
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    expect(loadPrototypeSettings()).toMatchObject({
+    expect(loadStudioSettings()).toMatchObject({
       serverUrl: "http://localhost:3001",
       channelId: "alpha-room",
       asrProvider: "demo",
@@ -72,7 +71,7 @@ describe("prototype settings helpers", () => {
 
   it("applies runtime defaults before reading local storage", () => {
     expect(
-      loadPrototypeSettings({
+      loadStudioSettings({
         serverUrl: "https://voice.example.com/path",
         channelId: "Runtime Room",
       }),
@@ -86,14 +85,14 @@ describe("prototype settings helpers", () => {
     const storage = createMemoryStorage()
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    persistPrototypeSettings({
-      ...defaultSettings,
+    persistStudioSettings({
+      ...defaultStudioSettings,
       serverUrl: "http://localhost:3001/path",
       channelId: "Team Demo",
     })
 
     expect(
-      JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? ""),
+      JSON.parse(storage.getItem(STUDIO_SETTINGS_STORAGE_KEY) ?? ""),
     ).toMatchObject({
       serverUrl: "http://localhost:3001",
       channelId: "team-demo",
@@ -107,14 +106,14 @@ describe("prototype settings helpers", () => {
   it("keeps Volcengine server TTS selections round-trippable", () => {
     const storage = createMemoryStorage()
     storage.setItem(
-      SETTINGS_STORAGE_KEY,
+      STUDIO_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         ttsProvider: "volcengine-tts",
       }),
     )
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    expect(loadPrototypeSettings()).toMatchObject({
+    expect(loadStudioSettings()).toMatchObject({
       ttsProvider: "volcengine-tts",
     })
   })
@@ -122,14 +121,14 @@ describe("prototype settings helpers", () => {
   it("keeps Google batched server TTS selections round-trippable", () => {
     const storage = createMemoryStorage()
     storage.setItem(
-      SETTINGS_STORAGE_KEY,
+      STUDIO_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         ttsProvider: "google-batched-tts",
       }),
     )
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    expect(loadPrototypeSettings()).toMatchObject({
+    expect(loadStudioSettings()).toMatchObject({
       ttsProvider: "google-batched-tts",
     })
   })
@@ -137,14 +136,14 @@ describe("prototype settings helpers", () => {
   it("keeps Tencent unary server TTS selections round-trippable", () => {
     const storage = createMemoryStorage()
     storage.setItem(
-      SETTINGS_STORAGE_KEY,
+      STUDIO_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         ttsProvider: "tencent-tts",
       }),
     )
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    expect(loadPrototypeSettings()).toMatchObject({
+    expect(loadStudioSettings()).toMatchObject({
       ttsProvider: "tencent-tts",
     })
   })
@@ -152,14 +151,14 @@ describe("prototype settings helpers", () => {
   it("keeps Tencent bidirectional server TTS selections round-trippable", () => {
     const storage = createMemoryStorage()
     storage.setItem(
-      SETTINGS_STORAGE_KEY,
+      STUDIO_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         ttsProvider: "tencent-streaming-tts",
       }),
     )
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    expect(loadPrototypeSettings()).toMatchObject({
+    expect(loadStudioSettings()).toMatchObject({
       ttsProvider: "tencent-streaming-tts",
     })
   })
@@ -167,14 +166,14 @@ describe("prototype settings helpers", () => {
   it("keeps Azure segmented server TTS selections round-trippable", () => {
     const storage = createMemoryStorage()
     storage.setItem(
-      SETTINGS_STORAGE_KEY,
+      STUDIO_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         ttsProvider: "azure-streaming-tts",
       }),
     )
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    expect(loadPrototypeSettings()).toMatchObject({
+    expect(loadStudioSettings()).toMatchObject({
       ttsProvider: "azure-streaming-tts",
     })
   })
@@ -183,9 +182,9 @@ describe("prototype settings helpers", () => {
     const storage = createMemoryStorage()
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    persistPrototypeSettingsWithNamespace(
+    persistStudioSettings(
       {
-        ...defaultSettings,
+        ...defaultStudioSettings,
         channelId: "Hosted Room",
       },
       "ws-demo.sayhello-demo",
@@ -193,14 +192,13 @@ describe("prototype settings helpers", () => {
 
     expect(
       JSON.parse(
-        storage.getItem(
-          getPrototypeSettingsStorageKey("ws-demo.sayhello-demo"),
-        ) ?? "",
+        storage.getItem(getStudioSettingsStorageKey("ws-demo.sayhello-demo")) ??
+          "",
       ),
     ).toMatchObject({
       channelId: "hosted-room",
     })
-    expect(storage.getItem(SETTINGS_STORAGE_KEY)).toBeNull()
+    expect(storage.getItem(STUDIO_SETTINGS_STORAGE_KEY)).toBeNull()
   })
 })
 

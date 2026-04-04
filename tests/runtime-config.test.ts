@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  getRuntimeConfig,
+  getWebRuntimePayload,
   resolvePublicServerUrl,
-} from "../apps/web/lib/runtime-config"
+} from "../apps/web/lib/web-runtime"
 
 describe("runtime config", () => {
   it("prefers an explicit public server url", () => {
@@ -23,7 +23,7 @@ describe("runtime config", () => {
     })
 
     expect(
-      await getRuntimeConfig(
+      await getWebRuntimePayload(
         request,
         {
           VOICYCLAW_PUBLIC_SERVER_PORT: "443",
@@ -33,12 +33,12 @@ describe("runtime config", () => {
         },
       ),
     ).toEqual({
-      settingsDefaults: {
+      initialSettings: {
         serverUrl: "https://demo.example.com",
         channelId: undefined,
         conversationBackend: undefined,
       },
-      settingsStorageNamespace: undefined,
+      settingsNamespace: undefined,
       onboarding: null,
     })
   })
@@ -77,11 +77,11 @@ describe("runtime config", () => {
       connectorConfigJson: "{}",
       connectorConfigLine: "{}",
       connectorPackageName: "@voicyclaw/voicyclaw",
-      settingsStorageNamespace: "ws-demo.sayhello-demo",
+      settingsNamespace: "ws-demo.sayhello-demo",
     }
 
     expect(
-      await getRuntimeConfig(
+      await getWebRuntimePayload(
         request,
         {
           VOICYCLAW_PUBLIC_SERVER_URL: "https://voice.example.com",
@@ -91,12 +91,12 @@ describe("runtime config", () => {
         },
       ),
     ).toEqual({
-      settingsDefaults: {
+      initialSettings: {
         serverUrl: "https://voice.example.com",
         channelId: "sayhello-demo",
         conversationBackend: "local-bot",
       },
-      settingsStorageNamespace: "ws-demo.sayhello-demo",
+      settingsNamespace: "ws-demo.sayhello-demo",
       onboarding,
     })
   })

@@ -2,18 +2,18 @@ import {
   getHostedOnboardingState,
   type HostedOnboardingState,
 } from "./hosted-onboarding"
-import type { PrototypeSettings } from "./prototype-settings"
+import type { StudioSettings } from "./studio-settings"
 
 type HeaderLookup = {
   get: (name: string) => string | null
 }
 
-type RuntimeConfigRequest = {
+type WebRuntimeRequest = {
   headers: HeaderLookup
   nextUrl: Pick<URL, "protocol">
 }
 
-type RuntimeConfigEnv = {
+type WebRuntimeEnv = {
   NEXT_PUBLIC_VOICYCLAW_SERVER_URL?: string
   VOICYCLAW_PUBLIC_SERVER_PORT?: string
   VOICYCLAW_PUBLIC_SERVER_URL?: string
@@ -21,50 +21,29 @@ type RuntimeConfigEnv = {
   [key: string]: string | undefined
 }
 
-export interface RuntimeConfigPayload {
-  settingsDefaults: Partial<PrototypeSettings>
-  settingsStorageNamespace?: string
+export interface WebRuntimePayload {
+  initialSettings: Partial<StudioSettings>
+  settingsNamespace?: string
   onboarding: HostedOnboardingState | null
 }
 
-type RuntimeConfigOptions = {
+type WebRuntimeOptions = {
   getHostedOnboardingState?: (
     serverUrl: string,
   ) => Promise<HostedOnboardingState | null>
 }
 
-export function getRuntimeConfig(
-  request: RuntimeConfigRequest,
-  env: RuntimeConfigEnv = process.env,
-  options: RuntimeConfigOptions = {},
-): Promise<RuntimeConfigPayload> {
-  return getResolvedRuntimeConfig(request, env, options)
-}
-
-async function getResolvedRuntimeConfig(
-  request: RuntimeConfigRequest,
-  env: RuntimeConfigEnv,
-  options: RuntimeConfigOptions,
-) {
-  const serverUrl = resolvePublicServerUrl(request, env)
-  const onboardingResolver =
-    options.getHostedOnboardingState ?? getHostedOnboardingState
-  const onboarding = await onboardingResolver(serverUrl)
-
-  return {
-    settingsDefaults: {
-      serverUrl,
-      channelId: onboarding?.project.channelId,
-      conversationBackend: onboarding ? ("local-bot" as const) : undefined,
-    },
-    settingsStorageNamespace: onboarding?.settingsStorageNamespace,
-    onboarding,
-  }
+export function getWebRuntimePayload(
+  request: WebRuntimeRequest,
+  env: WebRuntimeEnv = process.env,
+  options: WebRuntimeOptions = {},
+): Promise<WebRuntimePayload> {
+  return resolveWebRuntimePayload(request, env, options)
 }
 
 export function resolvePublicServerUrl(
-  request: RuntimeConfigRequest,
-  env: RuntimeConfigEnv = process.env,
+  request: WebRuntimeRequest,
+  env: WebRuntimeEnv = process.env,
 ) {
   const explicitUrl =
     env.VOICYCLAW_PUBLIC_SERVER_URL?.trim() ||
@@ -90,4 +69,25 @@ export function resolvePublicServerUrl(
 
   url.port = publicPort
   return `${url.protocol}//${url.host}`
+}
+
+async function resolveWebRuntimePayload(
+  request: WebRuntimeRequest,
+  env: WebRuntimeEnv,
+  options: WebRuntimeOptions,
+) {
+  const serverUrl = resolvePublicServerUrl(request, env)
+  const onboardingResolver =
+    options.getHostedOnboardingState ?? getHostedOnboardingState
+  const onboarding = await onboardingResolver(serverUrl)
+
+  return {
+    initialSettings: {
+      serverUrl,
+      channelId: onboarding?.project.channelId,
+      conversationBackend: onboarding ? ("local-bot" as const) : undefined,
+    },
+    settingsNamespace: onboarding?.settingsNamespace,
+    onboarding,
+  }
 }

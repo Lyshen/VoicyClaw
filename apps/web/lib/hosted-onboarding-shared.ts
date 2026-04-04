@@ -44,7 +44,7 @@ export interface HostedOnboardingState extends HostedOnboardingRecord {
   connectorConfigJson: string | null
   connectorConfigLine: string | null
   connectorPackageName: string
-  settingsStorageNamespace: string
+  settingsNamespace: string
   starterKeyProvisioningError?: string
 }
 
@@ -209,7 +209,7 @@ export function buildHostedOnboardingState(
         })
       : null,
     connectorPackageName: STARTER_CONNECTOR_PACKAGE,
-    settingsStorageNamespace: buildSettingsStorageNamespace(
+    settingsNamespace: buildSettingsStorageNamespace(
       record.workspace.id,
       record.project.id,
     ),

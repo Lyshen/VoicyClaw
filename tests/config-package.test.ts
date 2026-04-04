@@ -134,4 +134,35 @@ describe("unified config package", () => {
     expect(runtimeEnv.BOT_ID).toBe("launch-bot")
     expect(runtimeEnv.BOT_NAME).toBe("Launch Bot")
   })
+
+  it("lets an explicit local auth env override clerk config", () => {
+    const cwd = mkdtempSync(path.join(os.tmpdir(), "voicyclaw-auth-override-"))
+    const filePath = path.join(cwd, "voicyclaw.local.yaml")
+    writeFileSync(
+      filePath,
+      [
+        "Auth:",
+        "  mode: clerk",
+        "  clerk_publishable_key: pk_live_example",
+        "  clerk_secret_key: sk_live_example",
+      ].join("\n"),
+    )
+
+    const env = {
+      VOICYCLAW_CONFIG: filePath,
+      NEXT_PUBLIC_VOICYCLAW_AUTH_MODE: "local",
+    }
+
+    expect(resolveAuthConfig(env)).toEqual({
+      requestedMode: "local",
+      resolvedMode: "local",
+      clerkPublishableKey: null,
+      clerkSecretKey: null,
+    })
+
+    const runtimeEnv = buildRuntimeEnvironment(env)
+    expect(runtimeEnv.NEXT_PUBLIC_VOICYCLAW_AUTH_MODE).toBe("local")
+    expect(runtimeEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).toBe("")
+    expect(runtimeEnv.CLERK_SECRET_KEY).toBe("")
+  })
 })

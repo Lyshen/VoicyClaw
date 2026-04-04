@@ -12,7 +12,7 @@ export type TtsProviderId =
   | "volcengine-tts"
 export type ConversationBackendId = "local-bot" | "openclaw-gateway"
 
-type ProviderOption<T extends string> = {
+export type ProviderOption<T extends string> = {
   id: T
   mode: ProviderMode
   label: string
@@ -20,7 +20,7 @@ type ProviderOption<T extends string> = {
   runtimeHint: string
 }
 
-type ConversationBackendOption = {
+export type ConversationBackendOption = {
   id: ConversationBackendId
   label: string
   summary: string
@@ -33,17 +33,6 @@ export type ProviderGuide = {
   status: "next" | "planned"
   summary: string
   keyHint: string
-}
-
-export interface PrototypeSettings {
-  serverUrl: string
-  channelId: string
-  language: string
-  conversationBackend: ConversationBackendId
-  asrProvider: AsrProviderId
-  ttsProvider: TtsProviderId
-  openClawGatewayUrl: string
-  openClawGatewayToken: string
 }
 
 export const CONVERSATION_BACKEND_OPTIONS: ConversationBackendOption[] = [
@@ -226,27 +215,8 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
   },
 ]
 
-export const SETTINGS_STORAGE_KEY = "voicyclaw.prototype.settings"
-
-export const defaultSettings: PrototypeSettings = {
-  serverUrl: "http://localhost:3001",
-  channelId: "demo-room",
-  language: "en-US",
-  conversationBackend: "local-bot",
-  asrProvider: "browser",
-  ttsProvider: "browser",
-  openClawGatewayUrl: "ws://127.0.0.1:18789",
-  openClawGatewayToken: "",
-}
-
 export function getProviderModeLabel(mode: ProviderMode) {
   return mode === "client" ? "Client provider" : "Server provider"
-}
-
-export function getPrototypeSettingsStorageKey(storageNamespace?: string) {
-  return storageNamespace
-    ? `${SETTINGS_STORAGE_KEY}.${storageNamespace}`
-    : SETTINGS_STORAGE_KEY
 }
 
 export function getAsrProviderOption(providerId: string | undefined) {
@@ -267,171 +237,5 @@ export function getConversationBackendOption(backendId: string | undefined) {
   return (
     CONVERSATION_BACKEND_OPTIONS.find((option) => option.id === backendId) ??
     CONVERSATION_BACKEND_OPTIONS[0]
-  )
-}
-
-export function normalizeServerUrl(input: string) {
-  try {
-    const url = new URL(input || defaultSettings.serverUrl)
-    return `${url.protocol}//${url.host}`
-  } catch {
-    return defaultSettings.serverUrl
-  }
-}
-
-export function normalizeOpenClawGatewayUrl(input: string) {
-  const fallback = defaultSettings.openClawGatewayUrl
-  const trimmed = input.trim() || fallback
-  const candidate =
-    /^wss?:\/\//i.test(trimmed) || /^https?:\/\//i.test(trimmed)
-      ? trimmed
-      : `ws://${trimmed}`
-
-  try {
-    const url = new URL(candidate)
-    if (url.protocol === "http:") {
-      url.protocol = "ws:"
-    } else if (url.protocol === "https:") {
-      url.protocol = "wss:"
-    }
-
-    return `${url.protocol}//${url.host}${url.pathname === "/" ? "" : url.pathname.replace(/\/$/, "")}`
-  } catch {
-    return fallback
-  }
-}
-
-export function sanitizeChannelId(input: string) {
-  const cleaned = input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-_]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-
-  return cleaned || defaultSettings.channelId
-}
-
-export function buildWsUrl(settings: PrototypeSettings) {
-  const serverUrl = normalizeServerUrl(settings.serverUrl)
-  return `${serverUrl.replace(/^http/i, "ws")}/ws/client?channelId=${encodeURIComponent(sanitizeChannelId(settings.channelId))}`
-}
-
-export function buildApiUrl(settings: PrototypeSettings, pathname: string) {
-  return new URL(pathname, normalizeServerUrl(settings.serverUrl)).toString()
-}
-
-function normalizeAsrProvider(
-  providerId: string | undefined,
-  legacyBrowserSpeechEnabled?: boolean,
-): AsrProviderId {
-  if (providerId === "demo") return "demo"
-  if (providerId === "browser") return "browser"
-  return legacyBrowserSpeechEnabled === false
-    ? "demo"
-    : defaultSettings.asrProvider
-}
-
-function normalizeTtsProvider(
-  providerId: string | undefined,
-  legacyBrowserVoiceEnabled?: boolean,
-): TtsProviderId {
-  if (providerId === "azure-tts") return "azure-tts"
-  if (providerId === "azure-streaming-tts") return "azure-streaming-tts"
-  if (providerId === "google-tts") return "google-tts"
-  if (providerId === "google-batched-tts") return "google-batched-tts"
-  if (providerId === "tencent-tts") return "tencent-tts"
-  if (providerId === "tencent-streaming-tts") return "tencent-streaming-tts"
-  if (providerId === "demo") return "demo"
-  if (providerId === "browser") return "browser"
-  if (providerId === "volcengine-tts") return "volcengine-tts"
-  return legacyBrowserVoiceEnabled === false
-    ? "demo"
-    : defaultSettings.ttsProvider
-}
-
-function normalizeConversationBackend(
-  backendId: string | undefined,
-): ConversationBackendId {
-  if (backendId === "openclaw-gateway") {
-    return "openclaw-gateway"
-  }
-
-  return defaultSettings.conversationBackend
-}
-
-export function loadPrototypeSettings(
-  runtimeDefaults?: Partial<PrototypeSettings>,
-  storageNamespace?: string,
-) {
-  const defaults = {
-    ...defaultSettings,
-    ...runtimeDefaults,
-  }
-  if (typeof window === "undefined") {
-    return defaults
-  }
-
-  try {
-    const raw = window.localStorage.getItem(
-      getPrototypeSettingsStorageKey(storageNamespace),
-    )
-    if (!raw) return defaults
-
-    const parsed = JSON.parse(raw) as Partial<PrototypeSettings> & {
-      browserSpeechEnabled?: boolean
-      browserVoiceEnabled?: boolean
-    }
-
-    return {
-      ...defaults,
-      ...parsed,
-      serverUrl: normalizeServerUrl(parsed.serverUrl ?? defaults.serverUrl),
-      openClawGatewayUrl: normalizeOpenClawGatewayUrl(
-        parsed.openClawGatewayUrl ?? defaults.openClawGatewayUrl,
-      ),
-      channelId: sanitizeChannelId(parsed.channelId ?? defaults.channelId),
-      conversationBackend: normalizeConversationBackend(
-        parsed.conversationBackend,
-      ),
-      asrProvider: normalizeAsrProvider(
-        parsed.asrProvider,
-        parsed.browserSpeechEnabled,
-      ),
-      ttsProvider: normalizeTtsProvider(
-        parsed.ttsProvider,
-        parsed.browserVoiceEnabled,
-      ),
-    }
-  } catch {
-    return defaults
-  }
-}
-
-export function persistPrototypeSettings(settings: PrototypeSettings) {
-  persistPrototypeSettingsWithNamespace(settings)
-}
-
-export function persistPrototypeSettingsWithNamespace(
-  settings: PrototypeSettings,
-  storageNamespace?: string,
-) {
-  if (typeof window === "undefined") return
-
-  window.localStorage.setItem(
-    getPrototypeSettingsStorageKey(storageNamespace),
-    JSON.stringify({
-      ...settings,
-      serverUrl: normalizeServerUrl(settings.serverUrl),
-      channelId: sanitizeChannelId(settings.channelId),
-      conversationBackend: getConversationBackendOption(
-        settings.conversationBackend,
-      ).id,
-      asrProvider: getAsrProviderOption(settings.asrProvider).id,
-      ttsProvider: getTtsProviderOption(settings.ttsProvider).id,
-      openClawGatewayUrl: normalizeOpenClawGatewayUrl(
-        settings.openClawGatewayUrl,
-      ),
-    }),
   )
 }

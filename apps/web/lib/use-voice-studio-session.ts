@@ -13,8 +13,8 @@ import {
   getConversationBackendOption,
   getProviderModeLabel,
   getTtsProviderOption,
-} from "./prototype-settings"
-import { usePrototypeSettings } from "./use-prototype-settings"
+} from "./studio-provider-catalog"
+import { useStudioSettings } from "./use-studio-settings"
 import { useVoiceStudioCapture } from "./use-voice-studio-capture"
 import {
   type ConnectionState,
@@ -33,7 +33,7 @@ export function useVoiceStudioSession(
   options: UseVoiceStudioSessionOptions = {},
 ) {
   const { introMessage = null, includeConnectionSummary = true } = options
-  const { settings, ready, onboarding } = usePrototypeSettings()
+  const { settings, ready, onboarding } = useStudioSettings()
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("connecting")
   const [timeline, setTimeline] = useState<TimelineEntry[]>([])

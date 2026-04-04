@@ -2,11 +2,8 @@
 
 import type { ServerToClientMessage } from "@voicyclaw/protocol"
 
-import {
-  buildWsUrl,
-  type PrototypeSettings,
-  type ProviderMode,
-} from "./prototype-settings"
+import type { ProviderMode } from "./studio-provider-catalog"
+import { buildWsUrl, type StudioSettings } from "./studio-settings"
 import {
   buildClientHelloMessage,
   type ConnectionState,
@@ -18,7 +15,7 @@ type ProviderSummary = {
 }
 
 type OpenVoiceStudioSocketOptions = {
-  settings: PrototypeSettings
+  settings: StudioSettings
   clientId: string
   asrProvider: ProviderSummary
   ttsProvider: ProviderSummary

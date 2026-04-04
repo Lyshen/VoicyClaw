@@ -38,7 +38,7 @@ describe("account summary shared helpers", () => {
       connectorConfigJson: "{}",
       connectorConfigLine: "{}",
       connectorPackageName: "@voicyclaw/voicyclaw",
-      settingsStorageNamespace: "ws-demo.sayhello-demo",
+      settingsNamespace: "ws-demo.sayhello-demo",
     } satisfies HostedOnboardingState
 
     const billing = {
@@ -109,7 +109,7 @@ describe("account summary shared helpers", () => {
       connectorConfigJson: null,
       connectorConfigLine: null,
       connectorPackageName: "@voicyclaw/voicyclaw",
-      settingsStorageNamespace: "ws-demo.sayhello-demo",
+      settingsNamespace: "ws-demo.sayhello-demo",
     } satisfies HostedOnboardingState
 
     const billing = {

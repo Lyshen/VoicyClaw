@@ -8,7 +8,7 @@ import {
 } from "./account-summary-shared"
 import { getResolvedAuthMode } from "./auth-mode"
 import { getHostedOnboardingState } from "./hosted-onboarding"
-import { resolvePublicServerUrl } from "./runtime-config"
+import { resolvePublicServerUrl } from "./web-runtime"
 
 export type {
   AccountSummary,

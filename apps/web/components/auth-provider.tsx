@@ -1,8 +1,6 @@
-import { ClerkProvider } from "@clerk/nextjs"
-
 import { getResolvedAuthMode } from "../lib/auth-mode"
 
-export function AuthProvider({
+export async function AuthProvider({
   children,
 }: Readonly<{
   children: React.ReactNode
@@ -11,9 +9,6 @@ export function AuthProvider({
     return children
   }
 
-  return (
-    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
-      {children}
-    </ClerkProvider>
-  )
+  const { ClerkAuthProvider } = await import("./clerk-auth-provider")
+  return <ClerkAuthProvider>{children}</ClerkAuthProvider>
 }

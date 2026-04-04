@@ -9,7 +9,8 @@ import type { Dispatch, SetStateAction } from "react"
 
 import type { HostedOnboardingState } from "./hosted-onboarding-shared"
 import type { OutputTurnCoordinator } from "./output-turn-coordinator"
-import type { PrototypeSettings, ProviderMode } from "./prototype-settings"
+import type { ProviderMode } from "./studio-provider-catalog"
+import type { StudioSettings } from "./studio-settings"
 
 export type ConnectionState =
   | "connecting"
@@ -45,7 +46,7 @@ type HandleServerMessageOptions = {
 
 type BuildClientHelloMessageOptions = {
   clientId: string
-  settings: PrototypeSettings
+  settings: StudioSettings
   asrProvider: ProviderSummary
   ttsProvider: ProviderSummary
 }

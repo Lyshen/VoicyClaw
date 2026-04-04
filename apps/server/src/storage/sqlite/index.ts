@@ -33,6 +33,8 @@ export {
 
 export async function initStorage() {}
 
+export async function closeStorage() {}
+
 export function describeStorageTarget() {
   return `SQLite ready at ${getDatabaseFile()}`
 }

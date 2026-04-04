@@ -458,8 +458,8 @@ Refactor:
 
 Update:
 
-- `apps/web/lib/prototype-settings.ts`
-- `apps/web/lib/use-prototype-settings.ts`
+- `apps/web/lib/studio-settings.ts`
+- `apps/web/lib/use-studio-settings.ts`
 - `apps/web/components/settings-studio.tsx`
 
 Purpose:

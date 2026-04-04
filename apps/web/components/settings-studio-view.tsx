@@ -7,7 +7,7 @@ import {
   getProviderModeLabel,
   type ProviderGuide,
   type ProviderMode,
-} from "../lib/prototype-settings"
+} from "../lib/studio-provider-catalog"
 
 type BackendOption = {
   id: ConversationBackendId
