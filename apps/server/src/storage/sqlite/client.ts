@@ -1,8 +1,11 @@
 import { mkdirSync } from "node:fs"
+import { createRequire } from "node:module"
 import { dirname, resolve } from "node:path"
-import { DatabaseSync } from "node:sqlite"
 
 import { resolveStorageConfig } from "@voicyclaw/config"
+
+const require = createRequire(import.meta.url)
+const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite")
 
 const databaseFile =
   resolveStorageConfig().sqliteFile ||
