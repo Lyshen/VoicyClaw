@@ -91,6 +91,32 @@ export function runConcurrentServices(
   return child
 }
 
+export function runConcurrentCommands(
+  commands: string[],
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const concurrentlyCli = path.resolve(
+    process.cwd(),
+    "node_modules",
+    "concurrently",
+    "dist",
+    "bin",
+    "concurrently.js",
+  )
+  const child = spawn(
+    process.execPath,
+    [concurrentlyCli, "-k", "-c", "blue,green,magenta", ...commands],
+    {
+      cwd: process.cwd(),
+      env: getRuntimeEnvironment(env),
+      stdio: "inherit",
+    },
+  )
+
+  forwardTerminationSignals(child)
+  return child
+}
+
 function getPackageName(service: RuntimeService) {
   switch (service) {
     case "server":

@@ -1,6 +1,16 @@
-import { runConcurrentServices } from "./runtime-shared"
+import { resolveAppConfig } from "@voicyclaw/config"
 
-const child = runConcurrentServices(["server", "web", "mock-bot"], "start")
+import { getRuntimeEnvironment, runConcurrentCommands } from "./runtime-shared"
+
+const runtimeEnv = getRuntimeEnvironment()
+const app = resolveAppConfig(runtimeEnv)
+const tsxCli = "./node_modules/tsx/dist/cli.mjs"
+
+const child = runConcurrentCommands([
+  `PORT=${app.serverPort} node ${tsxCli} apps/server/src/index.ts`,
+  `PORT=${app.webPort} pnpm --filter @voicyclaw/web start`,
+  `node ${tsxCli} apps/mock-bot/src/index.ts`,
+])
 
 await new Promise<void>((resolve, reject) => {
   child.once("error", reject)
