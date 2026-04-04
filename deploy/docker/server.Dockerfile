@@ -20,6 +20,7 @@ RUN pnpm install --frozen-lockfile
 COPY apps/server apps/server
 COPY packages packages
 
+RUN pnpm build:packages
 RUN pnpm --filter @voicyclaw/server build
 
 FROM node:25.5.0-bookworm-slim AS runner

@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react"
 
 import type { HostedOnboardingState } from "./hosted-onboarding-shared"
-import type { PrototypeSettings } from "./prototype-settings"
-import { buildApiUrl, normalizeServerUrl } from "./prototype-settings"
+import type { StudioSettings } from "./studio-settings"
+import { buildApiUrl, normalizeServerUrl } from "./studio-settings"
 
 type UseSettingsStudioStateArgs = {
   ready: boolean
-  settings: PrototypeSettings
+  settings: StudioSettings
   onboarding: HostedOnboardingState | null
 }
 
@@ -94,7 +94,7 @@ export function useSettingsStudioState({
 }
 
 async function fetchServerStatus(
-  settings: PrototypeSettings,
+  settings: StudioSettings,
   setServerStatus: (value: string) => void,
 ) {
   try {
@@ -120,7 +120,7 @@ async function fetchServerStatus(
 }
 
 async function fetchStarterProjectStatus(
-  settings: PrototypeSettings,
+  settings: StudioSettings,
   onboarding: HostedOnboardingState,
   setStarterBotOnline: (value: boolean | null) => void,
   setStarterProjectStatus: (value: string) => void,

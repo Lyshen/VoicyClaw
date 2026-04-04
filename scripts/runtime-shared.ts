@@ -1,7 +1,10 @@
 import { spawn } from "node:child_process"
 import path from "node:path"
 
-import { buildRuntimeEnvironment, resolveAppConfig } from "@voicyclaw/config"
+import {
+  buildRuntimeEnvironment,
+  resolveAppConfig,
+} from "../packages/config/src/index.ts"
 
 export type RuntimeService = "server" | "web" | "mock-bot"
 export type RuntimeMode = "dev" | "start"
@@ -43,7 +46,15 @@ export function runRepoCommand(
   args: string[],
   env: NodeJS.ProcessEnv = process.env,
 ) {
-  return spawnAndWait("pnpm", args, env)
+  return runCommand("pnpm", args, env)
+}
+
+export function runCommand(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  return spawnAndWait(command, args, env)
 }
 
 export function runSingleService(
@@ -51,70 +62,79 @@ export function runSingleService(
   mode: RuntimeMode,
   env: NodeJS.ProcessEnv = process.env,
 ) {
-  const child = spawn("pnpm", ["--filter", getPackageName(service), mode], {
-    cwd: process.cwd(),
-    env: getServiceEnvironment(service, env),
-    stdio: "inherit",
-  })
-
-  forwardTerminationSignals(child)
+  const child = spawnService(service, mode, env)
+  forwardTerminationSignals([child])
   return child
 }
 
-export function runConcurrentServices(
+export function runServiceGroup(
   services: RuntimeService[],
   mode: RuntimeMode,
   env: NodeJS.ProcessEnv = process.env,
 ) {
-  const commands = services.map(
-    (service) => `pnpm --filter ${getPackageName(service)} ${mode}`,
-  )
-  const concurrentlyCli = path.resolve(
-    process.cwd(),
-    "node_modules",
-    "concurrently",
-    "dist",
-    "bin",
-    "concurrently.js",
-  )
-  const child = spawn(
-    process.execPath,
-    [concurrentlyCli, "-k", "-c", "blue,green,magenta", ...commands],
-    {
-      cwd: process.cwd(),
-      env: getRuntimeEnvironment(env),
-      stdio: "inherit",
-    },
-  )
+  const children = services.map((service) => ({
+    service,
+    child: spawnService(service, mode, env),
+  }))
 
-  forwardTerminationSignals(child)
-  return child
+  forwardTerminationSignals(children.map(({ child }) => child))
+
+  return new Promise<void>((resolve, reject) => {
+    let settled = false
+    let remaining = children.length
+
+    const fail = (message: string) => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      stopChildren(children.map(({ child }) => child))
+      reject(new Error(message))
+    }
+
+    for (const { service, child } of children) {
+      child.once("error", (error) => {
+        fail(
+          `${service} ${mode} failed to start: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        )
+      })
+
+      child.once("exit", (code, signal) => {
+        remaining -= 1
+
+        const cleanExit =
+          code === 0 || signal === "SIGINT" || signal === "SIGTERM"
+        if (!cleanExit) {
+          fail(
+            `${service} ${mode} exited with ${signal ?? code ?? "unknown status"}`,
+          )
+          return
+        }
+
+        if (remaining === 0 && !settled) {
+          settled = true
+          resolve()
+        }
+      })
+    }
+  })
 }
 
-export function runConcurrentCommands(
-  commands: string[],
-  env: NodeJS.ProcessEnv = process.env,
+function spawnService(
+  service: RuntimeService,
+  mode: RuntimeMode,
+  env: NodeJS.ProcessEnv,
 ) {
-  const concurrentlyCli = path.resolve(
-    process.cwd(),
-    "node_modules",
-    "concurrently",
-    "dist",
-    "bin",
-    "concurrently.js",
-  )
-  const child = spawn(
-    process.execPath,
-    [concurrentlyCli, "-k", "-c", "blue,green,magenta", ...commands],
-    {
-      cwd: process.cwd(),
-      env: getRuntimeEnvironment(env),
-      stdio: "inherit",
-    },
-  )
+  const command = resolveServiceCommand(service, mode)
 
-  forwardTerminationSignals(child)
-  return child
+  return spawn(command.command, command.args, {
+    cwd: process.cwd(),
+    env: getServiceEnvironment(service, env),
+    stdio: "inherit",
+  })
 }
 
 function getPackageName(service: RuntimeService) {
@@ -128,15 +148,51 @@ function getPackageName(service: RuntimeService) {
   }
 }
 
-function forwardTerminationSignals(child: ReturnType<typeof spawn>) {
-  const stopChild = (signal: NodeJS.Signals) => {
-    if (!child.killed) {
-      child.kill(signal)
+function resolveServiceCommand(service: RuntimeService, mode: RuntimeMode) {
+  if (mode === "dev") {
+    return {
+      command: "pnpm",
+      args: ["--filter", getPackageName(service), "dev"],
     }
+  }
+
+  switch (service) {
+    case "server":
+      return {
+        command: process.execPath,
+        args: [path.resolve(process.cwd(), "apps/server/dist/index.js")],
+      }
+    case "web":
+      return {
+        command: process.execPath,
+        args: [path.resolve(process.cwd(), "scripts/start-web-standalone.mjs")],
+      }
+    case "mock-bot":
+      return {
+        command: process.execPath,
+        args: [path.resolve(process.cwd(), "apps/mock-bot/dist/index.js")],
+      }
+  }
+}
+
+function forwardTerminationSignals(children: Array<ReturnType<typeof spawn>>) {
+  const stopChild = (signal: NodeJS.Signals) => {
+    stopChildren(children, signal)
   }
 
   process.once("SIGINT", () => stopChild("SIGINT"))
   process.once("SIGTERM", () => stopChild("SIGTERM"))
+}
+
+function stopChildren(
+  children: Array<ReturnType<typeof spawn>>,
+  signal: NodeJS.Signals = "SIGTERM",
+) {
+  for (const child of children) {
+    if (!child.killed) {
+      child.kill(signal)
+    }
+  }
 }
 
 function spawnAndWait(command: string, args: string[], env: NodeJS.ProcessEnv) {

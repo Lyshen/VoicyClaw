@@ -15,6 +15,7 @@
       "vitest.config.ts",
       "!apps/**/.next",
       "!apps/**/dist",
+      "!packages/**/dist",
       "!apps/web/next-env.d.ts",
       "!apps/server/.data",
       "!coverage",

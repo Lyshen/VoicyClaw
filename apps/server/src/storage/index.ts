@@ -166,6 +166,7 @@ export interface Storage {
   }
   system: {
     init(): Awaitable<void>
+    close(): Awaitable<void>
     describeTarget(): string
   }
 }
@@ -274,6 +275,7 @@ export const storage: Storage = {
   },
   system: {
     init: () => callAdapter("initStorage"),
+    close: () => callAdapter("closeStorage"),
     describeTarget: () =>
       storageDriver === "mysql"
         ? describeMysqlTarget()

@@ -6,18 +6,20 @@ import {
   getAsrProviderOption,
   getConversationBackendOption,
   getTtsProviderOption,
+  TTS_PROVIDER_GUIDE,
+  TTS_PROVIDER_OPTIONS,
+} from "../lib/studio-provider-catalog"
+import {
   normalizeOpenClawGatewayUrl,
   normalizeServerUrl,
   sanitizeChannelId,
-  TTS_PROVIDER_GUIDE,
-  TTS_PROVIDER_OPTIONS,
-} from "../lib/prototype-settings"
-import { usePrototypeSettings } from "../lib/use-prototype-settings"
+} from "../lib/studio-settings"
 import { useSettingsStudioState } from "../lib/use-settings-studio-state"
+import { useStudioSettings } from "../lib/use-studio-settings"
 import { SettingsStudioView } from "./settings-studio-view"
 
 export function SettingsStudio() {
-  const { settings, ready, updateSetting, onboarding } = usePrototypeSettings()
+  const { settings, ready, updateSetting, onboarding } = useStudioSettings()
   const activeAsrProvider = getAsrProviderOption(settings.asrProvider)
   const activeTtsProvider = getTtsProviderOption(settings.ttsProvider)
   const activeBackend = getConversationBackendOption(

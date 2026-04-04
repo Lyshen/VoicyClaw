@@ -278,23 +278,24 @@ export function resolveAuthConfig(
     loadVoicyClawConfig(env),
     "Auth",
   )
-  const requestedMode =
-    readString(env.NEXT_PUBLIC_VOICYCLAW_AUTH_MODE) === "clerk" ||
-    readString(section?.mode) === "clerk"
-      ? "clerk"
-      : "local"
-  const clerkPublishableKey =
+  const requestedModeInput =
+    readString(env.NEXT_PUBLIC_VOICYCLAW_AUTH_MODE) ?? readString(section?.mode)
+  const requestedMode = requestedModeInput === "clerk" ? "clerk" : "local"
+  const configuredPublishableKey =
     readString(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) ??
     readString(section?.clerk_publishable_key) ??
     null
-  const clerkSecretKey =
+  const configuredSecretKey =
     readString(env.CLERK_SECRET_KEY) ??
     readString(section?.clerk_secret_key) ??
     null
   const resolvedMode =
-    requestedMode === "clerk" && clerkPublishableKey && clerkSecretKey
+    requestedMode === "clerk" && configuredPublishableKey && configuredSecretKey
       ? "clerk"
       : "local"
+  const clerkPublishableKey =
+    resolvedMode === "clerk" ? configuredPublishableKey : null
+  const clerkSecretKey = resolvedMode === "clerk" ? configuredSecretKey : null
 
   return {
     requestedMode,

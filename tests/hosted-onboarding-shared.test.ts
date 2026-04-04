@@ -50,7 +50,7 @@ describe("hosted onboarding shared helpers", () => {
     )
 
     expect(state.starterKey?.value).toBe("vc_test")
-    expect(state.settingsStorageNamespace).toBe(
+    expect(state.settingsNamespace).toBe(
       buildSettingsStorageNamespace(base.workspace.id, base.project.id),
     )
     expect(state.connectorConfigJson).toContain('"token": "vc_test"')

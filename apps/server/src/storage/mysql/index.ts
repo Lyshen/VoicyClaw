@@ -60,6 +60,17 @@ export async function initStorage() {
   await initPromise
 }
 
+export async function closeStorage() {
+  if (!pool) {
+    return
+  }
+
+  const activePool = pool
+  pool = undefined
+  initPromise = undefined
+  await activePool.end()
+}
+
 export function describeStorageTarget() {
   try {
     const url = new URL(getMysqlUrl())
