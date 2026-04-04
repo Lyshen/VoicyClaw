@@ -92,7 +92,7 @@ export function createRealtimeGateway(
           return
         }
 
-        const authorization = authorizePlatformKeyForChannel(
+        const authorization = await authorizePlatformKeyForChannel(
           hello.api_key ?? "",
           hello.channel_id ?? "",
         )
@@ -133,9 +133,9 @@ export function createRealtimeGateway(
         const botName = titleFromChannelId(botId)
         const sessionId = randomUUID()
 
-        markPlatformKeyUsed(apiKey.id)
+        await markPlatformKeyUsed(apiKey.id)
 
-        upsertBotRegistrationRecord({
+        await upsertBotRegistrationRecord({
           botId,
           botName,
           channelId,
@@ -221,6 +221,13 @@ export function createRealtimeGateway(
     )
 
     clientGateway.on("connection", (ws, request) => {
+      void handleClientConnection(ws, request)
+    })
+
+    async function handleClientConnection(
+      ws: WebSocket,
+      request: IncomingMessage,
+    ) {
       const url = new URL(
         request.url ?? "/ws/client",
         `http://${request.headers.host ?? `localhost:${DEFAULT_PORT}`}`,
@@ -235,8 +242,6 @@ export function createRealtimeGateway(
       )
       const channelRuntime = runtime.getOrCreateRuntimeChannel(channelId)
 
-      ensureChannelRecord(channelId)
-
       const client: ClientSession = {
         id: clientId,
         channelId,
@@ -244,12 +249,6 @@ export function createRealtimeGateway(
       }
 
       channelRuntime.clients.set(clientId, client)
-      runtime.sendJson(ws, {
-        type: "SESSION_READY",
-        clientId,
-        channelId,
-      })
-      runtime.broadcastChannelState(channelId)
 
       ws.on("message", (raw, isBinary) => {
         void handleClientMessage(client, raw, isBinary)
@@ -259,7 +258,16 @@ export function createRealtimeGateway(
         channelRuntime.clients.delete(clientId)
         runtime.broadcastChannelState(channelId)
       })
-    })
+
+      await ensureChannelRecord(channelId)
+
+      runtime.sendJson(ws, {
+        type: "SESSION_READY",
+        clientId,
+        channelId,
+      })
+      runtime.broadcastChannelState(channelId)
+    }
 
     botGateway.on("connection", (ws) => {
       void handleBotConnection(ws)

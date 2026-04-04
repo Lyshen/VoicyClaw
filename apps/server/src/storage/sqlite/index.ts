@@ -1,3 +1,5 @@
+import { getDatabaseFile } from "./client"
+
 export {
   createUsageEvent,
   createWorkspaceAllowanceLedgerEntry,
@@ -28,3 +30,9 @@ export {
   findDefaultWorkspaceByOwnerUserId,
   findWorkspaceById,
 } from "./workspaces"
+
+export async function initStorage() {}
+
+export function describeStorageTarget() {
+  return `SQLite ready at ${getDatabaseFile()}`
+}

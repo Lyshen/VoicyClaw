@@ -9,10 +9,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      VOICYCLAW_CONFIG: /app/config/voicyclaw.local.yaml
       VOICYCLAW_SQLITE_FILE: /data/voicyclaw.sqlite
     ports:
       - "${VOICYCLAW_SERVER_PORT:-3001}:3001"
     volumes:
+      - ../config:/app/config:ro
       - voicyclaw-data:/data
     restart: unless-stopped
 
@@ -24,12 +26,15 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      VOICYCLAW_CONFIG: /app/config/voicyclaw.local.yaml
       VOICYCLAW_PUBLIC_SERVER_PORT: ${VOICYCLAW_SERVER_PORT:-3001}
       VOICYCLAW_PUBLIC_SERVER_URL: ${VOICYCLAW_PUBLIC_SERVER_URL:-}
     depends_on:
       - server
     ports:
       - "${VOICYCLAW_WEB_PORT:-3000}:3000"
+    volumes:
+      - ../config:/app/config:ro
     restart: unless-stopped
 
 volumes:

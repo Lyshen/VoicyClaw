@@ -5,14 +5,14 @@ import {
 } from "../../storage"
 import { findProjectByChannelId } from "../projects/service"
 
-export function findPlatformKeyByProjectIdAndType(
+export async function findPlatformKeyByProjectIdAndType(
   projectId: string,
   keyType: PlatformKeyType,
 ) {
-  return storage.platformKeys.findByProjectIdAndType(projectId, keyType)
+  return await storage.platformKeys.findByProjectIdAndType(projectId, keyType)
 }
 
-export function ensureStarterPlatformKey(input: {
+export async function ensureStarterPlatformKey(input: {
   channelId: string
   workspaceId: string
   projectId: string
@@ -20,19 +20,19 @@ export function ensureStarterPlatformKey(input: {
   label?: string | null
 }) {
   return (
-    findPlatformKeyByProjectIdAndType(input.projectId, "starter") ??
-    issuePlatformKeyForChannel({
+    (await findPlatformKeyByProjectIdAndType(input.projectId, "starter")) ??
+    (await issuePlatformKeyForChannel({
       channelId: input.channelId,
       label: input.label,
       workspaceId: input.workspaceId,
       projectId: input.projectId,
       keyType: "starter",
       createdByUserId: input.createdByUserId,
-    })
+    }))
   )
 }
 
-export function issuePlatformKeyForChannel(input: {
+export async function issuePlatformKeyForChannel(input: {
   channelId: string
   label?: string | null
   workspaceId?: string | null
@@ -43,9 +43,9 @@ export function issuePlatformKeyForChannel(input: {
   const project =
     input.projectId || input.workspaceId
       ? null
-      : findProjectByChannelId(input.channelId)
+      : await findProjectByChannelId(input.channelId)
 
-  return storage.platformKeys.create(input.channelId, input.label, {
+  return await storage.platformKeys.create(input.channelId, input.label, {
     workspaceId: input.workspaceId ?? project?.workspaceId ?? null,
     projectId: input.projectId ?? project?.id ?? null,
     keyType: input.keyType,
@@ -63,11 +63,11 @@ export type PlatformKeyAuthorization =
       reason: "not-found" | "channel-mismatch"
     }
 
-export function authorizePlatformKeyForChannel(
+export async function authorizePlatformKeyForChannel(
   token: string,
   channelId: string,
-): PlatformKeyAuthorization {
-  const key = storage.platformKeys.findByToken(token.trim())
+): Promise<PlatformKeyAuthorization> {
+  const key = await storage.platformKeys.findByToken(token.trim())
   if (!key) {
     return {
       ok: false,
@@ -88,6 +88,6 @@ export function authorizePlatformKeyForChannel(
   }
 }
 
-export function markPlatformKeyUsed(platformKeyId: string) {
-  storage.platformKeys.touch(platformKeyId)
+export async function markPlatformKeyUsed(platformKeyId: string) {
+  await storage.platformKeys.touch(platformKeyId)
 }

@@ -4,11 +4,11 @@
   "type": "module",
   "packageManager": "pnpm@10.28.2",
   "scripts": {
-    "dev": "pnpm db:generate && pnpm db:push && concurrently -c blue,green,magenta \"pnpm --filter @voicyclaw/server dev\" \"pnpm --filter @voicyclaw/web dev\" \"pnpm --filter @voicyclaw/mock-bot dev\"",
-    "dev:web": "pnpm --filter @voicyclaw/web dev",
-    "dev:server": "pnpm --filter @voicyclaw/server dev",
-    "dev:bot": "pnpm --filter @voicyclaw/mock-bot dev",
-    "start:demo": "concurrently -k -c blue,green,magenta \"VOICYCLAW_SQLITE_FILE=${VOICYCLAW_SQLITE_FILE:-./apps/server/.data/voicyclaw.sqlite} PORT=${VOICYCLAW_SERVER_PORT:-3001} node ./node_modules/tsx/dist/cli.mjs apps/server/src/index.ts\" \"PORT=${VOICYCLAW_WEB_PORT:-3000} pnpm --filter @voicyclaw/web start\" \"VOICYCLAW_SERVER_URL=${VOICYCLAW_SERVER_URL:-http://127.0.0.1:${VOICYCLAW_SERVER_PORT:-3001}} node ./node_modules/tsx/dist/cli.mjs apps/mock-bot/src/index.ts\"",
+    "dev": "tsx scripts/dev.ts",
+    "dev:web": "tsx scripts/run-service.ts web dev",
+    "dev:server": "tsx scripts/run-service.ts server dev",
+    "dev:bot": "tsx scripts/run-service.ts mock-bot dev",
+    "start:demo": "tsx scripts/start-demo.ts",
     "docker:build:server": "docker build -f deploy/docker/server.Dockerfile -t voicyclaw-server:local .",
     "docker:build:web": "docker build -f deploy/docker/web.Dockerfile -t voicyclaw-web:local .",
     "docker:compose:up": "docker compose -f deploy/docker-compose.yml up --build",
@@ -36,6 +36,9 @@
     "plugin:voicyclaw:check": "pnpm plugin:voicyclaw:install && pnpm plugin:voicyclaw:lint && pnpm plugin:voicyclaw:test && pnpm plugin:voicyclaw:typecheck",
     "check": "pnpm lint && pnpm test && pnpm typecheck && pnpm plugin:voicyclaw:check && pnpm build",
     "ci:check": "pnpm plugin:voicyclaw:check && pnpm db:generate && pnpm db:push && pnpm lint && pnpm test:coverage && pnpm typecheck && pnpm test:e2e"
+  },
+  "dependencies": {
+    "@voicyclaw/config": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",

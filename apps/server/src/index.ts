@@ -8,9 +8,12 @@ import {
   DEFAULT_PORT,
   ensureChannelRecord,
 } from "./server-shared"
+import { storage } from "./storage"
 
 const fastify = Fastify({ logger: true })
 const realtimeGateway = createRealtimeGateway(fastify.log)
+
+await storage.system.init()
 
 await fastify.register(cors, {
   origin: true,
@@ -19,7 +22,7 @@ await fastify.register(cors, {
 
 registerApiRoutes(fastify, realtimeGateway)
 realtimeGateway.attach(fastify)
-ensureChannelRecord(DEFAULT_CHANNEL_ID)
+await ensureChannelRecord(DEFAULT_CHANNEL_ID)
 
 await fastify.listen({
   port: DEFAULT_PORT,

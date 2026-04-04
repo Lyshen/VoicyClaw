@@ -470,7 +470,7 @@ describe("runtime TTS provider selection", () => {
   it("requires Azure credentials when Azure TTS is selected", () => {
     expect(() =>
       resolveAzureSpeechTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_CONFIG: missingUnifiedConfigPath(),
       }),
     ).toThrow(/VOICYCLAW_AZURE_SPEECH_KEY/)
   })
@@ -478,7 +478,7 @@ describe("runtime TTS provider selection", () => {
   it("requires Azure credentials when Azure segmented TTS is selected", () => {
     expect(() =>
       resolveAzureSpeechStreamingTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_CONFIG: missingUnifiedConfigPath(),
       }),
     ).toThrow(/VOICYCLAW_AZURE_SPEECH_KEY/)
   })
@@ -486,7 +486,7 @@ describe("runtime TTS provider selection", () => {
   it("requires Google service-account credentials when Google TTS is selected", () => {
     expect(() =>
       resolveGoogleCloudTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_CONFIG: missingUnifiedConfigPath(),
       }),
     ).toThrow(/VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_JSON/)
   })
@@ -494,7 +494,7 @@ describe("runtime TTS provider selection", () => {
   it("requires a Google Chirp 3 HD voice when Google TTS is selected", () => {
     expect(() =>
       resolveGoogleCloudTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_CONFIG: missingUnifiedConfigPath(),
         VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE: "/tmp/google-tts.json",
       }),
     ).toThrow(/requires a Chirp 3 HD voice/)
@@ -503,7 +503,7 @@ describe("runtime TTS provider selection", () => {
   it("requires Google service-account credentials when Google batched TTS is selected", () => {
     expect(() =>
       resolveGoogleCloudBatchedTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_CONFIG: missingUnifiedConfigPath(),
       }),
     ).toThrow(/VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_JSON/)
   })
@@ -511,7 +511,7 @@ describe("runtime TTS provider selection", () => {
   it("requires a non-Chirp voice when Google batched TTS is selected", () => {
     expect(() =>
       resolveGoogleCloudBatchedTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_CONFIG: missingUnifiedConfigPath(),
         VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE:
           "/tmp/google-batched-tts.json",
       }),
@@ -521,7 +521,7 @@ describe("runtime TTS provider selection", () => {
   it("rejects Chirp voices when Google batched TTS is selected", () => {
     expect(() =>
       resolveGoogleCloudBatchedTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG: missingProviderConfigPath(),
+        VOICYCLAW_CONFIG: missingUnifiedConfigPath(),
         VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE:
           "/tmp/google-batched-tts.json",
         VOICYCLAW_GOOGLE_BATCHED_TTS_VOICE: "en-US-Chirp3-HD-Leda",
@@ -620,7 +620,7 @@ describe("runtime TTS provider selection", () => {
         language: "en-US",
       },
       {
-        VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+        VOICYCLAW_CONFIG: writeUnifiedConfigFile([
           "AzureSpeechTTS:",
           "  api_key: azure-key-from-yaml",
           "  region: eastasia",
@@ -638,7 +638,7 @@ describe("runtime TTS provider selection", () => {
 
   it("lets env vars override Azure provider YAML values", () => {
     const options = resolveAzureSpeechTTSOptions({
-      VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+      VOICYCLAW_CONFIG: writeUnifiedConfigFile([
         "AzureSpeechTTS:",
         "  api_key: azure-key-from-yaml",
         "  region: eastasia",
@@ -676,7 +676,7 @@ describe("runtime TTS provider selection", () => {
         language: "en-US",
       },
       {
-        VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+        VOICYCLAW_CONFIG: writeUnifiedConfigFile([
           "AzureSpeechTTS:",
           "  api_key: azure-key-from-yaml",
           "  region: eastasia",
@@ -700,7 +700,7 @@ describe("runtime TTS provider selection", () => {
 
   it("lets env vars override Azure segmented provider YAML values", () => {
     const options = resolveAzureSpeechStreamingTTSOptions({
-      VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+      VOICYCLAW_CONFIG: writeUnifiedConfigFile([
         "AzureSpeechTTS:",
         "  api_key: azure-key-from-yaml",
         "  region: eastasia",
@@ -750,7 +750,7 @@ describe("runtime TTS provider selection", () => {
         language: "en-US",
       },
       {
-        VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+        VOICYCLAW_CONFIG: writeUnifiedConfigFile([
           "GoogleCloudTTS:",
           "  service_account_file: /tmp/google-tts-from-yaml.json",
           "  voice: en-US-Chirp3-HD-Achernar",
@@ -766,7 +766,7 @@ describe("runtime TTS provider selection", () => {
 
   it("lets env vars override Google provider YAML values", () => {
     const options = resolveGoogleCloudTTSOptions({
-      VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+      VOICYCLAW_CONFIG: writeUnifiedConfigFile([
         "GoogleCloudTTS:",
         "  service_account_file: /tmp/google-tts-from-yaml.json",
         "  voice: en-US-Chirp3-HD-Achernar",
@@ -799,7 +799,7 @@ describe("runtime TTS provider selection", () => {
         language: "en-US",
       },
       {
-        VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+        VOICYCLAW_CONFIG: writeUnifiedConfigFile([
           "GoogleCloudBatchedTTS:",
           "  service_account_file: /tmp/google-batched-from-yaml.json",
           "  voice: en-US-Neural2-F",
@@ -818,7 +818,7 @@ describe("runtime TTS provider selection", () => {
 
   it("lets env vars override Google batched provider YAML values", () => {
     const options = resolveGoogleCloudBatchedTTSOptions({
-      VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+      VOICYCLAW_CONFIG: writeUnifiedConfigFile([
         "GoogleCloudBatchedTTS:",
         "  service_account_file: /tmp/google-batched-from-yaml.json",
         "  voice: en-US-Neural2-F",
@@ -870,14 +870,14 @@ async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function writeProviderConfigFile(lines: string[]) {
+function writeUnifiedConfigFile(lines: string[]) {
   const cwd = mkdtempSync(path.join(os.tmpdir(), "voicyclaw-provider-yaml-"))
-  const filePath = path.join(cwd, "providers.local.yaml")
+  const filePath = path.join(cwd, "voicyclaw.local.yaml")
   writeFileSync(filePath, lines.join("\n"))
   return filePath
 }
 
-function missingProviderConfigPath() {
+function missingUnifiedConfigPath() {
   return path.join(
     mkdtempSync(path.join(os.tmpdir(), "voicyclaw-provider-missing-")),
     "missing.yaml",

@@ -10,9 +10,9 @@ const STARTER_PREVIEW_ALLOWANCE_CURRENCY = "voice-credits" as const
 const STARTER_PREVIEW_ALLOWANCE_CREDITS_MILLIS = 500_000
 const BILLING_DISABLED_NOTE = "Billing is not enforced yet."
 
-export function ensureStarterPreviewAllowance(workspaceId: string) {
-  ensurePreviewBillingRates()
-  storage.allowanceLedger.ensureEntry({
+export async function ensureStarterPreviewAllowance(workspaceId: string) {
+  await ensurePreviewBillingRates()
+  await storage.allowanceLedger.ensureEntry({
     workspaceId,
     entryType: "grant",
     sourceType: STARTER_PREVIEW_ALLOWANCE_SOURCE,
@@ -22,10 +22,11 @@ export function ensureStarterPreviewAllowance(workspaceId: string) {
   })
 }
 
-export function buildHostedAllowanceSnapshot(
+export async function buildHostedAllowanceSnapshot(
   workspaceId: string,
-): HostedAllowanceSnapshot {
-  const summary = storage.allowanceLedger.summarizeByWorkspace(workspaceId)
+): Promise<HostedAllowanceSnapshot> {
+  const summary =
+    await storage.allowanceLedger.summarizeByWorkspace(workspaceId)
 
   return {
     label: STARTER_PREVIEW_ALLOWANCE_LABEL,

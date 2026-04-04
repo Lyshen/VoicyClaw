@@ -1,4 +1,4 @@
-import * as sqlite from "./sqlite"
+import { resolveStorageConfig as resolveBaseStorageConfig } from "@voicyclaw/config"
 import type {
   AuthProvider,
   BillingFeature,
@@ -16,6 +16,11 @@ import type {
   WorkspaceRecord,
   WorkspaceUsageSummary,
 } from "./types"
+
+export type Awaitable<T> = T | Promise<T>
+export type StorageDriver = "sqlite" | "mysql"
+
+type StorageAdapter = typeof import("./mysql")
 
 export type {
   AllowanceEntryType,
@@ -44,26 +49,30 @@ export interface Storage {
       providerSubject: string
       email?: string | null
       displayName?: string | null
-    }): {
+    }): Awaitable<{
       user: UserRecord
       identity: UserIdentityRecord
-    }
+    }>
   }
   channels: {
-    ensure(channelId: string, name: string): void
+    ensure(channelId: string, name: string): Awaitable<void>
   }
   workspaces: {
-    findById(id: string): WorkspaceRecord | undefined
-    findDefaultByOwnerUserId(ownerUserId: string): WorkspaceRecord | undefined
+    findById(id: string): Awaitable<WorkspaceRecord | undefined>
+    findDefaultByOwnerUserId(
+      ownerUserId: string,
+    ): Awaitable<WorkspaceRecord | undefined>
     create(input: {
       ownerUserId: string
       name: string
       isDefault?: boolean
-    }): WorkspaceRecord
+    }): Awaitable<WorkspaceRecord>
   }
   projects: {
-    findStarterByWorkspaceId(workspaceId: string): ProjectRecord | undefined
-    findByChannelId(channelId: string): ProjectRecord | undefined
+    findStarterByWorkspaceId(
+      workspaceId: string,
+    ): Awaitable<ProjectRecord | undefined>
+    findByChannelId(channelId: string): Awaitable<ProjectRecord | undefined>
     create(input: {
       workspaceId: string
       name: string
@@ -71,13 +80,13 @@ export interface Storage {
       channelId: string
       botId: string
       displayName: string
-    }): ProjectRecord
+    }): Awaitable<ProjectRecord>
   }
   platformKeys: {
     findByProjectIdAndType(
       projectId: string,
       keyType: PlatformKeyType,
-    ): PlatformKeyRecord | undefined
+    ): Awaitable<PlatformKeyRecord | undefined>
     create(
       channelId: string,
       label?: string | null,
@@ -87,9 +96,9 @@ export interface Storage {
         keyType?: PlatformKeyType
         createdByUserId?: string | null
       },
-    ): PlatformKeyRecord
-    findByToken(token: string): PlatformKeyRecord | undefined
-    touch(id: string): void
+    ): Awaitable<PlatformKeyRecord>
+    findByToken(token: string): Awaitable<PlatformKeyRecord | undefined>
+    touch(id: string): Awaitable<void>
   }
   botRegistrations: {
     upsert(input: {
@@ -98,7 +107,7 @@ export interface Storage {
       channelId: string
       platformKeyId: string
       lastConnectedAt?: string
-    }): void
+    }): Awaitable<void>
   }
   billingRates: {
     upsert(input: {
@@ -110,11 +119,11 @@ export interface Storage {
       retailCreditsMillis: number
       providerCostUsdMicros?: number | null
       isActive?: boolean
-    }): void
+    }): Awaitable<void>
     findActive(
       feature: BillingFeature,
       providerId: string,
-    ): BillingRateRecord | undefined
+    ): Awaitable<BillingRateRecord | undefined>
   }
   usageEvents: {
     create(input: {
@@ -132,12 +141,15 @@ export interface Storage {
       chargedCreditsMillis?: number
       estimatedProviderCostUsdMicros?: number | null
       errorMessage?: string | null
-    }): UsageEventRecord
+    }): Awaitable<UsageEventRecord>
     summarizeByWorkspace(
       workspaceId: string,
       feature: BillingFeature,
-    ): WorkspaceUsageSummary
-    listByWorkspace(workspaceId: string, limit?: number): UsageEventRecord[]
+    ): Awaitable<WorkspaceUsageSummary>
+    listByWorkspace(
+      workspaceId: string,
+      limit?: number,
+    ): Awaitable<UsageEventRecord[]>
   }
   allowanceLedger: {
     ensureEntry(input: {
@@ -147,54 +159,124 @@ export interface Storage {
       sourceId: string
       creditsDeltaMillis: number
       note?: string | null
-    }): void
-    summarizeByWorkspace(workspaceId: string): WorkspaceAllowanceSummary
+    }): Awaitable<void>
+    summarizeByWorkspace(
+      workspaceId: string,
+    ): Awaitable<WorkspaceAllowanceSummary>
   }
   system: {
-    getDatabaseFile(): string
+    init(): Awaitable<void>
+    describeTarget(): string
   }
+}
+
+export function resolveStorageDriver(
+  env: NodeJS.ProcessEnv = process.env,
+): StorageDriver {
+  return resolveBaseStorageConfig(env).driver
+}
+
+export const storageDriver = resolveStorageDriver()
+
+let adapterPromise: Promise<StorageAdapter> | undefined
+
+function loadAdapter() {
+  if (!adapterPromise) {
+    adapterPromise =
+      storageDriver === "mysql"
+        ? import("./mysql")
+        : import("./sqlite").then(
+            (adapter) => adapter as unknown as StorageAdapter,
+          )
+  }
+
+  return adapterPromise
+}
+
+async function callAdapter<TKey extends keyof StorageAdapter>(
+  key: TKey,
+  ...args: Parameters<StorageAdapter[TKey]>
+): Promise<Awaited<ReturnType<StorageAdapter[TKey]>>> {
+  const adapter = await loadAdapter()
+  const fn = adapter[key] as (
+    ...input: Parameters<StorageAdapter[TKey]>
+  ) => ReturnType<StorageAdapter[TKey]>
+  return await fn(...args)
+}
+
+function describeMysqlTarget(env: NodeJS.ProcessEnv = process.env) {
+  try {
+    const mysqlUrl = resolveBaseStorageConfig(env).mysqlUrl
+    if (!mysqlUrl) {
+      return "MySQL ready"
+    }
+
+    const url = new URL(mysqlUrl)
+    const database = url.pathname.replace(/^\//, "") || "(default)"
+    return `MySQL ready at ${url.hostname}/${database}`
+  } catch {
+    return "MySQL ready"
+  }
+}
+
+function describeSqliteTarget(env: NodeJS.ProcessEnv = process.env) {
+  return `SQLite ready at ${resolveBaseStorageConfig(env).sqliteFile}`
 }
 
 export const storage: Storage = {
   users: {
-    upsertForIdentity: sqlite.upsertUserForIdentity,
+    upsertForIdentity: (input) => callAdapter("upsertUserForIdentity", input),
   },
   channels: {
-    ensure: sqlite.ensureChannel,
+    ensure: (channelId, name) => callAdapter("ensureChannel", channelId, name),
   },
   workspaces: {
-    findById: sqlite.findWorkspaceById,
-    findDefaultByOwnerUserId: sqlite.findDefaultWorkspaceByOwnerUserId,
-    create: sqlite.createWorkspace,
+    findById: (id) => callAdapter("findWorkspaceById", id),
+    findDefaultByOwnerUserId: (ownerUserId) =>
+      callAdapter("findDefaultWorkspaceByOwnerUserId", ownerUserId),
+    create: (input) => callAdapter("createWorkspace", input),
   },
   projects: {
-    findStarterByWorkspaceId: sqlite.findStarterProjectByWorkspaceId,
-    findByChannelId: sqlite.findProjectByChannelId,
-    create: sqlite.createProject,
+    findStarterByWorkspaceId: (workspaceId) =>
+      callAdapter("findStarterProjectByWorkspaceId", workspaceId),
+    findByChannelId: (channelId) =>
+      callAdapter("findProjectByChannelId", channelId),
+    create: (input) => callAdapter("createProject", input),
   },
   platformKeys: {
-    findByProjectIdAndType: sqlite.findPlatformKeyByProjectIdAndType,
-    create: sqlite.createPlatformKey,
-    findByToken: sqlite.findPlatformKeyByToken,
-    touch: sqlite.touchPlatformKey,
+    findByProjectIdAndType: (projectId, keyType) =>
+      callAdapter("findPlatformKeyByProjectIdAndType", projectId, keyType),
+    create: (channelId, label, options) =>
+      callAdapter("createPlatformKey", channelId, label, options),
+    findByToken: (token) => callAdapter("findPlatformKeyByToken", token),
+    touch: (id) => callAdapter("touchPlatformKey", id),
   },
   botRegistrations: {
-    upsert: sqlite.upsertBotRegistration,
+    upsert: (input) => callAdapter("upsertBotRegistration", input),
   },
   billingRates: {
-    upsert: sqlite.upsertBillingRate,
-    findActive: sqlite.findActiveBillingRate,
+    upsert: (input) => callAdapter("upsertBillingRate", input),
+    findActive: (feature, providerId) =>
+      callAdapter("findActiveBillingRate", feature, providerId),
   },
   usageEvents: {
-    create: sqlite.createUsageEvent,
-    summarizeByWorkspace: sqlite.getWorkspaceUsageSummary,
-    listByWorkspace: sqlite.listWorkspaceUsageEvents,
+    create: (input) => callAdapter("createUsageEvent", input),
+    summarizeByWorkspace: (workspaceId, feature) =>
+      callAdapter("getWorkspaceUsageSummary", workspaceId, feature),
+    listByWorkspace: (workspaceId, limit) =>
+      callAdapter("listWorkspaceUsageEvents", workspaceId, limit),
   },
   allowanceLedger: {
-    ensureEntry: sqlite.ensureWorkspaceAllowanceLedgerEntry,
-    summarizeByWorkspace: sqlite.getWorkspaceAllowanceSummary,
+    ensureEntry: (input) =>
+      callAdapter("ensureWorkspaceAllowanceLedgerEntry", input),
+    summarizeByWorkspace: (workspaceId) =>
+      callAdapter("getWorkspaceAllowanceSummary", workspaceId),
   },
   system: {
-    getDatabaseFile: sqlite.getDatabaseFile,
+    init: () => callAdapter("initStorage"),
+    describeTarget: () =>
+      storageDriver === "mysql"
+        ? describeMysqlTarget()
+        : describeSqliteTarget(),
   },
 }

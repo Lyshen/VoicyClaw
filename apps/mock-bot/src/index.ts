@@ -1,13 +1,15 @@
 import { Buffer } from "node:buffer"
 import { setTimeout as delay } from "node:timers/promises"
 
+import { resolveDemoBotConfig } from "@voicyclaw/config"
 import { decodeAudioFrame, PROTOCOL_VERSION } from "@voicyclaw/protocol"
 import WebSocket from "ws"
 
-const serverUrl = process.env.VOICYCLAW_SERVER_URL ?? "http://localhost:3001"
-const channelId = process.env.CHANNEL_ID ?? "demo-room"
-const botId = process.env.BOT_ID ?? "demo-clawbot"
-const botName = process.env.BOT_NAME ?? "Studio Claw"
+const demoBotConfig = resolveDemoBotConfig()
+const serverUrl = demoBotConfig.serverUrl
+const channelId = demoBotConfig.channelId
+const botId = demoBotConfig.botId
+const botName = demoBotConfig.botName
 
 function clipTextForLog(text: string, maxLength = 120) {
   const normalized = text.replace(/\s+/g, " ").trim()
@@ -40,8 +42,8 @@ async function main() {
 }
 
 async function getApiKey() {
-  if (process.env.BOT_API_KEY?.trim()) {
-    return process.env.BOT_API_KEY.trim()
+  if (demoBotConfig.botApiKey) {
+    return demoBotConfig.botApiKey
   }
 
   const response = await fetch(new URL("/api/keys", serverUrl), {

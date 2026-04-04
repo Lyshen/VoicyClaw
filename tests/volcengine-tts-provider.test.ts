@@ -37,8 +37,7 @@ describe("Volcengine TTS runtime wiring", () => {
   it("requires Volcengine env vars when the provider is selected", () => {
     expect(() =>
       resolveVolcengineTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG:
-          "/tmp/voicyclaw-missing-provider-config.yaml",
+        VOICYCLAW_CONFIG: "/tmp/voicyclaw-missing-voicyclaw-config.yaml",
       }),
     ).toThrow(
       /VOICYCLAW_VOLCENGINE_APP_ID, VOICYCLAW_VOLCENGINE_ACCESS_TOKEN, VOICYCLAW_VOLCENGINE_TTS_VOICE_TYPE/,
@@ -63,7 +62,7 @@ describe("Volcengine TTS runtime wiring", () => {
 
   it("prefers env vars over YAML config values", () => {
     const cwd = mkdtempSync(path.join(os.tmpdir(), "voicyclaw-volcengine-"))
-    const filePath = path.join(cwd, "providers.local.yaml")
+    const filePath = path.join(cwd, "voicyclaw.local.yaml")
     writeFileSync(
       filePath,
       [
@@ -80,7 +79,7 @@ describe("Volcengine TTS runtime wiring", () => {
     )
 
     const options = resolveVolcengineTTSOptions({
-      VOICYCLAW_PROVIDER_CONFIG: filePath,
+      VOICYCLAW_CONFIG: filePath,
       VOICYCLAW_VOLCENGINE_APP_ID: "env-app-id",
       VOICYCLAW_VOLCENGINE_ACCESS_TOKEN: "env-token",
       VOICYCLAW_VOLCENGINE_TTS_VOICE_TYPE: "env-speaker",

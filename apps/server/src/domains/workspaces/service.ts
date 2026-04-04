@@ -1,21 +1,21 @@
 import { storage, type WorkspaceRecord } from "../../storage"
 import { normalizeOptionalString } from "../users/service"
 
-export function findWorkspaceById(workspaceId: string) {
-  return storage.workspaces.findById(workspaceId)
+export async function findWorkspaceById(workspaceId: string) {
+  return await storage.workspaces.findById(workspaceId)
 }
 
-export function ensureDefaultWorkspaceForUser(input: {
+export async function ensureDefaultWorkspaceForUser(input: {
   ownerUserId: string
   name: string
 }) {
   return (
-    storage.workspaces.findDefaultByOwnerUserId(input.ownerUserId) ??
-    storage.workspaces.create({
+    (await storage.workspaces.findDefaultByOwnerUserId(input.ownerUserId)) ??
+    (await storage.workspaces.create({
       ownerUserId: input.ownerUserId,
       name: input.name,
       isDefault: true,
-    })
+    }))
   )
 }
 

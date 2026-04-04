@@ -28,7 +28,7 @@ export function resolveAzureSpeechTTSOptions(env: RuntimeEnv = process.env) {
 
   if (!apiKey) {
     throw new Error(
-      "Azure Speech TTS is missing credentials. Set VOICYCLAW_AZURE_SPEECH_KEY or AzureSpeechTTS.api_key in config/providers.local.yaml.",
+      "Azure Speech TTS is missing credentials. Set VOICYCLAW_AZURE_SPEECH_KEY or AzureSpeechTTS.api_key in config/voicyclaw.local.yaml.",
     )
   }
 
@@ -44,7 +44,7 @@ export function resolveAzureSpeechTTSOptions(env: RuntimeEnv = process.env) {
 
   if (!region && !endpoint) {
     throw new Error(
-      "Azure Speech TTS is missing region or endpoint. Set VOICYCLAW_AZURE_SPEECH_REGION, VOICYCLAW_AZURE_TTS_ENDPOINT, or AzureSpeechTTS.region/endpoint in config/providers.local.yaml.",
+      "Azure Speech TTS is missing region or endpoint. Set VOICYCLAW_AZURE_SPEECH_REGION, VOICYCLAW_AZURE_TTS_ENDPOINT, or AzureSpeechTTS.region/endpoint in config/voicyclaw.local.yaml.",
     )
   }
 
@@ -82,13 +82,13 @@ export function resolveGoogleCloudTTSOptions(env: RuntimeEnv = process.env) {
 
   if (!serviceAccountJson && !serviceAccountFile) {
     throw new Error(
-      "Google Cloud TTS streaming is missing credentials. Set VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_JSON, VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE, or GoogleCloudTTS.service_account_json/service_account_file in config/providers.local.yaml.",
+      "Google Cloud TTS streaming is missing credentials. Set VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_JSON, VOICYCLAW_GOOGLE_TTS_SERVICE_ACCOUNT_FILE, or GoogleCloudTTS.service_account_json/service_account_file in config/voicyclaw.local.yaml.",
     )
   }
 
   if (!voice) {
     throw new Error(
-      "Google Cloud TTS streaming requires a Chirp 3 HD voice. Set VOICYCLAW_GOOGLE_TTS_VOICE or GoogleCloudTTS.voice in config/providers.local.yaml.",
+      "Google Cloud TTS streaming requires a Chirp 3 HD voice. Set VOICYCLAW_GOOGLE_TTS_VOICE or GoogleCloudTTS.voice in config/voicyclaw.local.yaml.",
     )
   }
 
@@ -129,7 +129,7 @@ export function resolveAzureSpeechStreamingTTSOptions(
 
   if (!apiKey) {
     throw new Error(
-      "Azure Speech streaming TTS is missing credentials. Set VOICYCLAW_AZURE_SPEECH_KEY, AzureSpeechStreamingTTS.api_key, or AzureSpeechTTS.api_key in config/providers.local.yaml.",
+      "Azure Speech streaming TTS is missing credentials. Set VOICYCLAW_AZURE_SPEECH_KEY, AzureSpeechStreamingTTS.api_key, or AzureSpeechTTS.api_key in config/voicyclaw.local.yaml.",
     )
   }
 
@@ -148,7 +148,7 @@ export function resolveAzureSpeechStreamingTTSOptions(
 
   if (!region && !endpoint) {
     throw new Error(
-      "Azure Speech streaming TTS is missing region or endpoint. Set VOICYCLAW_AZURE_SPEECH_REGION, VOICYCLAW_AZURE_STREAMING_TTS_ENDPOINT, VOICYCLAW_AZURE_TTS_ENDPOINT, or AzureSpeechStreamingTTS.region/endpoint in config/providers.local.yaml.",
+      "Azure Speech streaming TTS is missing region or endpoint. Set VOICYCLAW_AZURE_SPEECH_REGION, VOICYCLAW_AZURE_STREAMING_TTS_ENDPOINT, VOICYCLAW_AZURE_TTS_ENDPOINT, or AzureSpeechStreamingTTS.region/endpoint in config/voicyclaw.local.yaml.",
     )
   }
 
@@ -232,13 +232,13 @@ export function resolveGoogleCloudBatchedTTSOptions(
 
   if (!serviceAccountJson && !serviceAccountFile) {
     throw new Error(
-      "Google Cloud batched TTS is missing credentials. Set VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_JSON, VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE, or GoogleCloudBatchedTTS.service_account_json/service_account_file in config/providers.local.yaml.",
+      "Google Cloud batched TTS is missing credentials. Set VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_JSON, VOICYCLAW_GOOGLE_BATCHED_TTS_SERVICE_ACCOUNT_FILE, or GoogleCloudBatchedTTS.service_account_json/service_account_file in config/voicyclaw.local.yaml.",
     )
   }
 
   if (!voice) {
     throw new Error(
-      "Google Cloud batched TTS requires a non-Chirp voice such as WaveNet or Neural2. Set VOICYCLAW_GOOGLE_BATCHED_TTS_VOICE or GoogleCloudBatchedTTS.voice in config/providers.local.yaml.",
+      "Google Cloud batched TTS requires a non-Chirp voice such as WaveNet or Neural2. Set VOICYCLAW_GOOGLE_BATCHED_TTS_VOICE or GoogleCloudBatchedTTS.voice in config/voicyclaw.local.yaml.",
     )
   }
 

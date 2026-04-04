@@ -5,23 +5,23 @@ import { buildHostedAllowanceSnapshot } from "./allowance"
 import { calculateCharge, ensurePreviewBillingRates } from "./rates"
 import type { TtsUsageStatus, WorkspaceBillingSummary } from "./types"
 
-export function getWorkspaceBillingSummary(workspaceId: string) {
-  ensurePreviewBillingRates()
+export async function getWorkspaceBillingSummary(workspaceId: string) {
+  await ensurePreviewBillingRates()
 
-  const workspace = findWorkspaceById(workspaceId)
+  const workspace = await findWorkspaceById(workspaceId)
   if (!workspace) {
     return null
   }
 
   return {
     workspaceId,
-    allowance: buildHostedAllowanceSnapshot(workspaceId),
-    usage: storage.usageEvents.summarizeByWorkspace(workspaceId, "tts"),
-    recentEvents: storage.usageEvents.listByWorkspace(workspaceId, 10),
+    allowance: await buildHostedAllowanceSnapshot(workspaceId),
+    usage: await storage.usageEvents.summarizeByWorkspace(workspaceId, "tts"),
+    recentEvents: await storage.usageEvents.listByWorkspace(workspaceId, 10),
   } satisfies WorkspaceBillingSummary
 }
 
-export function recordTtsUsageForChannel(input: {
+export async function recordTtsUsageForChannel(input: {
   channelId: string
   requestId: string
   providerId: string
@@ -31,10 +31,10 @@ export function recordTtsUsageForChannel(input: {
   outputAudioMs?: number
   errorMessage?: string | null
 }) {
-  ensurePreviewBillingRates()
+  await ensurePreviewBillingRates()
 
-  const ownership = findProjectByChannelId(input.channelId)
-  const rate = storage.billingRates.findActive("tts", input.providerId)
+  const ownership = await findProjectByChannelId(input.channelId)
+  const rate = await storage.billingRates.findActive("tts", input.providerId)
   const measuredUsage = {
     inputChars: input.inputChars,
     outputAudioMs: input.outputAudioMs ?? 0,
@@ -58,7 +58,7 @@ export function recordTtsUsageForChannel(input: {
         })
       : 0
 
-  const usageEvent = storage.usageEvents.create({
+  const usageEvent = await storage.usageEvents.create({
     workspaceId: ownership?.workspaceId ?? null,
     projectId: ownership?.id ?? null,
     channelId: input.channelId,
@@ -80,7 +80,7 @@ export function recordTtsUsageForChannel(input: {
     ownership?.workspaceId &&
     chargedCreditsMillis > 0
   ) {
-    storage.allowanceLedger.ensureEntry({
+    await storage.allowanceLedger.ensureEntry({
       workspaceId: ownership.workspaceId,
       entryType: "usage",
       sourceType: "tts-usage",
