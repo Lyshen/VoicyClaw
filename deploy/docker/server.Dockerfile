@@ -14,6 +14,7 @@ COPY apps/server/package.json apps/server/package.json
 COPY packages/asr/package.json packages/asr/package.json
 COPY packages/protocol/package.json packages/protocol/package.json
 COPY packages/tts/package.json packages/tts/package.json
+COPY scripts scripts
 
 RUN pnpm install --frozen-lockfile
 
