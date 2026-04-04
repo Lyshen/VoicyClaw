@@ -209,4 +209,5 @@ jobs:
             dist/deploy/docker-compose.yml
             dist/deploy/docker.env.example
             dist/deploy/README.md
+            dist/deploy/config/voicyclaw.example.yaml
           generate_release_notes: true

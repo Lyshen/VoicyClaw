@@ -1,11 +1,23 @@
 # Deployment Map
 
+## Core Answer
+
+Today the deployment story is close to:
+
+- one machine
+- two Docker containers
+- one mounted YAML config file
+
+If you stay on SQLite, a single machine is enough for the first hosted version.
+If you move to MySQL later, the app containers still stay the same and only the
+storage target changes.
+
 ## One Config File
 
 The public-facing config story is:
 
 ```bash
-config/voicyclaw.local.yaml
+deploy/config/voicyclaw.local.yaml
 ```
 
 That file can define:
@@ -16,7 +28,8 @@ That file can define:
 - demo bot defaults
 - TTS / ASR provider credentials
 
-`VOICYCLAW_CONFIG` is still supported for overrides, but the normal repo flow should start from `config/voicyclaw.local.yaml`.
+`VOICYCLAW_CONFIG` is still supported for overrides, but the normal Docker
+deployment flow should start from `deploy/config/voicyclaw.local.yaml`.
 
 ## Local Development
 
@@ -67,10 +80,11 @@ What happens:
 
 That means CI no longer tests a special ad-hoc runtime path. It tests the same built runtime model used for demo verification.
 
-## Docker Compose
+## Docker Compose From A Repo Checkout
 
 ```bash
-cp config/voicyclaw.example.yaml config/voicyclaw.local.yaml
+mkdir -p deploy/config
+cp config/voicyclaw.example.yaml deploy/config/voicyclaw.local.yaml
 cp deploy/docker.env.example deploy/.env
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up --build
 ```
@@ -82,9 +96,55 @@ Open:
 
 Notes:
 
-- Docker mounts `config/voicyclaw.local.yaml` into both services
+- Docker mounts `deploy/config/voicyclaw.local.yaml` into both services
 - the server persists SQLite data in `voicyclaw-data`
 - the web container runs the same standalone server artifact shape as the built demo runtime
+
+## Docker Compose From A Release Bundle
+
+The release workflow can publish Docker images to GHCR and upload a small
+deploy bundle. In that mode, the target machine does not need the full repo.
+
+Expected folder:
+
+```text
+deploy/
+  docker-compose.yml
+  docker.env.example
+  README.md
+  config/
+    voicyclaw.example.yaml
+    voicyclaw.local.yaml
+```
+
+Commands on the machine:
+
+```bash
+cp docker.env.example .env
+cp config/voicyclaw.example.yaml config/voicyclaw.local.yaml
+docker compose --env-file .env up -d
+```
+
+That is the cleanest answer to “is it just images + config now?”:
+
+- yes, if images are already published
+- otherwise use repo checkout plus `--build`
+
+## Machine Checklist
+
+For the first hosted machine:
+
+- Linux host with Docker Engine and Docker Compose
+- 2 vCPU minimum
+- 4 GB RAM recommended
+- 1 public domain for the web app
+- SQLite is fine for single-machine alpha deployment
+
+Add MySQL when you want:
+
+- stronger persistence guarantees
+- easier backups
+- future multi-instance scaling
 
 ## Storage Driver Path
 
