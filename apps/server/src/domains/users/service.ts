@@ -1,6 +1,6 @@
 import { storage, type UserRecord } from "../../storage"
 
-export function upsertHostedUser(input: {
+export async function upsertHostedUser(input: {
   provider: "clerk"
   providerSubject: string
   email?: string | null
@@ -9,7 +9,7 @@ export function upsertHostedUser(input: {
   fullName?: string | null
   username?: string | null
 }) {
-  const { user } = storage.users.upsertForIdentity({
+  const { user } = await storage.users.upsertForIdentity({
     provider: input.provider,
     providerSubject: input.providerSubject,
     email: input.email,

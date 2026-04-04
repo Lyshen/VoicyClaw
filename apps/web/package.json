@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
-    "dev": "pnpm clean && next dev --webpack --port 3000",
+    "dev": "pnpm clean && next dev --webpack --port ${PORT:-3000}",
     "build": "next build",
     "start": "next start --port ${PORT:-3000}",
     "typecheck": "tsc --noEmit"

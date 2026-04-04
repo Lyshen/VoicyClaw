@@ -530,7 +530,7 @@ function CredentialWiringCard() {
       <p className="support-copy">
         Server-side providers read credentials from server config, not from
         browser storage. The easiest setup is
-        <code> config/providers.local.yaml </code>
+        <code> config/voicyclaw.local.yaml </code>
         in the repo root, with env vars as optional overrides. Azure uses
         <code> AzureSpeechTTS </code>
         or <code> AzureSpeechStreamingTTS </code>. Google uses
@@ -541,7 +541,7 @@ function CredentialWiringCard() {
         <code> DoubaoStreamTTS </code>.
       </p>
       <div className="code-block">
-        config/providers.local.yaml
+        config/voicyclaw.local.yaml
         {"\n"}
         AzureSpeechTTS.api_key
         {"\n"}

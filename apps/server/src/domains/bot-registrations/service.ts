@@ -1,11 +1,11 @@
 import { storage } from "../../storage"
 
-export function upsertBotRegistrationRecord(input: {
+export async function upsertBotRegistrationRecord(input: {
   botId: string
   botName: string
   channelId: string
   platformKeyId: string
   lastConnectedAt?: string
 }) {
-  storage.botRegistrations.upsert(input)
+  await storage.botRegistrations.upsert(input)
 }

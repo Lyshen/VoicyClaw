@@ -44,7 +44,9 @@ export function registerApiRoutes(
       "",
     )
 
-    const summary = workspaceId ? getWorkspaceBillingSummary(workspaceId) : null
+    const summary = workspaceId
+      ? await getWorkspaceBillingSummary(workspaceId)
+      : null
 
     if (!summary) {
       reply.code(404)
@@ -80,7 +82,7 @@ export function registerApiRoutes(
       }
     }
 
-    return bootstrapHostedResources({
+    return await bootstrapHostedResources({
       provider,
       providerSubject,
       email: body.email,
@@ -95,8 +97,8 @@ export function registerApiRoutes(
     const body =
       (request.body as { channelId?: string; label?: string } | null) ?? {}
     const channelId = sanitizeId(body.channelId, DEFAULT_CHANNEL_ID)
-    ensureChannelRecord(channelId)
-    const key = issuePlatformKeyForChannel({
+    await ensureChannelRecord(channelId)
+    const key = await issuePlatformKeyForChannel({
       channelId,
       label: body.label,
     })
@@ -133,7 +135,10 @@ export function registerApiRoutes(
       }
     }
 
-    const authorization = authorizePlatformKeyForChannel(apiKey, channelId)
+    const authorization = await authorizePlatformKeyForChannel(
+      apiKey,
+      channelId,
+    )
 
     if (!authorization.ok) {
       reply.code(401)
@@ -144,9 +149,9 @@ export function registerApiRoutes(
     }
 
     const botName = body.botName?.trim() || titleFromChannelId(botId)
-    ensureChannelRecord(channelId)
+    await ensureChannelRecord(channelId)
 
-    upsertBotRegistrationRecord({
+    await upsertBotRegistrationRecord({
       botId,
       botName,
       channelId,

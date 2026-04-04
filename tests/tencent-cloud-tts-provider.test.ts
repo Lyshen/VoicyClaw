@@ -19,8 +19,7 @@ describe("Tencent Cloud TTS runtime wiring", () => {
   it("requires Tencent credentials for the unary provider", () => {
     expect(() =>
       resolveTencentCloudTTSOptions({
-        VOICYCLAW_PROVIDER_CONFIG:
-          "/tmp/voicyclaw-missing-provider-config.yaml",
+        VOICYCLAW_CONFIG: "/tmp/voicyclaw-missing-voicyclaw-config.yaml",
       }),
     ).toThrow(
       /VOICYCLAW_TENCENT_APP_ID, VOICYCLAW_TENCENT_SECRET_ID, VOICYCLAW_TENCENT_SECRET_KEY/,
@@ -53,7 +52,7 @@ describe("Tencent Cloud TTS runtime wiring", () => {
 
   it("lets Tencent bidirectional config inherit base YAML credentials and override runtime fields", () => {
     const options = resolveTencentCloudStreamingTTSOptions({
-      VOICYCLAW_PROVIDER_CONFIG: writeProviderConfigFile([
+      VOICYCLAW_CONFIG: writeUnifiedConfigFile([
         "TencentCloudTTS:",
         "  app_id: 1234567890",
         "  secret_id: yaml-secret-id",
@@ -384,9 +383,9 @@ async function* textChunks(chunks: string[]) {
   }
 }
 
-function writeProviderConfigFile(lines: string[]) {
+function writeUnifiedConfigFile(lines: string[]) {
   const cwd = mkdtempSync(path.join(os.tmpdir(), "voicyclaw-tencent-"))
-  const filePath = path.join(cwd, "providers.local.yaml")
+  const filePath = path.join(cwd, "voicyclaw.local.yaml")
   writeFileSync(filePath, lines.join("\n"))
   return filePath
 }

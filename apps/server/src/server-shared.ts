@@ -1,10 +1,13 @@
+import { resolveAppConfig } from "@voicyclaw/config"
 import type { FastifyRequest } from "fastify"
 
 import { ensureStoredChannel } from "./domains/channels/service"
 
-export const DEFAULT_PORT = Number(process.env.PORT ?? 3001)
-export const DEFAULT_CHANNEL_ID = "demo-room"
-const DEFAULT_CHANNEL_NAME = "Demo Room"
+const appConfig = resolveAppConfig()
+
+export const DEFAULT_PORT = appConfig.serverPort
+export const DEFAULT_CHANNEL_ID = appConfig.defaultChannelId
+const DEFAULT_CHANNEL_NAME = appConfig.defaultChannelName
 
 export function getRequestBaseUrl(request: FastifyRequest) {
   const host = request.headers.host ?? `localhost:${DEFAULT_PORT}`
@@ -34,8 +37,8 @@ export function titleFromChannelId(channelId: string) {
     .join(" ")
 }
 
-export function ensureChannelRecord(channelId: string) {
-  ensureStoredChannel(
+export async function ensureChannelRecord(channelId: string) {
+  await ensureStoredChannel(
     channelId,
     channelId === DEFAULT_CHANNEL_ID
       ? DEFAULT_CHANNEL_NAME

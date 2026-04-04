@@ -170,12 +170,12 @@ function calculateAudioDurationMs(audioBytes: number, sampleRate: number) {
   return Math.round((audioBytes / (sampleRate * 2)) * 1000)
 }
 
-function recordTtsUsageSafely(
+async function recordTtsUsageSafely(
   runtime: RealtimeRuntime,
   input: Parameters<typeof recordTtsUsageForChannel>[0],
 ) {
   try {
-    return recordTtsUsageForChannel(input)
+    return await recordTtsUsageForChannel(input)
   } catch (error) {
     runtime.logPipeline("TTS_USAGE_RECORD_FAILED", {
       channelId: input.channelId,
@@ -317,13 +317,7 @@ export async function processUtterance(
         ttsProvider: tts.providerId,
       })
 
-      runtime.sendJson(client.ws, {
-        type: "AUDIO_END",
-        utteranceId: utterance.utteranceId,
-        sampleRate: tts.sampleRate,
-      })
-
-      recordTtsUsageSafely(runtime, {
+      await recordTtsUsageSafely(runtime, {
         channelId: client.channelId,
         requestId: utterance.utteranceId,
         providerId: tts.providerId,
@@ -332,11 +326,17 @@ export async function processUtterance(
         outputAudioBytes: audioBytes,
         outputAudioMs: calculateAudioDurationMs(audioBytes, tts.sampleRate),
       })
+
+      runtime.sendJson(client.ws, {
+        type: "AUDIO_END",
+        utteranceId: utterance.utteranceId,
+        sampleRate: tts.sampleRate,
+      })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown server TTS failure"
 
-      recordTtsUsageSafely(runtime, {
+      await recordTtsUsageSafely(runtime, {
         channelId: client.channelId,
         requestId: utterance.utteranceId,
         providerId: ttsProviderId,

@@ -56,17 +56,17 @@ export interface HostedBootstrapRecord {
   }
 }
 
-export function bootstrapHostedResources(
+export async function bootstrapHostedResources(
   input: HostedBootstrapInput,
-): HostedBootstrapRecord {
-  const user = upsertHostedUser(input)
-  const workspace = ensureDefaultWorkspaceForUser({
+): Promise<HostedBootstrapRecord> {
+  const user = await upsertHostedUser(input)
+  const workspace = await ensureDefaultWorkspaceForUser({
     ownerUserId: user.id,
     name: buildStarterWorkspaceName(input),
   })
-  const project = ensureStarterProject(workspace.id)
+  const project = await ensureStarterProject(workspace.id)
 
-  const starterKey = ensureStarterPlatformKey({
+  const starterKey = await ensureStarterPlatformKey({
     channelId: project.channelId,
     label: STARTER_KEY_LABEL,
     workspaceId: workspace.id,
@@ -74,17 +74,17 @@ export function bootstrapHostedResources(
     createdByUserId: user.id,
   })
 
-  ensureStarterPreviewAllowance(workspace.id)
+  await ensureStarterPreviewAllowance(workspace.id)
 
-  return buildHostedBootstrapRecord(workspace, project, starterKey)
+  return await buildHostedBootstrapRecord(workspace, project, starterKey)
 }
 
-function buildHostedBootstrapRecord(
+async function buildHostedBootstrapRecord(
   workspace: WorkspaceRecord,
   project: ProjectRecord,
   starterKey: PlatformKeyRecord,
-): HostedBootstrapRecord {
-  const allowance = buildHostedAllowanceSnapshot(workspace.id)
+): Promise<HostedBootstrapRecord> {
+  const allowance = await buildHostedAllowanceSnapshot(workspace.id)
 
   return {
     version: 1,

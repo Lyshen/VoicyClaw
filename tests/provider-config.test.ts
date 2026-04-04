@@ -15,15 +15,18 @@ import {
   resolveTencentCloudTTSConfig,
 } from "../apps/server/src/provider-config"
 
-describe("provider config", () => {
-  it("loads Azure, Google, Tencent, and Doubao TTS YAML provider config", () => {
+describe("unified provider sections", () => {
+  it("loads Azure, Google, Tencent, and Doubao TTS sections from the unified YAML file", () => {
     const cwd = mkdtempSync(
       path.join(os.tmpdir(), "voicyclaw-provider-config-"),
     )
-    const filePath = path.join(cwd, "providers.local.yaml")
+    const filePath = path.join(cwd, "voicyclaw.local.yaml")
     writeFileSync(
       filePath,
       [
+        "App:",
+        "  server_port: 3001",
+        "",
         "AzureSpeechTTS:",
         "  type: azure_speech_tts",
         "  endpoint: https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1",
@@ -91,9 +94,10 @@ describe("provider config", () => {
     )
 
     const env = {
-      VOICYCLAW_PROVIDER_CONFIG: filePath,
+      VOICYCLAW_CONFIG: filePath,
     }
 
+    expect(loadProviderConfig(env).App).toBeUndefined()
     expect(loadProviderConfig(env).AzureSpeechTTS).toBeTruthy()
     expect(resolveAzureSpeechTTSConfig(env)).toMatchObject({
       type: "azure_speech_tts",
@@ -152,7 +156,7 @@ describe("provider config", () => {
     })
   })
 
-  it("finds config/providers.local.yaml from a nested server working directory", () => {
+  it("finds config/voicyclaw.local.yaml from a nested server working directory", () => {
     const root = mkdtempSync(
       path.join(os.tmpdir(), "voicyclaw-provider-config-root-"),
     )
@@ -161,7 +165,7 @@ describe("provider config", () => {
     mkdirSync(configDir, { recursive: true })
     mkdirSync(nestedCwd, { recursive: true })
     writeFileSync(
-      path.join(configDir, "providers.local.yaml"),
+      path.join(configDir, "voicyclaw.local.yaml"),
       [
         "AzureSpeechTTS:",
         "  region: eastasia",
@@ -176,11 +180,19 @@ describe("provider config", () => {
     process.chdir(nestedCwd)
 
     try {
-      expect(resolveAzureSpeechTTSConfig({})).toMatchObject({
+      expect(
+        resolveAzureSpeechTTSConfig({
+          VOICYCLAW_CONFIG: "config/voicyclaw.local.yaml",
+        }),
+      ).toMatchObject({
         region: "eastasia",
         api_key: "nested-azure-key",
       })
-      expect(resolveDoubaoStreamTTSConfig({})).toMatchObject({
+      expect(
+        resolveDoubaoStreamTTSConfig({
+          VOICYCLAW_CONFIG: "config/voicyclaw.local.yaml",
+        }),
+      ).toMatchObject({
         appid: "nested-app-id",
       })
     } finally {

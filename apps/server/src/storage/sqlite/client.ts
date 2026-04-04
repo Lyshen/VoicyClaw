@@ -2,8 +2,10 @@ import { mkdirSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 
+import { resolveStorageConfig } from "@voicyclaw/config"
+
 const databaseFile =
-  process.env.VOICYCLAW_SQLITE_FILE?.trim() ||
+  resolveStorageConfig().sqliteFile ||
   resolve(process.cwd(), ".data", "voicyclaw.sqlite")
 
 mkdirSync(dirname(databaseFile), { recursive: true })

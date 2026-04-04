@@ -151,7 +151,7 @@ This gives four valid combinations:
 | server | client | server-grade transcription + lightweight browser playback |
 | server | server | full managed media pipeline, best for production control |
 
-For the current runnable prototype, browser speech recognition and browser speech synthesis are already used as client providers, while demo server-side adapters keep the OpenClaw pipeline runnable. Azure, Google Cloud, Tencent Cloud, and Volcengine server-side TTS paths are all available now when the backend is configured through `config/providers.local.yaml` or matching `VOICYCLAW_*` environment variables.
+For the current runnable prototype, browser speech recognition and browser speech synthesis are already used as client providers, while demo server-side adapters keep the OpenClaw pipeline runnable. Azure, Google Cloud, Tencent Cloud, and Volcengine server-side TTS paths are all available now when the backend is configured through `config/voicyclaw.local.yaml` or matching `VOICYCLAW_*` environment variables.
 
 ## Shared Output Turn Control
 
@@ -262,16 +262,17 @@ Then open `http://localhost:3000`.
 - By default, VoicyClaw runs in `local` auth mode: no account setup, one browser-local default workspace/demo flow
 - Use **hold-to-talk** for microphone streaming, or type into the composer as a transcript fallback
 - Browser speech recognition and browser speech synthesis are treated as `client providers`
-- Add `config/providers.local.yaml` (or set `VOICYCLAW_PROVIDER_CONFIG`) before `pnpm dev` if you want to select Azure, Google, Tencent Cloud, or Volcengine TTS on `/settings`
+- Copy `config/voicyclaw.example.yaml` to `config/voicyclaw.local.yaml` before `pnpm dev` if you want one file to control auth, storage, demo bot, and cloud TTS providers together
 - Visit `/settings` to edit the channel/server defaults and mint platform keys for external bots
 - `pnpm build` verifies the server, web app, and local bot all compile successfully
 
-To turn on hosted account flows, set:
+To turn on hosted account flows, add them in the same YAML:
 
-```bash
-NEXT_PUBLIC_VOICYCLAW_AUTH_MODE=clerk
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
+```yaml
+Auth:
+  mode: clerk
+  clerk_publishable_key: pk_test_...
+  clerk_secret_key: sk_test_...
 ```
 
 With Clerk enabled, `/studio` and `/settings` are protected. When auth is
@@ -279,50 +280,40 @@ disabled, VoicyClaw stays in the current self-host-friendly single default
 workspace mode so local demos and open-source images still work with zero
 account setup.
 
-For server-side TTS providers, prefer a repo-local YAML file:
+For local self-hosting, prefer one repo-local YAML file:
 
 ```yaml
-# config/providers.local.yaml
-AzureSpeechTTS:
-  endpoint: https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1
-  region: eastasia
-  api_key: your-azure-speech-key
-  voice: en-US-AriaNeural
-  style: chat
-  rate: +4%
+# config/voicyclaw.local.yaml
+App:
+  server_port: 3001
+  web_port: 3000
 
-AzureSpeechStreamingTTS:
-  voice: en-US-AriaNeural
-  style: chat
-  rate: +4%
-  flush_timeout_ms: 450
-  max_chunk_characters: 220
+Auth:
+  mode: local
+
+Storage:
+  driver: sqlite
+  sqlite_file: ./apps/server/.data/voicyclaw.sqlite
+
+DemoBot:
+  channel_id: demo-room
+  bot_id: demo-clawbot
+  bot_name: Studio Claw
 
 GoogleCloudTTS:
   service_account_file: /absolute/path/to/google-service-account.json
   voice: en-US-Chirp3-HD-Leda
-
-GoogleCloudBatchedTTS:
-  service_account_file: /absolute/path/to/google-service-account.json
-  voice: en-US-Neural2-F
-
-TencentCloudTTS:
-  app_id: your-tencent-app-id
-  secret_id: your-tencent-secret-id
-  secret_key: your-tencent-secret-key
-  voice_type: 502001
-
-TencentCloudStreamingTTS:
-  voice_type: 502001
-  sample_rate: 24000
 ```
 
-Copy [`config/providers.example.yaml`](config/providers.example.yaml) to
-`config/providers.local.yaml`. The server auto-loads that local file when it
-exists. You can also point at another file with
-`VOICYCLAW_PROVIDER_CONFIG=/absolute/path/to/providers.local.yaml`.
-Environment variables still work as one-off overrides and win over YAML when
-both are present.
+Copy [`config/voicyclaw.example.yaml`](config/voicyclaw.example.yaml) to
+`config/voicyclaw.local.yaml`. The root `pnpm dev` and `pnpm start:demo`
+scripts inject that file into the server, web app, and demo bot together so
+one config can boot the whole local stack. Environment variables still work as
+explicit overrides when you need them.
+
+If you want a truly YAML-only local setup, remove stale `.env.local` values
+after migrating them into `config/voicyclaw.local.yaml`. Next.js still detects
+`.env.local` automatically when that file exists.
 
 To enable server-side Azure unary TTS, fill `AzureSpeechTTS.api_key` plus
 either `AzureSpeechTTS.region` or `AzureSpeechTTS.endpoint`, then choose
@@ -383,11 +374,11 @@ Note: this runnable prototype uses `node:sqlite` instead of Prisma so it stays f
 You can start from the tracked example file:
 
 ```bash
-cp config/providers.example.yaml config/providers.local.yaml
-VOICYCLAW_PROVIDER_CONFIG=./config/providers.local.yaml pnpm dev
+cp config/voicyclaw.example.yaml config/voicyclaw.local.yaml
+pnpm dev
 ```
 
-Example provider config shape:
+Example provider section inside the unified config:
 
 ```yaml
 DoubaoStreamTTS:
@@ -411,7 +402,7 @@ pnpm test:tts:live:record
 pnpm test:tts:live
 ```
 
-- uses the same local provider config file at `config/providers.local.yaml`
+- uses the same local config file at `config/voicyclaw.local.yaml`
 - records per-provider baselines into `.artifacts/tts-fixtures/baselines`
 - writes the latest run into `.artifacts/tts-fixtures/latest`
 - compares deterministic providers exactly and live vendor providers with manifest tolerances

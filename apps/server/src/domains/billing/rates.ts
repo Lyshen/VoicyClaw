@@ -61,25 +61,32 @@ const DEFAULT_TTS_BILLING_RATES: BillingRateSeed[] = [
 ]
 
 let billingRatesSeeded = false
+let billingRatesSeedPromise: Promise<void> | undefined
 
-export function ensurePreviewBillingRates() {
+export async function ensurePreviewBillingRates() {
   if (billingRatesSeeded) {
     return
   }
 
-  for (const rate of DEFAULT_TTS_BILLING_RATES) {
-    storage.billingRates.upsert({
-      id: buildBillingRateId("tts", rate.providerId, rate.billingMetric),
-      feature: "tts",
-      providerId: rate.providerId,
-      billingMetric: rate.billingMetric,
-      unitSize: rate.unitSize,
-      retailCreditsMillis: rate.retailCreditsMillis,
-      providerCostUsdMicros: rate.providerCostUsdMicros ?? null,
-    })
+  if (!billingRatesSeedPromise) {
+    billingRatesSeedPromise = (async () => {
+      for (const rate of DEFAULT_TTS_BILLING_RATES) {
+        await storage.billingRates.upsert({
+          id: buildBillingRateId("tts", rate.providerId, rate.billingMetric),
+          feature: "tts",
+          providerId: rate.providerId,
+          billingMetric: rate.billingMetric,
+          unitSize: rate.unitSize,
+          retailCreditsMillis: rate.retailCreditsMillis,
+          providerCostUsdMicros: rate.providerCostUsdMicros ?? null,
+        })
+      }
+
+      billingRatesSeeded = true
+    })()
   }
 
-  billingRatesSeeded = true
+  await billingRatesSeedPromise
 }
 
 export function calculateCharge(input: {

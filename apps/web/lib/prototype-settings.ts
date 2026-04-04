@@ -166,7 +166,7 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
     summary:
       "Streams bidirectional Volcengine speech audio from the VoicyClaw server for CN-market low-latency playback.",
     runtimeHint:
-      "Requires server-side Volcengine credentials loaded from VOICYCLAW_PROVIDER_CONFIG or VOICYCLAW_VOLCENGINE_* environment variables.",
+      "Requires server-side Volcengine credentials loaded from config/voicyclaw.local.yaml or VOICYCLAW_VOLCENGINE_* environment variables.",
   },
 ]
 
@@ -222,7 +222,7 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
     summary:
       "Available now as a server provider when the backend is configured with Volcengine credentials.",
     keyHint:
-      "Use config/providers.local.yaml via VOICYCLAW_PROVIDER_CONFIG or set VOICYCLAW_VOLCENGINE_* env vars; env vars override YAML.",
+      "Use config/voicyclaw.local.yaml or set VOICYCLAW_VOLCENGINE_* env vars; env vars override YAML.",
   },
 ]
 
