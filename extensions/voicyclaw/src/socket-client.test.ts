@@ -62,7 +62,6 @@ describe("voicyclaw socket client", () => {
           voicyclaw: {
             url: serverUrl(server),
             token: "vc-token",
-            channelId: "demo-room",
           },
         },
       }),
@@ -85,8 +84,6 @@ describe("voicyclaw socket client", () => {
       {
         type: "HELLO",
         api_key: "vc-token",
-        bot_id: "openclaw-voicyclaw",
-        channel_id: "demo-room",
         protocol_version: "0.1",
       },
       {
@@ -156,7 +153,6 @@ describe("voicyclaw socket client", () => {
           voicyclaw: {
             url: serverUrl(server),
             token: "vc-token",
-            channelId: "demo-room",
           },
         },
       }),

@@ -7,8 +7,8 @@ export type OpenClawProtocolVersion = typeof PROTOCOL_VERSION
 export interface HelloMessage {
   type: "HELLO"
   api_key: string
-  bot_id: string
-  channel_id: string
+  bot_id?: string
+  channel_id?: string
   protocol_version: OpenClawProtocolVersion
 }
 

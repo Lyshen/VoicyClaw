@@ -74,7 +74,6 @@ export function buildSettingsStorageNamespace(
 }
 
 export function buildConnectorConfigJson(input: {
-  channelId: string
   apiKey: string
   serverUrl?: string
 }) {
@@ -82,7 +81,6 @@ export function buildConnectorConfigJson(input: {
 }
 
 export function buildConnectorConfigLine(input: {
-  channelId: string
   apiKey: string
   serverUrl?: string
 }) {
@@ -169,14 +167,12 @@ export function buildHostedOnboardingState(
     connectorConfigJson: record.starterKey?.value
       ? buildConnectorConfigJson({
           serverUrl,
-          channelId: record.project.channelId,
           apiKey: record.starterKey.value,
         })
       : null,
     connectorConfigLine: record.starterKey?.value
       ? buildConnectorConfigLine({
           serverUrl,
-          channelId: record.project.channelId,
           apiKey: record.starterKey.value,
         })
       : null,
@@ -204,17 +200,14 @@ function buildStableSeed(userId: string) {
 }
 
 function buildConnectorConfigObject(input: {
-  channelId: string
   apiKey: string
   serverUrl?: string
 }) {
   const connectorConfig: {
     token: string
-    channelId: string
     url?: string
   } = {
     token: input.apiKey,
-    channelId: input.channelId,
   }
   const normalizedServerUrl = normalizeConnectorServerUrl(input.serverUrl)
 

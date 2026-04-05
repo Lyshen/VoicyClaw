@@ -63,42 +63,40 @@ describe("hosted onboarding shared helpers", () => {
   it("builds the OpenClaw connector config snippet for custom servers", () => {
     const json = buildConnectorConfigJson({
       serverUrl: "https://voice.example.com",
-      channelId: "sayhello-demo",
       apiKey: "vc_demo",
     })
 
     expect(json).toContain('"url": "https://voice.example.com"')
-    expect(json).toContain('"channelId": "sayhello-demo"')
     expect(json).toContain('"token": "vc_demo"')
+    expect(json).not.toContain('"channelId"')
   })
 
   it("builds the compact one-line connector config for custom servers", () => {
     const line = buildConnectorConfigLine({
       serverUrl: "https://voice.example.com",
-      channelId: "sayhello-demo",
       apiKey: "vc_demo",
     })
 
     expect(line).toContain('"url":"https://voice.example.com"')
-    expect(line).toContain('"channelId":"sayhello-demo"')
     expect(line).toContain('"token":"vc_demo"')
+    expect(line).not.toContain('"channelId"')
   })
 
   it("omits the base url when the hosted default is already implied", () => {
     const json = buildConnectorConfigJson({
       serverUrl: "https://api.voicyclaw.com",
-      channelId: "sayhello-demo",
       apiKey: "vc_demo",
     })
     const line = buildConnectorConfigLine({
       serverUrl: "https://api.voicyclaw.com",
-      channelId: "sayhello-demo",
       apiKey: "vc_demo",
     })
 
     expect(json).not.toContain('"url"')
     expect(line).not.toContain('"url"')
-    expect(json).toContain('"channelId": "sayhello-demo"')
-    expect(line).toContain('"channelId":"sayhello-demo"')
+    expect(json).toContain('"token": "vc_demo"')
+    expect(line).toContain('"token":"vc_demo"')
+    expect(json).not.toContain('"channelId"')
+    expect(line).not.toContain('"channelId"')
   })
 })

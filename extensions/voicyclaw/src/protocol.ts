@@ -5,8 +5,6 @@ export type VoicyClawProtocolVersion = typeof VOICYCLAW_PROTOCOL_VERSION;
 export type VoicyClawHelloMessage = {
   type: "HELLO";
   api_key: string;
-  bot_id: string;
-  channel_id: string;
   protocol_version: VoicyClawProtocolVersion;
 };
 
@@ -79,14 +77,10 @@ export type VoicyClawServerMessage =
 
 export function createHelloMessage(params: {
   token: string;
-  botId: string;
-  channelId: string;
 }): VoicyClawHelloMessage {
   return {
     type: "HELLO",
     api_key: params.token,
-    bot_id: params.botId,
-    channel_id: params.channelId,
     protocol_version: VOICYCLAW_PROTOCOL_VERSION,
   };
 }

@@ -2,12 +2,11 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk";
 
 export const DEFAULT_VOICYCLAW_ACCOUNT_ID = "default";
 export const DEFAULT_VOICYCLAW_BASE_URL = "https://api.voicyclaw.com";
-export const DEFAULT_VOICYCLAW_BOT_ID = "openclaw-voicyclaw";
 export const DEFAULT_VOICYCLAW_DISPLAY_NAME = "VoicyClaw Connector";
 export const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
 export const DEFAULT_RECONNECT_BACKOFF_MS = 5_000;
 export const DEFAULT_HEARTBEAT_INTERVAL_MS = 25_000;
-const REQUIRED_VOICYCLAW_CONFIG_FIELDS = ["token", "channelId"] as const;
+const REQUIRED_VOICYCLAW_CONFIG_FIELDS = ["token"] as const;
 
 export type VoicyClawRequiredConfigField =
   (typeof REQUIRED_VOICYCLAW_CONFIG_FIELDS)[number];
@@ -17,8 +16,6 @@ export type VoicyClawAccountConfig = {
   url?: string;
   token?: string;
   workspaceId?: string;
-  channelId?: string;
-  botId?: string;
   displayName?: string;
   connectTimeoutMs?: number;
   reconnectBackoffMs?: number;
@@ -49,8 +46,6 @@ const voicyClawAccountProperties = {
   url: { type: "string" },
   token: { type: "string" },
   workspaceId: { type: "string" },
-  channelId: { type: "string" },
-  botId: { type: "string" },
   displayName: { type: "string" },
   connectTimeoutMs: { type: "integer", minimum: 1000 },
   reconnectBackoffMs: { type: "integer", minimum: 500 },
@@ -92,15 +87,9 @@ export const voicyClawChannelConfigSchema = {
       label: "Workspace ID",
       advanced: true,
     },
-    channelId: {
-      label: "Room / Channel ID",
-      help: "Required. Copy the hosted room id from VoicyClaw when pairing a connector.",
-    },
-    botId: {
-      label: "Bot ID",
-    },
     displayName: {
       label: "Display Name",
+      advanced: true,
     },
     connectTimeoutMs: {
       label: "Connect Timeout (ms)",
@@ -160,9 +149,8 @@ export function resolveVoicyClawAccount(
   const url = readString(mergedConfig.url) ?? DEFAULT_VOICYCLAW_BASE_URL;
   const token = readString(mergedConfig.token);
   const workspaceId = readString(mergedConfig.workspaceId);
-  const channelId = readString(mergedConfig.channelId) ?? "";
-  const botId =
-    readString(mergedConfig.botId) ?? buildDefaultBotId(normalizedAccountId);
+  const channelId = "";
+  const botId = "";
   const displayName =
     readString(mergedConfig.displayName) ??
     buildDefaultDisplayName(normalizedAccountId);
@@ -179,9 +167,9 @@ export function resolveVoicyClawAccount(
     DEFAULT_HEARTBEAT_INTERVAL_MS,
   );
   const devEchoReplies = readBoolean(mergedConfig.devEchoReplies, false);
-  const missingConfigFields = REQUIRED_VOICYCLAW_CONFIG_FIELDS.filter(
-    (field) => (field === "token" ? !token : !channelId),
-  );
+  const missingConfigFields: VoicyClawRequiredConfigField[] = token
+    ? []
+    : ["token"];
 
   return {
     accountId: normalizedAccountId,
@@ -203,8 +191,6 @@ export function resolveVoicyClawAccount(
       url,
       token,
       workspaceId,
-      channelId,
-      botId,
       displayName,
       connectTimeoutMs,
       reconnectBackoffMs,
@@ -290,14 +276,6 @@ function omitAccounts(section: Record<string, unknown>) {
   return rest;
 }
 
-function buildDefaultBotId(accountId: string) {
-  if (accountId === DEFAULT_VOICYCLAW_ACCOUNT_ID) {
-    return DEFAULT_VOICYCLAW_BOT_ID;
-  }
-
-  return `${DEFAULT_VOICYCLAW_BOT_ID}-${accountId}`;
-}
-
 function buildDefaultDisplayName(accountId: string) {
   if (accountId === DEFAULT_VOICYCLAW_ACCOUNT_ID) {
     return DEFAULT_VOICYCLAW_DISPLAY_NAME;
@@ -309,11 +287,7 @@ function buildDefaultDisplayName(accountId: string) {
 function formatConfigFieldLabels(
   missingConfigFields: readonly VoicyClawRequiredConfigField[],
 ) {
-  return joinLabelList(
-    missingConfigFields.map((field) =>
-      field === "token" ? "token" : "room / channel id",
-    ),
-  );
+  return joinLabelList(missingConfigFields);
 }
 
 function formatConfigPaths(

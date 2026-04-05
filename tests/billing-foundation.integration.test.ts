@@ -109,15 +109,15 @@ describe.sequential("billing foundation", () => {
     bot.sendJson({
       type: "HELLO",
       api_key: bootstrap.starterKey?.value ?? "",
-      bot_id: bootstrap.project.botId,
-      channel_id: bootstrap.project.channelId,
       protocol_version: PROTOCOL_VERSION,
     })
 
     const welcome = (await bot.waitForMessage(
       (message) => (message as { type?: string }).type === "WELCOME",
-    )) as { session_id?: string }
+    )) as { session_id?: string; channel_id?: string; bot_id?: string }
     expect(welcome.session_id).toBeTruthy()
+    expect(welcome.channel_id).toBe(bootstrap.project.channelId)
+    expect(welcome.bot_id).toBe(bootstrap.project.botId)
 
     client = await runtime.connectClient(
       {
@@ -240,15 +240,15 @@ describe.sequential("billing foundation", () => {
       failingBot.sendJson({
         type: "HELLO",
         api_key: bootstrap.starterKey?.value ?? "",
-        bot_id: bootstrap.project.botId,
-        channel_id: bootstrap.project.channelId,
         protocol_version: PROTOCOL_VERSION,
       })
 
       const welcome = (await failingBot.waitForMessage(
         (message) => (message as { type?: string }).type === "WELCOME",
-      )) as { session_id?: string }
+      )) as { session_id?: string; channel_id?: string; bot_id?: string }
       expect(welcome.session_id).toBeTruthy()
+      expect(welcome.channel_id).toBe(bootstrap.project.channelId)
+      expect(welcome.bot_id).toBe(bootstrap.project.botId)
 
       failingClient = await failingRuntime.connectClient(
         {

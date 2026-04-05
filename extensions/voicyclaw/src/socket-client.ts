@@ -80,8 +80,6 @@ export class VoicyClawSocketClient {
           JSON.stringify(
             createHelloMessage({
               token: this.options.account.token ?? "",
-              botId: this.options.account.botId,
-              channelId: this.options.account.channelId,
             }),
           ),
         );

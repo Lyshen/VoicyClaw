@@ -11,14 +11,10 @@ describe("voicyclaw protocol", () => {
     expect(
       createHelloMessage({
         token: "vc-token",
-        botId: "bot-1",
-        channelId: "demo-room",
       }),
     ).toEqual({
       type: "HELLO",
       api_key: "vc-token",
-      bot_id: "bot-1",
-      channel_id: "demo-room",
       protocol_version: VOICYCLAW_PROTOCOL_VERSION,
     });
   });

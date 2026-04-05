@@ -11,18 +11,22 @@ describe("voicyclaw runtime", () => {
         channels: {
           voicyclaw: {
             token: "vc-token",
-            channelId: "demo-room",
           },
         },
       },
       "default",
     );
+    const connectedAccount = {
+      ...account,
+      channelId: "demo-room",
+      botId: "demo-bot",
+    };
 
     runtime.markStarting(account);
-    runtime.markConnected(account, "session-1");
+    runtime.markConnected(connectedAccount, "session-1");
     runtime.markInbound(account.accountId);
     runtime.markOutbound(account.accountId);
-    runtime.markDisconnected(account, "socket closed");
+    runtime.markDisconnected(connectedAccount, "socket closed");
 
     expect(runtime.getSnapshot(account.accountId)).toMatchObject({
       accountId: "default",

@@ -33,16 +33,20 @@ describe("voicyclaw dispatch", () => {
         channels: {
           voicyclaw: {
             token: "vc-token",
-            channelId: "demo-room",
             workspaceId: "workspace-1",
           },
         },
       },
       "default",
     );
+    const boundAccount = {
+      ...account,
+      channelId: "demo-room",
+      botId: "demo-bot",
+    };
 
     await dispatchVoicyClawTranscript({
-      account,
+      account: boundAccount,
       cfg: { session: { store: "/tmp/sessions.json" } },
       channelRuntime: {
         routing: {
