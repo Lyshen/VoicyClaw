@@ -2,6 +2,8 @@ import { existsSync, lstatSync, mkdirSync, symlinkSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import { applyHydratedRuntimeEnvironment } from "./runtime-env.mjs"
+
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(scriptDir, "..")
 const candidates = [
@@ -29,6 +31,7 @@ if (!entry) {
   )
 }
 
+applyHydratedRuntimeEnvironment()
 ensureLocalStandaloneAssets(repoRoot, entry)
 await import(pathToFileURL(entry).href)
 
