@@ -5,13 +5,13 @@ import { usePathname } from "next/navigation"
 
 import type { AuthMode } from "../lib/auth-mode"
 import { AppShellAuthControls } from "./auth-controls"
+import { ClerkAppShellAccountLink } from "./auth-controls-clerk"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
 
 export function AppShellHeader({ authMode }: { authMode: AuthMode }) {
   const pathname = usePathname()
-  const links = [
-    { href: "/studio", label: "Studio" },
-    ...(authMode === "clerk" ? [{ href: "/account", label: "Account" }] : []),
+  const leadingLink = { href: "/studio", label: "Studio" }
+  const trailingLinks = [
     { href: "/settings", label: "Settings" },
     { href: "/console", label: "Console" },
   ]
@@ -31,7 +31,22 @@ export function AppShellHeader({ authMode }: { authMode: AuthMode }) {
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
-          {links.map((link) => {
+          {pathname === leadingLink.href ? (
+            <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
+              {leadingLink.label}
+            </span>
+          ) : (
+            <Link
+              href={leadingLink.href}
+              className="text-sm font-medium text-zinc-500 transition-colors hover:text-amber-600"
+            >
+              {leadingLink.label}
+            </Link>
+          )}
+          {authMode === "clerk" ? (
+            <ClerkAppShellAccountLink pathname={pathname} />
+          ) : null}
+          {trailingLinks.map((link) => {
             const active = pathname === link.href
 
             return active ? (

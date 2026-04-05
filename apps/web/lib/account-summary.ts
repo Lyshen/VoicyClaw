@@ -1,49 +1,75 @@
-import { auth, clerkClient } from "@clerk/nextjs/server"
-import { headers } from "next/headers"
-
 import {
   type AccountSummary,
+  type AccountUserSummary,
   buildAccountSummary,
+  buildAccountUserSummary,
   type WorkspaceBillingSummary,
 } from "./account-summary-shared"
-import { getResolvedAuthMode } from "./auth-mode"
-import { getHostedOnboardingState } from "./hosted-onboarding"
-import { resolvePublicServerUrl } from "./web-runtime"
+import { getRequestHostedOnboardingState } from "./hosted-onboarding"
+import { getRequestAuthContext } from "./request-auth"
 
 export type {
   AccountSummary,
+  AccountUserSummary,
   WorkspaceBillingSummary,
 } from "./account-summary-shared"
 
+export type AccountSummaryState =
+  | {
+      kind: "auth-disabled"
+      serverUrl: string
+    }
+  | {
+      kind: "signed-out"
+      serverUrl: string
+    }
+  | {
+      kind: "setup-pending"
+      serverUrl: string
+      user: AccountUserSummary
+    }
+  | {
+      kind: "ready"
+      serverUrl: string
+      summary: AccountSummary
+    }
+
 export async function getAccountSummary(): Promise<AccountSummary | null> {
-  if (getResolvedAuthMode() !== "clerk") {
-    return null
+  const state = await getAccountSummaryState()
+  return state.kind === "ready" ? state.summary : null
+}
+
+export async function getAccountSummaryState(): Promise<AccountSummaryState> {
+  const authContext = await getRequestAuthContext()
+
+  if (!authContext.isEnabled) {
+    return {
+      kind: "auth-disabled",
+      serverUrl: authContext.serverUrl,
+    }
   }
 
-  const { userId } = await auth()
-  if (!userId) {
-    return null
+  if (!authContext.isSignedIn || !authContext.user) {
+    return {
+      kind: "signed-out",
+      serverUrl: authContext.serverUrl,
+    }
   }
 
-  const requestHeaders = await headers()
-  const forwardedProto =
-    requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim() || "http"
-  const serverUrl = resolvePublicServerUrl({
-    headers: requestHeaders,
-    nextUrl: {
-      protocol: `${forwardedProto}:`,
-    },
-  })
-
-  const onboarding = await getHostedOnboardingState(serverUrl)
+  const onboarding = await getRequestHostedOnboardingState()
   if (!onboarding) {
-    return null
+    return {
+      kind: "setup-pending",
+      serverUrl: authContext.serverUrl,
+      user: buildAccountUserSummary(authContext.user),
+    }
   }
 
-  const client = await clerkClient()
-  const user = await client.users.getUser(userId)
   const billingResponse = await fetch(
-    new URL(`/api/workspaces/${onboarding.workspace.id}/billing`, serverUrl),
+    new URL(
+      `/api/workspaces/${onboarding.workspace.id}/billing`,
+      authContext.serverUrl,
+    ),
     {
       cache: "no-store",
     },
@@ -57,9 +83,13 @@ export async function getAccountSummary(): Promise<AccountSummary | null> {
 
   const billing = (await billingResponse.json()) as WorkspaceBillingSummary
 
-  return buildAccountSummary({
-    user,
-    onboarding,
-    billing,
-  })
+  return {
+    kind: "ready",
+    serverUrl: authContext.serverUrl,
+    summary: buildAccountSummary({
+      user: authContext.user,
+      onboarding,
+      billing,
+    }),
+  }
 }

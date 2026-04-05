@@ -200,6 +200,27 @@ describe("studio settings helpers", () => {
     })
     expect(storage.getItem(STUDIO_SETTINGS_STORAGE_KEY)).toBeNull()
   })
+
+  it("reuses anonymous settings on first hosted sign-in", () => {
+    const storage = createMemoryStorage()
+    storage.setItem(
+      STUDIO_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ttsProvider: "google-batched-tts",
+        asrProvider: "demo",
+        channelId: "Hosted Welcome Room",
+      }),
+    )
+    globalThis.window = { localStorage: storage } as Window & typeof globalThis
+
+    expect(loadStudioSettings(undefined, "ws-demo.sayhello-demo")).toMatchObject(
+      {
+        ttsProvider: "google-batched-tts",
+        asrProvider: "demo",
+        channelId: "hosted-welcome-room",
+      },
+    )
+  })
 })
 
 function createMemoryStorage(): MemoryStorage {

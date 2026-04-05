@@ -1,29 +1,14 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import Link from "next/link"
 
 import type { AuthMode } from "../lib/auth-mode"
-
-const ClerkAppShellAuthControls = dynamic(
-  () =>
-    import("./auth-controls-clerk").then(
-      (module) => module.ClerkAppShellAuthControls,
-    ),
-  {
-    ssr: false,
-  },
-)
-
-const ClerkLandingNavbarAuthControls = dynamic(
-  () =>
-    import("./auth-controls-clerk").then(
-      (module) => module.ClerkLandingNavbarAuthControls,
-    ),
-  {
-    ssr: false,
-  },
-)
+import {
+  ClerkAppShellAuthControls,
+  ClerkLandingCallToActionControls,
+  ClerkLandingHeroAuthControls,
+  ClerkLandingNavbarAuthControls,
+} from "./auth-controls-clerk"
 
 export function AppShellAuthControls({ authMode }: { authMode: AuthMode }) {
   if (authMode !== "clerk") {
@@ -54,7 +39,10 @@ export function LandingNavbarAuthControls({
 }
 
 export function LandingHeroAuthControls({ authMode }: { authMode: AuthMode }) {
-  void authMode
+  if (authMode === "clerk") {
+    return <ClerkLandingHeroAuthControls />
+  }
+
   return (
     <>
       <Link
@@ -81,7 +69,10 @@ export function LandingCallToActionControls({
 }: {
   authMode: AuthMode
 }) {
-  void authMode
+  if (authMode === "clerk") {
+    return <ClerkLandingCallToActionControls />
+  }
+
   return (
     <>
       <Link

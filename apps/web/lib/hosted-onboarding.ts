@@ -1,28 +1,40 @@
-import { auth, clerkClient } from "@clerk/nextjs/server"
+import { cache } from "react"
 
-import { getResolvedAuthMode } from "./auth-mode"
 import {
   buildHostedOnboardingState,
   type HostedOnboardingRecord,
   type HostedOnboardingState,
 } from "./hosted-onboarding-shared"
+import { getRequestAuthContext, type RequestAuthUser } from "./request-auth"
 
 export type { HostedOnboardingState } from "./hosted-onboarding-shared"
 
 export async function getHostedOnboardingState(
   serverUrl: string,
 ): Promise<HostedOnboardingState | null> {
-  if (getResolvedAuthMode() !== "clerk") {
+  const authContext = await getRequestAuthContext()
+
+  if (!authContext.isEnabled || !authContext.isSignedIn || !authContext.user) {
     return null
   }
 
-  const { userId } = await auth()
-  if (!userId) {
+  return fetchHostedOnboardingState(serverUrl, authContext.user)
+}
+
+export const getRequestHostedOnboardingState = cache(async () => {
+  const authContext = await getRequestAuthContext()
+
+  if (!authContext.isEnabled || !authContext.isSignedIn || !authContext.user) {
     return null
   }
 
-  const client = await clerkClient()
-  const user = await client.users.getUser(userId)
+  return fetchHostedOnboardingState(authContext.serverUrl, authContext.user)
+})
+
+async function fetchHostedOnboardingState(
+  serverUrl: string,
+  user: RequestAuthUser,
+) {
   const response = await fetch(new URL("/api/hosted/bootstrap", serverUrl), {
     method: "POST",
     headers: {
@@ -33,7 +45,7 @@ export async function getHostedOnboardingState(
       providerSubject: user.id,
       email:
         user.primaryEmailAddress?.emailAddress ??
-        user.emailAddresses[0]?.emailAddress ??
+        user.emailAddresses?.[0]?.emailAddress ??
         null,
       displayName: user.fullName ?? user.username ?? user.firstName ?? null,
       firstName: user.firstName,
