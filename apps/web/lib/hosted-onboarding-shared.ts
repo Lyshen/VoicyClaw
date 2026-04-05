@@ -2,6 +2,7 @@ export const STARTER_CONNECTOR_PACKAGE = "@voicyclaw/voicyclaw"
 export const STARTER_KEY_LABEL = "Starter key"
 const STARTER_PROJECT_NAME = "SayHello"
 const STARTER_PROJECT_DISPLAY_NAME = "SayHello Connector"
+const DEFAULT_VOICYCLAW_CONNECTOR_URL = "https://api.voicyclaw.com"
 
 export interface HostedWorkspace {
   id: string
@@ -73,45 +74,19 @@ export function buildSettingsStorageNamespace(
 }
 
 export function buildConnectorConfigJson(input: {
-  serverUrl: string
-  workspaceId: string
   channelId: string
-  botId: string
-  displayName: string
   apiKey: string
+  serverUrl?: string
 }) {
-  return JSON.stringify(
-    {
-      channels: {
-        voicyclaw: {
-          url: input.serverUrl,
-          token: input.apiKey,
-          workspaceId: input.workspaceId,
-          channelId: input.channelId,
-          botId: input.botId,
-          displayName: input.displayName,
-        },
-      },
-    },
-    null,
-    2,
-  )
+  return JSON.stringify(buildConnectorConfigObject(input), null, 2)
 }
 
 export function buildConnectorConfigLine(input: {
-  serverUrl: string
   channelId: string
   apiKey: string
+  serverUrl?: string
 }) {
-  return JSON.stringify({
-    channels: {
-      voicyclaw: {
-        url: input.serverUrl,
-        token: input.apiKey,
-        channelId: input.channelId,
-      },
-    },
-  })
+  return JSON.stringify(buildConnectorConfigObject(input))
 }
 
 export function buildStarterOnboardingRecord(
@@ -194,10 +169,7 @@ export function buildHostedOnboardingState(
     connectorConfigJson: record.starterKey?.value
       ? buildConnectorConfigJson({
           serverUrl,
-          workspaceId: record.workspace.id,
           channelId: record.project.channelId,
-          botId: record.project.botId,
-          displayName: record.project.displayName,
           apiKey: record.starterKey.value,
         })
       : null,
@@ -229,6 +201,41 @@ function buildStableSeed(userId: string) {
   }
 
   return hash.toString(16).padStart(8, "0").slice(0, 8)
+}
+
+function buildConnectorConfigObject(input: {
+  channelId: string
+  apiKey: string
+  serverUrl?: string
+}) {
+  const connectorConfig: {
+    token: string
+    channelId: string
+    url?: string
+  } = {
+    token: input.apiKey,
+    channelId: input.channelId,
+  }
+  const normalizedServerUrl = normalizeConnectorServerUrl(input.serverUrl)
+
+  if (normalizedServerUrl) {
+    connectorConfig.url = normalizedServerUrl
+  }
+
+  return {
+    channels: {
+      voicyclaw: connectorConfig,
+    },
+  }
+}
+
+function normalizeConnectorServerUrl(serverUrl?: string) {
+  const normalized = readString(serverUrl)
+  if (!normalized || normalized === DEFAULT_VOICYCLAW_CONNECTOR_URL) {
+    return undefined
+  }
+
+  return normalized
 }
 
 function asRecord(value: unknown) {

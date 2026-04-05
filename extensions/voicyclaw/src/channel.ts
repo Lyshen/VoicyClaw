@@ -1,10 +1,13 @@
 import type { ChannelPlugin, PluginRuntime } from "openclaw/plugin-sdk";
 
 import {
+  buildVoicyClawConfigFix,
+  buildVoicyClawMissingConfigMessage,
   DEFAULT_VOICYCLAW_ACCOUNT_ID,
   listVoicyClawAccountIds,
   type ResolvedVoicyClawAccount,
   resolveVoicyClawAccount,
+  type VoicyClawRequiredConfigField,
   voicyClawChannelConfigSchema,
 } from "./config.js";
 import { createVoicyClawGatewayAdapter } from "./gateway.js";
@@ -45,7 +48,7 @@ export function createVoicyClawChannel(
         enabled: account.enabled,
         configured: account.configured,
         baseUrl: account.url,
-        audience: account.channelId,
+        audience: account.channelId || undefined,
         tokenSource: account.token ? "config" : undefined,
       }),
     },
@@ -76,7 +79,7 @@ export function createVoicyClawChannel(
           lastOutboundAt:
             tracked?.lastOutboundAt ?? runtime?.lastOutboundAt ?? null,
           baseUrl: account.url,
-          audience: account.channelId,
+          audience: account.channelId || undefined,
           tokenSource: account.token ? "config" : undefined,
         };
       },
@@ -90,14 +93,18 @@ export function createVoicyClawChannel(
       collectStatusIssues: (accounts) => {
         return accounts.flatMap((account) => {
           const issues = [];
+          const missingConfigFields = inferMissingConfigFields(account);
 
           if (!account.configured) {
             issues.push({
               channel: "voicyclaw",
               accountId: account.accountId,
               kind: "config" as const,
-              message: "VoicyClaw token is missing.",
-              fix: "Set channels.voicyclaw.token or channels.voicyclaw.accounts.<id>.token.",
+              message: buildVoicyClawMissingConfigMessage(missingConfigFields),
+              fix: buildVoicyClawConfigFix(
+                account.accountId,
+                missingConfigFields,
+              ),
             });
           }
 
@@ -122,4 +129,21 @@ export function createVoicyClawChannel(
     },
     gateway: createVoicyClawGatewayAdapter(runtimeState, channelRuntime),
   };
+}
+
+function inferMissingConfigFields(account: {
+  tokenSource?: string;
+  audience?: string;
+}): VoicyClawRequiredConfigField[] {
+  const missingConfigFields: VoicyClawRequiredConfigField[] = [];
+
+  if (!account.tokenSource) {
+    missingConfigFields.push("token");
+  }
+
+  if (!account.audience) {
+    missingConfigFields.push("channelId");
+  }
+
+  return missingConfigFields;
 }
