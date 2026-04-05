@@ -14,19 +14,13 @@ const authConfig = getResolvedAuthConfig()
 
 const proxy =
   authConfig.resolvedMode === "clerk"
-    ? clerkMiddleware(
-        async (auth, req) => {
-          if (isProtectedRoute(req)) {
-            await auth.protect({
-              unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
-            })
-          }
-        },
-        {
-          publishableKey: authConfig.clerkPublishableKey ?? undefined,
-          secretKey: authConfig.clerkSecretKey ?? undefined,
-        },
-      )
+    ? clerkMiddleware(async (auth, req) => {
+        if (isProtectedRoute(req)) {
+          await auth.protect({
+            unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
+          })
+        }
+      })
     : () => NextResponse.next()
 
 export default proxy
