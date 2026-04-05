@@ -56,13 +56,10 @@ describe.sequential("protocol failure paths", () => {
 
   it("rejects a bot with an invalid API key", async () => {
     const bot = track(await runtime.connectBotRaw())
-    const channelId = makeChannelId()
 
     bot.sendJson({
       type: "HELLO",
       api_key: "vc_invalid",
-      bot_id: "invalid-key-bot",
-      channel_id: channelId,
       protocol_version: PROTOCOL_VERSION,
     })
 
@@ -75,30 +72,7 @@ describe.sequential("protocol failure paths", () => {
     await bot.waitForClose()
   })
 
-  it("rejects a bot whose key does not match the announced channel", async () => {
-    const sourceChannelId = makeChannelId()
-    const targetChannelId = makeChannelId()
-    const key = await runtime.issueKey(sourceChannelId)
-    const bot = track(await runtime.connectBotRaw())
-
-    bot.sendJson({
-      type: "HELLO",
-      api_key: key.apiKey,
-      bot_id: "wrong-channel-bot",
-      channel_id: targetChannelId,
-      protocol_version: PROTOCOL_VERSION,
-    })
-
-    const error = await bot.waitForMessage(isErrorMessage)
-
-    expect(error).toMatchObject({
-      type: "ERROR",
-      code: "CHANNEL_NOT_FOUND",
-    })
-    await bot.waitForClose()
-  })
-
-  it("rejects a second bot that reuses the same bot_id in one channel", async () => {
+  it("rejects a second bot that resolves to the same bound bot in one channel", async () => {
     const channelId = makeChannelId()
     const firstKey = await runtime.issueKey(channelId, "First bot key")
     const secondKey = await runtime.issueKey(channelId, "Second bot key")
@@ -108,8 +82,6 @@ describe.sequential("protocol failure paths", () => {
     firstBot.sendJson({
       type: "HELLO",
       api_key: firstKey.apiKey,
-      bot_id: "duplicate-bot",
-      channel_id: channelId,
       protocol_version: PROTOCOL_VERSION,
     })
 
@@ -118,8 +90,6 @@ describe.sequential("protocol failure paths", () => {
     secondBot.sendJson({
       type: "HELLO",
       api_key: secondKey.apiKey,
-      bot_id: "duplicate-bot",
-      channel_id: channelId,
       protocol_version: PROTOCOL_VERSION,
     })
 
@@ -128,7 +98,7 @@ describe.sequential("protocol failure paths", () => {
     expect(welcome).toMatchObject({
       type: "WELCOME",
       channel_id: channelId,
-      bot_id: "duplicate-bot",
+      bot_id: "local-bot",
     })
     expect(error).toMatchObject({
       type: "ERROR",
@@ -154,6 +124,7 @@ describe.sequential("protocol failure paths", () => {
       type: "WELCOME",
       channel_id: channelId,
       bot_id: "local-bot",
+      bot_name: "Integration key",
     })
   })
 

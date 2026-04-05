@@ -135,7 +135,7 @@ Examples:
 - `ensureDefaultWorkspaceForUser(...)`
 - `ensureStarterProject(...)`
 - `issuePlatformKey(...)`
-- `registerBot(...)`
+- `authorizePlatformKey(...)`
 - `bootstrapHostedWorkspace(...)`
 - `recordTtsUsage(...)`
 - `getWorkspaceBillingSummary(...)`

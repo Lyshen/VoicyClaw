@@ -63,27 +63,17 @@ export type PlatformKeyAuthorization =
     }
   | {
       ok: false
-      reason: "not-found" | "channel-mismatch"
+      reason: "not-found"
     }
 
-export async function authorizePlatformKeyForChannel(
+export async function authorizePlatformKey(
   token: string,
-  channelId?: string | null,
 ): Promise<PlatformKeyAuthorization> {
   const key = await storage.platformKeys.findByToken(token.trim())
   if (!key) {
     return {
       ok: false,
       reason: "not-found",
-    }
-  }
-
-  const normalizedChannelId = channelId?.trim()
-
-  if (normalizedChannelId && key.channelId !== normalizedChannelId) {
-    return {
-      ok: false,
-      reason: "channel-mismatch",
     }
   }
 
