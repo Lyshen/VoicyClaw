@@ -137,6 +137,26 @@ describe.sequential("protocol failure paths", () => {
     await secondBot.waitForClose()
   })
 
+  it("accepts a token-only HELLO and resolves the bound channel plus default bot", async () => {
+    const channelId = makeChannelId()
+    const key = await runtime.issueKey(channelId)
+    const bot = track(await runtime.connectBotRaw())
+
+    bot.sendJson({
+      type: "HELLO",
+      api_key: key.apiKey,
+      protocol_version: PROTOCOL_VERSION,
+    })
+
+    const welcome = await bot.waitForMessage(isWelcomeMessage)
+
+    expect(welcome).toMatchObject({
+      type: "WELCOME",
+      channel_id: channelId,
+      bot_id: "local-bot",
+    })
+  })
+
   it("returns a notice when a client sends malformed JSON", async () => {
     const client = track(await runtime.connectClientRaw(makeChannelId()))
 

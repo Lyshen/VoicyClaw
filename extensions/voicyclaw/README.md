@@ -34,8 +34,7 @@ smallest working config is:
 {
   "channels": {
     "voicyclaw": {
-      "token": "vcs_xxx",
-      "channelId": "sayhello-demo"
+      "token": "vcs_xxx"
     }
   }
 }
@@ -51,8 +50,8 @@ openclaw gateway restart
 
 - `channels.voicyclaw.token` is the VoicyClaw API key issued by the VoicyClaw
   server
-- `channels.voicyclaw.channelId` is required and should match the room / voice
-  project you want this OpenClaw node to join
+- the plugin no longer accepts local `channelId` or `botId` selection; room and
+  bot binding come from the VoicyClaw server after the token is authenticated
 - it is not the same thing as `gateway.auth.token` from OpenClaw
 - if the wrong token is configured, the OpenClaw logs will show
   `AUTH_FAILED Invalid or expired API key.`
@@ -67,15 +66,14 @@ non-default VoicyClaw deployment:
   "channels": {
     "voicyclaw": {
       "url": "https://voice.example.com",
-      "token": "vc_xxx",
-      "channelId": "sayhello-demo"
+      "token": "vc_xxx"
     }
   }
 }
 ```
 
-Advanced fields such as `workspaceId`, `botId`, and `displayName` remain
-available, but they are optional for the hosted path.
+Advanced fields such as `workspaceId` and `displayName` remain available, but
+the connector itself always binds room and bot from the server-side token.
 
 Optional development-only transport echo:
 

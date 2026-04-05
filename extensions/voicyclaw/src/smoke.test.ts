@@ -92,8 +92,6 @@ describe("voicyclaw smoke workflow", () => {
           voicyclaw: {
             url: serverBaseUrl(server),
             token: "vc-smoke-token",
-            channelId: "demo-room",
-            botId: "openclaw-local",
             displayName: "OpenClaw Smoke",
             reconnectBackoffMs: 100,
           },
@@ -126,8 +124,6 @@ describe("voicyclaw smoke workflow", () => {
       {
         type: "HELLO",
         api_key: "vc-smoke-token",
-        bot_id: "openclaw-local",
-        channel_id: "demo-room",
         protocol_version: "0.1",
       },
       {

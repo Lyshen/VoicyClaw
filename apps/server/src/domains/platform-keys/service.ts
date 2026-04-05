@@ -1,6 +1,7 @@
 import {
   type PlatformKeyRecord,
   type PlatformKeyType,
+  type ProjectRecord,
   storage,
 } from "../../storage"
 import { findProjectByChannelId } from "../projects/service"
@@ -57,6 +58,8 @@ export type PlatformKeyAuthorization =
   | {
       ok: true
       key: PlatformKeyRecord
+      channelId: string
+      project?: ProjectRecord
     }
   | {
       ok: false
@@ -65,7 +68,7 @@ export type PlatformKeyAuthorization =
 
 export async function authorizePlatformKeyForChannel(
   token: string,
-  channelId: string,
+  channelId?: string | null,
 ): Promise<PlatformKeyAuthorization> {
   const key = await storage.platformKeys.findByToken(token.trim())
   if (!key) {
@@ -75,7 +78,9 @@ export async function authorizePlatformKeyForChannel(
     }
   }
 
-  if (key.channelId !== channelId) {
+  const normalizedChannelId = channelId?.trim()
+
+  if (normalizedChannelId && key.channelId !== normalizedChannelId) {
     return {
       ok: false,
       reason: "channel-mismatch",
@@ -85,6 +90,8 @@ export async function authorizePlatformKeyForChannel(
   return {
     ok: true,
     key,
+    channelId: key.channelId,
+    project: (await findProjectByChannelId(key.channelId)) ?? undefined,
   }
 }
 

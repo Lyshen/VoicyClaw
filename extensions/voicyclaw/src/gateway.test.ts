@@ -63,7 +63,6 @@ describe("voicyclaw gateway adapter", () => {
         channels: {
           voicyclaw: {
             token: "vc-token",
-            channelId: "demo-room",
             devEchoReplies: true,
           },
         },
@@ -76,7 +75,7 @@ describe("voicyclaw gateway adapter", () => {
     connectMock.mockResolvedValue({
       session_id: "session-1",
       channel_id: "demo-room",
-      bot_id: account.botId,
+      bot_id: "server-bound-bot",
     });
     waitUntilClosedMock.mockImplementation(async function (
       this: MockSocketClient,
@@ -135,18 +134,18 @@ describe("voicyclaw gateway adapter", () => {
         channels: {
           voicyclaw: {
             token: "vc-token",
-            channelId: "demo-room",
           },
         },
       },
       "default",
     );
     const runtime = createVoicyClawRuntime();
+    const setStatus = vi.fn();
 
     connectMock.mockResolvedValue({
       session_id: "session-2",
-      channel_id: "demo-room",
-      bot_id: account.botId,
+      channel_id: "server-bound-room",
+      bot_id: "server-bound-bot",
     });
     waitUntilClosedMock.mockImplementation(async function (
       this: MockSocketClient,
@@ -190,18 +189,29 @@ describe("voicyclaw gateway adapter", () => {
       cfg: {},
       abortSignal: controller.signal,
       log: createLogger(),
-      setStatus: vi.fn(),
+      setStatus,
     } as never);
 
     expect(dispatchVoicyClawTranscript).toHaveBeenCalledTimes(1);
     expect(dispatchVoicyClawTranscript).toHaveBeenCalledWith(
       expect.objectContaining({
-        account,
+        account: expect.objectContaining({
+          accountId: "default",
+          channelId: "server-bound-room",
+          botId: "server-bound-bot",
+        }),
         message: expect.objectContaining({
           utterance_id: "utt-2b",
           text: "final hello",
           is_final: true,
         }),
+      }),
+    );
+    expect(setStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "default",
+        connected: true,
+        audience: "server-bound-room",
       }),
     );
   });
@@ -213,9 +223,7 @@ describe("voicyclaw gateway adapter", () => {
     const account = resolveVoicyClawAccount(
       {
         channels: {
-          voicyclaw: {
-            token: "vc-token",
-          },
+          voicyclaw: {},
         },
       },
       "default",
@@ -243,7 +251,7 @@ describe("voicyclaw gateway adapter", () => {
         accountId: "default",
         running: false,
         connected: false,
-        lastError: "Missing VoicyClaw room / channel id.",
+        lastError: "Missing VoicyClaw token.",
       }),
     );
   });

@@ -50,6 +50,7 @@ export function createVoicyClawGatewayAdapter(
       while (!ctx.abortSignal.aborted) {
         const socketUrl = buildVoicyClawSocketUrl(account.url);
         let client: VoicyClawSocketClient | null = null;
+        let activeAccount = account;
 
         runtime.markStarting(account);
         ctx.setStatus({
@@ -59,7 +60,7 @@ export function createVoicyClawGatewayAdapter(
           lastStartAt: Date.now(),
           lastError: null,
           baseUrl: account.url,
-          audience: account.channelId,
+          audience: account.channelId || undefined,
         });
 
         try {
@@ -98,7 +99,7 @@ export function createVoicyClawGatewayAdapter(
               }
 
               await dispatchVoicyClawTranscript({
-                account,
+                account: activeAccount,
                 cfg: ctx.cfg,
                 channelRuntime,
                 client: activeClient,
@@ -116,7 +117,8 @@ export function createVoicyClawGatewayAdapter(
           });
 
           const welcome = await client.connect();
-          runtime.markConnected(account, welcome.session_id);
+          activeAccount = applyWelcomeBinding(account, welcome);
+          runtime.markConnected(activeAccount, welcome.session_id);
           ctx.setStatus({
             accountId: account.accountId,
             running: true,
@@ -124,6 +126,7 @@ export function createVoicyClawGatewayAdapter(
             lastConnectedAt: Date.now(),
             lastError: null,
             lastDisconnect: null,
+            audience: welcome.channel_id,
           });
           ctx.log?.info?.(
             `[voicyclaw] connected ${account.accountId} to ${socketUrl}`,
@@ -134,7 +137,7 @@ export function createVoicyClawGatewayAdapter(
             break;
           }
 
-          runtime.markDisconnected(account, "socket closed");
+          runtime.markDisconnected(activeAccount, "socket closed");
           ctx.setStatus({
             accountId: account.accountId,
             running: true,
@@ -148,7 +151,7 @@ export function createVoicyClawGatewayAdapter(
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
-          runtime.markDisconnected(account, message);
+          runtime.markDisconnected(activeAccount, message);
           ctx.setStatus({
             accountId: account.accountId,
             running: true,
@@ -158,6 +161,7 @@ export function createVoicyClawGatewayAdapter(
               at: Date.now(),
               error: message,
             },
+            audience: activeAccount.channelId || undefined,
           });
           ctx.log?.warn?.(
             `[voicyclaw] connector ${account.accountId} disconnected: ${message}`,
@@ -181,6 +185,20 @@ export function createVoicyClawGatewayAdapter(
         lastStopAt: Date.now(),
       });
     },
+  };
+}
+
+function applyWelcomeBinding(
+  account: ResolvedVoicyClawAccount,
+  welcome: {
+    channel_id: string;
+    bot_id: string;
+  },
+): ResolvedVoicyClawAccount {
+  return {
+    ...account,
+    channelId: welcome.channel_id,
+    botId: welcome.bot_id,
   };
 }
 

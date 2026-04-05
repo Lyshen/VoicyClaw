@@ -94,7 +94,7 @@ export function createRealtimeGateway(
 
         const authorization = await authorizePlatformKeyForChannel(
           hello.api_key ?? "",
-          hello.channel_id ?? "",
+          hello.channel_id,
         )
 
         if (!authorization.ok) {
@@ -114,10 +114,13 @@ export function createRealtimeGateway(
         }
 
         const apiKey = authorization.key
-        const channelRuntime = runtime.getOrCreateRuntimeChannel(
-          apiKey.channelId,
-        )
-        if (channelRuntime.bots.has(hello.bot_id ?? "")) {
+        const project = authorization.project
+        const channelId = sanitizeId(hello.channel_id, authorization.channelId)
+        const botId = sanitizeId(hello.bot_id, project?.botId ?? "local-bot")
+        const botName = project?.displayName.trim() || titleFromChannelId(botId)
+        const channelRuntime = runtime.getOrCreateRuntimeChannel(channelId)
+
+        if (channelRuntime.bots.has(botId)) {
           runtime.sendJson(ws, {
             type: "ERROR",
             code: "BOT_ALREADY_CONNECTED",
@@ -128,9 +131,6 @@ export function createRealtimeGateway(
           return
         }
 
-        const botId = sanitizeId(hello.bot_id, "local-bot")
-        const channelId = sanitizeId(hello.channel_id, DEFAULT_CHANNEL_ID)
-        const botName = titleFromChannelId(botId)
         const sessionId = randomUUID()
 
         await markPlatformKeyUsed(apiKey.id)

@@ -119,7 +119,7 @@ export function createVoicyClawChannel(
               accountId: account.accountId,
               kind: "runtime" as const,
               message: `VoicyClaw connector is disconnected: ${account.lastError}`,
-              fix: "Check the VoicyClaw base URL, token, and room id, then restart the gateway.",
+              fix: "Check the VoicyClaw base URL and token, then restart the gateway.",
             });
           }
 
@@ -133,16 +133,11 @@ export function createVoicyClawChannel(
 
 function inferMissingConfigFields(account: {
   tokenSource?: string;
-  audience?: string;
 }): VoicyClawRequiredConfigField[] {
   const missingConfigFields: VoicyClawRequiredConfigField[] = [];
 
   if (!account.tokenSource) {
     missingConfigFields.push("token");
-  }
-
-  if (!account.audience) {
-    missingConfigFields.push("channelId");
   }
 
   return missingConfigFields;
