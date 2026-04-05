@@ -608,7 +608,7 @@ function PlatformKeysCard({
         </li>
         <li>
           Use this key flow when you are testing the inbound local-bot path,
-          including `/api/keys`, `/api/bot/register`, and the HELLO handshake.
+          including `/api/keys` and the token-only HELLO handshake.
         </li>
         <li>
           The backend switch above decides how VoicyClaw reaches the agent,

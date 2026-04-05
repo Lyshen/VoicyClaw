@@ -13,7 +13,7 @@ import { WebSocketServer } from "ws"
 
 import { upsertBotRegistrationRecord } from "./domains/bot-registrations/service"
 import {
-  authorizePlatformKeyForChannel,
+  authorizePlatformKey,
   markPlatformKeyUsed,
 } from "./domains/platform-keys/service"
 import { createClientMessageHandler } from "./realtime-client-session"
@@ -67,8 +67,6 @@ export function createRealtimeGateway(
         const hello = message as {
           type?: string
           api_key?: string
-          bot_id?: string
-          channel_id?: string
           protocol_version?: string
         }
 
@@ -92,22 +90,13 @@ export function createRealtimeGateway(
           return
         }
 
-        const authorization = await authorizePlatformKeyForChannel(
-          hello.api_key ?? "",
-          hello.channel_id,
-        )
+        const authorization = await authorizePlatformKey(hello.api_key ?? "")
 
         if (!authorization.ok) {
           runtime.sendJson(ws, {
             type: "ERROR",
-            code:
-              authorization.reason === "not-found"
-                ? "AUTH_FAILED"
-                : "CHANNEL_NOT_FOUND",
-            message:
-              authorization.reason === "not-found"
-                ? "Invalid or expired API key."
-                : "The provided API key does not match this channel.",
+            code: "AUTH_FAILED",
+            message: "Invalid or expired API key.",
           })
           ws.close()
           return
@@ -115,9 +104,16 @@ export function createRealtimeGateway(
 
         const apiKey = authorization.key
         const project = authorization.project
-        const channelId = sanitizeId(hello.channel_id, authorization.channelId)
-        const botId = sanitizeId(hello.bot_id, project?.botId ?? "local-bot")
-        const botName = project?.displayName.trim() || titleFromChannelId(botId)
+        const channelId = sanitizeId(
+          authorization.channelId,
+          authorization.channelId,
+        )
+        const botId = sanitizeId(project?.botId, "local-bot")
+        const botName = resolveBoundBotName({
+          projectDisplayName: project?.displayName,
+          keyLabel: apiKey.label,
+          botId,
+        })
         const channelRuntime = runtime.getOrCreateRuntimeChannel(channelId)
 
         if (channelRuntime.bots.has(botId)) {
@@ -125,7 +121,7 @@ export function createRealtimeGateway(
             type: "ERROR",
             code: "BOT_ALREADY_CONNECTED",
             message:
-              "A bot with the same bot_id is already active in this channel.",
+              "A bot is already active for this server-bound channel session.",
           })
           ws.close()
           return
@@ -158,6 +154,7 @@ export function createRealtimeGateway(
           session_id: sessionId,
           channel_id: channelId,
           bot_id: botId,
+          bot_name: botName,
         })
         runtime.broadcastChannelState(channelId)
         return
@@ -188,6 +185,24 @@ export function createRealtimeGateway(
       runtime.removeBot(bot.channelId, bot.botId)
       runtime.broadcastChannelState(bot.channelId)
     })
+  }
+
+  function resolveBoundBotName(input: {
+    projectDisplayName?: string | null
+    keyLabel?: string | null
+    botId: string
+  }) {
+    const projectDisplayName = input.projectDisplayName?.trim()
+    if (projectDisplayName) {
+      return projectDisplayName
+    }
+
+    const keyLabel = input.keyLabel?.trim()
+    if (keyLabel) {
+      return keyLabel
+    }
+
+    return titleFromChannelId(input.botId)
   }
 
   function attach(server: FastifyInstance) {

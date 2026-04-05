@@ -31,15 +31,6 @@ type IssuedKeyPayload = {
   protocolVersion: string
 }
 
-type BotRegistrationPayload = {
-  ok: boolean
-  botId: string
-  botName: string
-  channelId: string
-  wsUrl: string
-  protocolVersion: string
-}
-
 type ClosableSocket = {
   close: () => Promise<void>
 }
@@ -86,31 +77,6 @@ export async function startServerRuntime(options?: {
       }
 
       return (await response.json()) as IssuedKeyPayload
-    },
-    async registerBot(input: {
-      apiKey: string
-      botId: string
-      channelId: string
-      botName?: string
-    }) {
-      const response = await fetch(new URL("/api/bot/register", serverUrl), {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          apiKey: input.apiKey,
-          botId: input.botId,
-          botName: input.botName,
-          channelId: input.channelId,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Unable to register bot: ${response.status}`)
-      }
-
-      return (await response.json()) as BotRegistrationPayload
     },
     async connectClient(
       settings: RuntimeSettings,
@@ -169,7 +135,6 @@ export async function startDemoRuntime() {
   const bot = spawnTsxProcess("apps/mock-bot/src/index.ts", {
     VOICYCLAW_SERVER_URL: runtime.serverUrl,
     CHANNEL_ID: channelId,
-    BOT_ID: `integration-bot-${randomUUID().slice(0, 6)}`,
     BOT_NAME: "Integration Bot",
   })
 
