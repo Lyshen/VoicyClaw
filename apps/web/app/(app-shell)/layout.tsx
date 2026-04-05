@@ -1,6 +1,8 @@
 import { AppShellHeader } from "../../components/app-shell-header"
 import { getResolvedAuthMode } from "../../lib/auth-mode"
 
+export const dynamic = "force-dynamic"
+
 export default function AppShellLayout({
   children,
 }: Readonly<{

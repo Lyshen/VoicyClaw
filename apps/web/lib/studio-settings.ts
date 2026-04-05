@@ -102,9 +102,13 @@ export function loadStudioSettings(
   }
 
   try {
-    const raw = window.localStorage.getItem(
-      getStudioSettingsStorageKey(settingsNamespace),
-    )
+    const storageKey = getStudioSettingsStorageKey(settingsNamespace)
+    let raw = window.localStorage.getItem(storageKey)
+
+    if (!raw && settingsNamespace) {
+      raw = window.localStorage.getItem(STUDIO_SETTINGS_STORAGE_KEY)
+    }
+
     if (!raw) {
       return defaults
     }

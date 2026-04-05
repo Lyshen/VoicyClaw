@@ -1,34 +1,75 @@
 import Link from "next/link"
 
-import type { AccountSummary } from "../lib/account-summary"
+import type { AccountSummaryState } from "../lib/account-summary"
 
-export function AccountPage({ summary }: { summary: AccountSummary | null }) {
-  if (!summary) {
+export function AccountPage({ state }: { state: AccountSummaryState }) {
+  if (state.kind === "auth-disabled") {
     return (
-      <div className="page-stack">
-        <section className="hero-card card">
-          <div>
-            <p className="hero-eyebrow">Account</p>
-            <h1 className="hero-title">Profile and billing live here</h1>
-            <p className="hero-copy">
-              Turn on Clerk sign-in to unlock the hosted account view for
-              profile, usage, and billing details.
-            </p>
-          </div>
-          <div className="status-row">
-            <Link
-              href="/studio"
-              className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:border-amber-300 hover:text-amber-700"
-            >
-              Open studio
-            </Link>
-          </div>
-        </section>
-      </div>
+      <EmptyAccountState
+        eyebrow="Account"
+        title="Hosted account is turned off for this deployment"
+        copy="This environment is running in local auth mode, so hosted profile, billing, and workspace setup are not active here."
+        actions={[
+          {
+            href: "/studio",
+            label: "Open studio",
+            tone: "secondary",
+          },
+          {
+            href: "/settings",
+            label: "Open settings",
+            tone: "secondary",
+          },
+        ]}
+      />
     )
   }
 
-  const { user, onboarding, billing } = summary
+  if (state.kind === "signed-out") {
+    return (
+      <EmptyAccountState
+        eyebrow="Account"
+        title="Sign in to load your hosted workspace"
+        copy="Your profile, starter workspace, metered usage, and billing summary all live behind the same hosted account. Sign in first, then come back here."
+        actions={[
+          {
+            href: "/sign-in",
+            label: "Log in",
+            tone: "primary",
+          },
+          {
+            href: "/sign-up",
+            label: "Create account",
+            tone: "secondary",
+          },
+        ]}
+      />
+    )
+  }
+
+  if (state.kind === "setup-pending") {
+    return (
+      <EmptyAccountState
+        eyebrow="Account"
+        title="We are still finishing your hosted workspace"
+        copy={`${state.user.displayName} is signed in, but the hosted starter workspace has not finished loading yet. Refresh in a moment, or open Studio and Settings while provisioning catches up.`}
+        actions={[
+          {
+            href: "/studio",
+            label: "Open studio",
+            tone: "primary",
+          },
+          {
+            href: "/settings",
+            label: "Open settings",
+            tone: "secondary",
+          },
+        ]}
+      />
+    )
+  }
+
+  const { user, onboarding, billing } = state.summary
 
   return (
     <div className="page-stack">
@@ -266,6 +307,49 @@ export function AccountPage({ summary }: { summary: AccountSummary | null }) {
           </section>
         </div>
       </div>
+    </div>
+  )
+}
+
+function EmptyAccountState({
+  eyebrow,
+  title,
+  copy,
+  actions,
+}: {
+  eyebrow: string
+  title: string
+  copy: string
+  actions: Array<{
+    href: string
+    label: string
+    tone: "primary" | "secondary"
+  }>
+}) {
+  return (
+    <div className="page-stack">
+      <section className="hero-card card">
+        <div>
+          <p className="hero-eyebrow">{eyebrow}</p>
+          <h1 className="hero-title">{title}</h1>
+          <p className="hero-copy">{copy}</p>
+        </div>
+        <div className="status-row">
+          {actions.map((action) => (
+            <Link
+              key={action.href}
+              href={action.href}
+              className={
+                action.tone === "primary"
+                  ? "rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
+                  : "rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:border-amber-300 hover:text-amber-700"
+              }
+            >
+              {action.label}
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

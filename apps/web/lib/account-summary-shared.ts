@@ -1,4 +1,4 @@
-import type { HostedOnboardingState } from "./hosted-onboarding"
+import type { HostedOnboardingState } from "./hosted-onboarding-shared"
 
 export interface WorkspaceBillingEvent {
   id: string
@@ -34,17 +34,19 @@ export interface WorkspaceBillingSummary {
 }
 
 export interface AccountSummary {
-  user: {
-    id: string
-    displayName: string
-    email: string | null
-    username: string | null
-  }
+  user: AccountUserSummary
   onboarding: HostedOnboardingState
   billing: WorkspaceBillingSummary
 }
 
-type ClerkUserLike = {
+export interface AccountUserSummary {
+  id: string
+  displayName: string
+  email: string | null
+  username: string | null
+}
+
+export type ClerkUserLike = {
   id: string
   fullName?: string | null
   username?: string | null
@@ -57,6 +59,25 @@ type ClerkUserLike = {
   }>
 }
 
+export function buildAccountUserSummary(
+  user: ClerkUserLike,
+): AccountUserSummary {
+  return {
+    id: user.id,
+    displayName:
+      user.fullName ||
+      user.username ||
+      user.firstName ||
+      user.primaryEmailAddress?.emailAddress ||
+      "VoicyClaw user",
+    email:
+      user.primaryEmailAddress?.emailAddress ||
+      user.emailAddresses?.[0]?.emailAddress ||
+      null,
+    username: user.username ?? null,
+  }
+}
+
 export function buildAccountSummary(input: {
   user: ClerkUserLike
   onboarding: HostedOnboardingState
@@ -65,20 +86,7 @@ export function buildAccountSummary(input: {
   const { user, onboarding, billing } = input
 
   return {
-    user: {
-      id: user.id,
-      displayName:
-        user.fullName ||
-        user.username ||
-        user.firstName ||
-        user.primaryEmailAddress?.emailAddress ||
-        "VoicyClaw user",
-      email:
-        user.primaryEmailAddress?.emailAddress ||
-        user.emailAddresses?.[0]?.emailAddress ||
-        null,
-      username: user.username ?? null,
-    },
+    user: buildAccountUserSummary(user),
     onboarding,
     billing,
   }
