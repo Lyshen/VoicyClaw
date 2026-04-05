@@ -205,6 +205,48 @@ describe("voicyclaw gateway adapter", () => {
       }),
     );
   });
+
+  it("waits idle when required config is missing instead of opening a socket", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    const account = resolveVoicyClawAccount(
+      {
+        channels: {
+          voicyclaw: {
+            token: "vc-token",
+          },
+        },
+      },
+      "default",
+    );
+    const runtime = createVoicyClawRuntime();
+    const setStatus = vi.fn();
+
+    const adapter = createVoicyClawGatewayAdapter(runtime, {} as never);
+    const { startAccount } = adapter;
+    if (!startAccount) {
+      throw new Error("startAccount is not available");
+    }
+
+    await startAccount({
+      account,
+      cfg: {},
+      abortSignal: controller.signal,
+      log: createLogger(),
+      setStatus,
+    } as never);
+
+    expect(connectMock).not.toHaveBeenCalled();
+    expect(setStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "default",
+        running: false,
+        connected: false,
+        lastError: "Missing VoicyClaw room / channel id.",
+      }),
+    );
+  });
 });
 
 type MockSocketClient = {

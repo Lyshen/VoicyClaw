@@ -55,16 +55,15 @@ describe("hosted onboarding shared helpers", () => {
     )
     expect(state.connectorConfigJson).toContain('"token": "vc_test"')
     expect(state.connectorConfigLine).toContain('"token":"vc_test"')
-    expect(state.connectorConfigJson).toContain('"workspaceId"')
+    expect(state.connectorConfigJson).toContain(
+      '"url": "https://voice.example.com"',
+    )
   })
 
-  it("builds the OpenClaw connector config snippet", () => {
+  it("builds the OpenClaw connector config snippet for custom servers", () => {
     const json = buildConnectorConfigJson({
       serverUrl: "https://voice.example.com",
-      workspaceId: "ws-demo",
       channelId: "sayhello-demo",
-      botId: "openclaw-demo",
-      displayName: "SayHello Connector",
       apiKey: "vc_demo",
     })
 
@@ -73,7 +72,7 @@ describe("hosted onboarding shared helpers", () => {
     expect(json).toContain('"token": "vc_demo"')
   })
 
-  it("builds the compact one-line connector config", () => {
+  it("builds the compact one-line connector config for custom servers", () => {
     const line = buildConnectorConfigLine({
       serverUrl: "https://voice.example.com",
       channelId: "sayhello-demo",
@@ -83,5 +82,23 @@ describe("hosted onboarding shared helpers", () => {
     expect(line).toContain('"url":"https://voice.example.com"')
     expect(line).toContain('"channelId":"sayhello-demo"')
     expect(line).toContain('"token":"vc_demo"')
+  })
+
+  it("omits the base url when the hosted default is already implied", () => {
+    const json = buildConnectorConfigJson({
+      serverUrl: "https://api.voicyclaw.com",
+      channelId: "sayhello-demo",
+      apiKey: "vc_demo",
+    })
+    const line = buildConnectorConfigLine({
+      serverUrl: "https://api.voicyclaw.com",
+      channelId: "sayhello-demo",
+      apiKey: "vc_demo",
+    })
+
+    expect(json).not.toContain('"url"')
+    expect(line).not.toContain('"url"')
+    expect(json).toContain('"channelId": "sayhello-demo"')
+    expect(line).toContain('"channelId":"sayhello-demo"')
   })
 })

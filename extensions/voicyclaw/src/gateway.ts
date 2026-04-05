@@ -1,6 +1,9 @@
 import type { ChannelGatewayAdapter, PluginRuntime } from "openclaw/plugin-sdk";
 import type { ResolvedVoicyClawAccount } from "./config.js";
-import { buildVoicyClawSocketUrl } from "./config.js";
+import {
+  buildVoicyClawMissingConfigMessage,
+  buildVoicyClawSocketUrl,
+} from "./config.js";
 import { dispatchVoicyClawTranscript } from "./dispatch.js";
 import type { VoicyClawRuntime } from "./runtime.js";
 import { VoicyClawSocketClient } from "./socket-client.js";
@@ -27,13 +30,18 @@ export function createVoicyClawGatewayAdapter(
       }
 
       if (!account.configured) {
+        const message = buildVoicyClawMissingConfigMessage(
+          account.missingConfigFields,
+        );
         runtime.markStopped(account);
         ctx.setStatus({
           accountId: account.accountId,
           running: false,
           connected: false,
           lastStopAt: Date.now(),
-          lastError: "missing VoicyClaw token",
+          lastError: message,
+          baseUrl: account.url,
+          audience: account.channelId || undefined,
         });
         await waitUntilAbortSignal(ctx.abortSignal);
         return;
