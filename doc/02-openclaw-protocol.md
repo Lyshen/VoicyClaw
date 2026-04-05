@@ -1,7 +1,7 @@
 # OpenClaw Channel Protocol
 
 > Version: 0.1 (Prototype)
-> Last Updated: 2026-03-20
+> Last Updated: 2026-04-05
 
 ---
 
@@ -32,8 +32,6 @@ Sent once, as the first message after the WebSocket connection opens.
 {
   "type": "HELLO",
   "api_key": "<platform-api-key>",
-  "bot_id": "<unique-bot-identifier>",
-  "channel_id": "<target-channel-id>",
   "protocol_version": "0.1"
 }
 ```
@@ -41,9 +39,9 @@ Sent once, as the first message after the WebSocket connection opens.
 | Field | Type | Description |
 |---|---|---|
 | `api_key` | string | Platform API key issued to this bot |
-| `bot_id` | string | Stable unique ID for this bot instance |
-| `channel_id` | string | Channel the bot wants to join |
 | `protocol_version` | string | Must be `"0.1"` |
+
+The API key fully determines the server-side binding. Bots do not choose `channel_id` or `bot_id` during connect.
 
 ### 2.3 WELCOME (Server → Bot)
 
@@ -52,11 +50,12 @@ Sent once, as the first message after the WebSocket connection opens.
   "type": "WELCOME",
   "session_id": "<uuid>",
   "channel_id": "<channel-id>",
-  "bot_id": "<bot-id>"
+  "bot_id": "<bot-id>",
+  "bot_name": "<display-name>"
 }
 ```
 
-`session_id` identifies this connection lifetime. The bot must include it in all subsequent messages for correlation.
+`session_id` identifies this connection lifetime. The bot must include it in all subsequent messages for correlation. `channel_id`, `bot_id`, and optional `bot_name` are the server-authoritative binding metadata for this session.
 
 ### 2.4 ERROR (Server → Bot)
 
@@ -73,15 +72,14 @@ Sent on auth failure or invalid HELLO. Server closes the connection immediately 
 | Code | Meaning |
 |---|---|
 | `AUTH_FAILED` | API key invalid or expired |
-| `CHANNEL_NOT_FOUND` | Channel does not exist |
-| `BOT_ALREADY_CONNECTED` | Same `bot_id` already active in this channel |
+| `BOT_ALREADY_CONNECTED` | The server-bound bot session is already active |
 | `PROTOCOL_VERSION_UNSUPPORTED` | Server does not support requested version |
 
 ---
 
 ## 3. Session
 
-A **session** represents one active WebSocket connection lifetime between a bot and the server. It is scoped to one `(bot_id, channel_id)` pair.
+A **session** represents one active WebSocket connection lifetime between a bot and the server. It is scoped to one server-bound `(bot_id, channel_id)` pair.
 
 - Sessions are created on successful `WELCOME`
 - Sessions end when the WebSocket closes (clean or error)

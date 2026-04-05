@@ -13,13 +13,13 @@ export type VoicyClawWelcomeMessage = {
   session_id: string;
   channel_id: string;
   bot_id: string;
+  bot_name?: string;
 };
 
 export type VoicyClawErrorMessage = {
   type: "ERROR";
   code:
     | "AUTH_FAILED"
-    | "CHANNEL_NOT_FOUND"
     | "BOT_ALREADY_CONNECTED"
     | "PROTOCOL_VERSION_UNSUPPORTED";
   message: string;
@@ -132,6 +132,7 @@ export function parseVoicyClawServerMessage(
             session_id: value.session_id,
             channel_id: value.channel_id,
             bot_id: value.bot_id,
+            bot_name: isString(value.bot_name) ? value.bot_name : undefined,
           }
         : null;
 

@@ -1,12 +1,9 @@
 import { PROTOCOL_VERSION } from "@voicyclaw/protocol"
 import type { FastifyInstance } from "fastify"
+
 import { getWorkspaceBillingSummary } from "./domains/billing/service"
-import { upsertBotRegistrationRecord } from "./domains/bot-registrations/service"
 import { bootstrapHostedResources } from "./domains/hosted-bootstrap/service"
-import {
-  authorizePlatformKeyForChannel,
-  issuePlatformKeyForChannel,
-} from "./domains/platform-keys/service"
+import { issuePlatformKeyForChannel } from "./domains/platform-keys/service"
 import type { RealtimeGateway } from "./realtime-gateway"
 import {
   DEFAULT_CHANNEL_ID,
@@ -110,60 +107,6 @@ export function registerApiRoutes(
       channelId,
       channelName: titleFromChannelId(channelId),
       wsUrl: `${toWsUrl(baseUrl)}/bot/connect`,
-      protocolVersion: PROTOCOL_VERSION,
-    }
-  })
-
-  server.post("/api/bot/register", async (request, reply) => {
-    const body =
-      (request.body as {
-        apiKey?: string
-        botId?: string
-        botName?: string
-        channelId?: string
-      } | null) ?? {}
-
-    const apiKey = body.apiKey?.trim()
-    const botId = sanitizeId(body.botId, "local-bot")
-    const channelId = sanitizeId(body.channelId, DEFAULT_CHANNEL_ID)
-
-    if (!apiKey) {
-      reply.code(400)
-      return {
-        ok: false,
-        message: "apiKey is required",
-      }
-    }
-
-    const authorization = await authorizePlatformKeyForChannel(
-      apiKey,
-      channelId,
-    )
-
-    if (!authorization.ok) {
-      reply.code(401)
-      return {
-        ok: false,
-        message: "API key is invalid for this channel",
-      }
-    }
-
-    const botName = body.botName?.trim() || titleFromChannelId(botId)
-    await ensureChannelRecord(channelId)
-
-    await upsertBotRegistrationRecord({
-      botId,
-      botName,
-      channelId,
-      platformKeyId: authorization.key.id,
-    })
-
-    return {
-      ok: true,
-      botId,
-      botName,
-      channelId,
-      wsUrl: `${toWsUrl(getRequestBaseUrl(request))}/bot/connect`,
       protocolVersion: PROTOCOL_VERSION,
     }
   })

@@ -269,10 +269,10 @@ The key insight: **the bot should configure itself with minimal human steps**.
 ```
 1. User has a running ClawBot instance (OpenClaw-compatible)
 2. User tells the bot (via voice or chat): 
-   "Use VoicyClaw API key: <key>, channel: <channel-name>"
-3. ClawBot parses the intent, calls VoicyClaw /api/bot/register
-4. Platform creates the channel if it doesn't exist
-5. ClawBot receives channel config (WS endpoint, message schema)
+   "Use VoicyClaw API key: <key>"
+3. ClawBot parses the intent, stores the VoicyClaw API key, and discovers the VoicyClaw bot WebSocket endpoint
+4. ClawBot opens `/bot/connect` and sends a token-only `HELLO`
+5. VoicyClaw resolves the server-side binding and returns the active `channel_id` / `bot_id`
 6. ClawBot connects and is immediately active
 ```
 

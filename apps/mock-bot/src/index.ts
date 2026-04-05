@@ -8,7 +8,6 @@ import WebSocket from "ws"
 const demoBotConfig = resolveDemoBotConfig()
 const serverUrl = demoBotConfig.serverUrl
 const channelId = demoBotConfig.channelId
-const botId = demoBotConfig.botId
 const botName = demoBotConfig.botName
 
 function clipTextForLog(text: string, maxLength = 120) {
@@ -23,9 +22,8 @@ function clipTextForLog(text: string, maxLength = 120) {
 async function main() {
   while (true) {
     try {
-      const apiKey = await getApiKey()
-      const registration = await registerBot(apiKey)
-      await connectBot(apiKey, registration.wsUrl)
+      const connectionConfig = await getBotConnectionConfig()
+      await connectBot(connectionConfig.apiKey, connectionConfig.wsUrl)
     } catch (error) {
       if (isConnectionRefused(error)) {
         console.log("[mock-bot] waiting for the server to come online...")
@@ -41,9 +39,15 @@ async function main() {
   }
 }
 
-async function getApiKey() {
+async function getBotConnectionConfig() {
   if (demoBotConfig.botApiKey) {
-    return demoBotConfig.botApiKey
+    return {
+      apiKey: demoBotConfig.botApiKey,
+      wsUrl: new URL(
+        "/bot/connect",
+        serverUrl.replace(/^http/i, "ws"),
+      ).toString(),
+    }
   }
 
   const response = await fetch(new URL("/api/keys", serverUrl), {
@@ -53,7 +57,7 @@ async function getApiKey() {
     },
     body: JSON.stringify({
       channelId,
-      label: `${botName} bootstrap`,
+      label: botName,
     }),
   })
 
@@ -61,38 +65,17 @@ async function getApiKey() {
     throw new Error(`Unable to issue platform key: ${response.status}`)
   }
 
-  const payload = (await response.json()) as { apiKey: string }
-  return payload.apiKey
-}
-
-async function registerBot(apiKey: string) {
-  const response = await fetch(new URL("/api/bot/register", serverUrl), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      apiKey,
-      botId,
-      botName,
-      channelId,
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Unable to register bot: ${response.status}`)
-  }
-
   return (await response.json()) as {
+    apiKey: string
     wsUrl: string
-    channelId: string
-    botId: string
   }
 }
 
 async function connectBot(apiKey: string, wsUrl: string) {
   const socket = new WebSocket(wsUrl)
   let sessionId = ""
+  let activeBotName = botName
+  let activeChannelId = channelId
 
   return new Promise<void>((resolve, reject) => {
     socket.on("open", () => {
@@ -100,8 +83,6 @@ async function connectBot(apiKey: string, wsUrl: string) {
         JSON.stringify({
           type: "HELLO",
           api_key: apiKey,
-          bot_id: botId,
-          channel_id: channelId,
           protocol_version: PROTOCOL_VERSION,
         }),
       )
@@ -123,6 +104,8 @@ async function connectBot(apiKey: string, wsUrl: string) {
         utterance_id?: string
         text?: string
         is_final?: boolean
+        channel_id?: string
+        bot_name?: string
         code?: string
         message?: string
       }
@@ -130,7 +113,11 @@ async function connectBot(apiKey: string, wsUrl: string) {
       switch (message.type) {
         case "WELCOME": {
           sessionId = message.session_id ?? ""
-          console.log(`[mock-bot] connected as ${botName} in ${channelId}`)
+          activeBotName = message.bot_name?.trim() || activeBotName
+          activeChannelId = message.channel_id?.trim() || activeChannelId
+          console.log(
+            `[mock-bot] connected as ${activeBotName} in ${activeChannelId}`,
+          )
           break
         }
         case "ERROR": {
@@ -144,6 +131,7 @@ async function connectBot(apiKey: string, wsUrl: string) {
             `[mock-bot] STT_RESULT final ${message.utterance_id}: ${clipTextForLog(message.text ?? "")}`,
           )
           await streamReply(socket, {
+            botName: activeBotName,
             sessionId,
             utteranceId: message.utterance_id,
             userText: message.text ?? "",
@@ -166,38 +154,39 @@ async function connectBot(apiKey: string, wsUrl: string) {
   })
 }
 
-function composeReply(text: string) {
+function composeReply(activeBotName: string, text: string) {
   const input = text.trim()
 
   if (!input) {
-    return `${botName} is online, but this utterance arrived without a transcript.`
+    return `${activeBotName} is online, but this utterance arrived without a transcript.`
   }
 
   if (/weather|temperature|forecast|天气|温度/i.test(input)) {
-    return `${botName} is a local prototype bot, so I do not fetch live weather yet, but the full mic-to-bot-to-audio loop is up and responding.`
+    return `${activeBotName} is a local prototype bot, so I do not fetch live weather yet, but the full mic-to-bot-to-audio loop is up and responding.`
   }
 
   if (/hello|hi|你好|在吗/i.test(input)) {
-    return `Hello from ${botName}. I am running locally through the OpenClaw websocket channel and streaming my answer back in chunks.`
+    return `Hello from ${activeBotName}. I am running locally through the OpenClaw websocket channel and streaming my answer back in chunks.`
   }
 
   if (/design|prototype|原型|架构|流程/i.test(input)) {
     return `This prototype proves the README architecture: browser capture, websocket relay, OpenClaw bot streaming, and adapter-based audio playback all work together.`
   }
 
-  return `${botName} heard: ${input}. The server forwarded your transcript over OpenClaw, and I am answering from a real local bot session.`
+  return `${activeBotName} heard: ${input}. The server forwarded your transcript over OpenClaw, and I am answering from a real local bot session.`
 }
 
 async function streamReply(
   socket: WebSocket,
   options: {
+    botName: string
     sessionId: string
     utteranceId: string
     userText: string
   },
 ) {
-  const reply = composeReply(options.userText)
-  const previews = buildPreviewFrames(reply)
+  const reply = composeReply(options.botName, options.userText)
+  const previews = buildPreviewFrames(options.botName, reply)
   const parts = splitReply(reply)
 
   for (const [index, preview] of previews.entries()) {
@@ -233,10 +222,10 @@ async function streamReply(
   }
 }
 
-function buildPreviewFrames(reply: string) {
+function buildPreviewFrames(activeBotName: string, reply: string) {
   const words = reply.split(/\s+/).filter(Boolean)
   if (words.length === 0) {
-    return [`${botName} is thinking...`]
+    return [`${activeBotName} is thinking...`]
   }
 
   const checkpoints = Array.from(

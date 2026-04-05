@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
+import { PROTOCOL_VERSION } from "../packages/protocol/src/openclaw"
 import { startServerRuntime } from "./support/demo-runtime"
 
 describe.sequential("server hosted bootstrap", () => {
@@ -115,18 +116,26 @@ describe.sequential("server hosted bootstrap", () => {
     expect(standardKey.apiKey).toMatch(/^vc_/)
     expect(standardKey.apiKey.startsWith("vcs_")).toBe(false)
 
-    const registration = await runtime.registerBot({
-      apiKey: first.starterKey?.value ?? "",
-      botId: "starter-bot",
-      botName: "Starter Bot",
-      channelId: first.project.channelId,
-    })
+    const bot = await runtime.connectBotRaw()
+    try {
+      bot.sendJson({
+        type: "HELLO",
+        api_key: first.starterKey?.value ?? "",
+        protocol_version: PROTOCOL_VERSION,
+      })
 
-    expect(registration).toMatchObject({
-      ok: true,
-      botId: "starter-bot",
-      botName: "Starter Bot",
-      channelId: first.project.channelId,
-    })
+      const welcome = await bot.waitForMessage(
+        (message) => message.type === "WELCOME",
+      )
+
+      expect(welcome).toMatchObject({
+        type: "WELCOME",
+        channel_id: first.project.channelId,
+        bot_id: first.project.botId,
+        bot_name: first.project.displayName,
+      })
+    } finally {
+      await bot.close()
+    }
   })
 })

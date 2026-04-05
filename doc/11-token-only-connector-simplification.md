@@ -161,13 +161,11 @@ Today the plugin effectively connects with:
 {
   "type": "HELLO",
   "api_key": "vcs_xxx",
-  "bot_id": "openclaw-voicyclaw",
-  "channel_id": "sayhello-demo",
   "protocol_version": "0.1"
 }
 ```
 
-That makes the plugin responsible for selecting the room.
+That makes the connector token-only at connect time, with the room and bot binding resolved by the server.
 
 ### 7.2 Proposed connector-first handshake
 

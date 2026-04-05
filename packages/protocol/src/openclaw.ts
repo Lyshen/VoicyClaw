@@ -7,8 +7,6 @@ export type OpenClawProtocolVersion = typeof PROTOCOL_VERSION
 export interface HelloMessage {
   type: "HELLO"
   api_key: string
-  bot_id?: string
-  channel_id?: string
   protocol_version: OpenClawProtocolVersion
 }
 
@@ -17,15 +15,12 @@ export interface WelcomeMessage {
   session_id: string
   channel_id: string
   bot_id: string
+  bot_name?: string
 }
 
 export interface ErrorMessage {
   type: "ERROR"
-  code:
-    | "AUTH_FAILED"
-    | "CHANNEL_NOT_FOUND"
-    | "BOT_ALREADY_CONNECTED"
-    | "PROTOCOL_VERSION_UNSUPPORTED"
+  code: "AUTH_FAILED" | "BOT_ALREADY_CONNECTED" | "PROTOCOL_VERSION_UNSUPPORTED"
   message: string
 }
 
