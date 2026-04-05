@@ -3,9 +3,9 @@ import {
   type HostedOnboardingState,
 } from "./hosted-onboarding"
 import {
-  resolvePublicServerUrl,
   type PublicServerUrlEnv,
   type PublicServerUrlRequest,
+  resolvePublicServerUrl,
 } from "./public-server-url"
 import type { StudioSettings } from "./studio-settings"
 

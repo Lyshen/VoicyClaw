@@ -60,11 +60,7 @@ export function ClerkLandingCallToActionControls() {
   )
 }
 
-export function ClerkAppShellAccountLink({
-  pathname,
-}: {
-  pathname: string
-}) {
+export function ClerkAppShellAccountLink({ pathname }: { pathname: string }) {
   return (
     <ClerkAuthGate
       signedIn={
@@ -98,7 +94,7 @@ function ClerkAuthGate({
     return null
   }
 
-  return isSignedIn ? <>{signedIn}</> : <>{signedOut}</>
+  return isSignedIn ? signedIn : signedOut
 }
 
 function AccountMenu() {
@@ -117,13 +113,7 @@ function AccountMenu() {
   )
 }
 
-function PrimaryAuthLink({
-  href,
-  label,
-}: {
-  href: string
-  label: string
-}) {
+function PrimaryAuthLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
@@ -135,13 +125,7 @@ function PrimaryAuthLink({
   )
 }
 
-function HeroPrimaryLink({
-  href,
-  label,
-}: {
-  href: string
-  label: string
-}) {
+function HeroPrimaryLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
@@ -153,13 +137,7 @@ function HeroPrimaryLink({
   )
 }
 
-function HeroSecondaryLink({
-  href,
-  label,
-}: {
-  href: string
-  label: string
-}) {
+function HeroSecondaryLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}

@@ -2,7 +2,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server"
 import { headers } from "next/headers"
 import { cache } from "react"
 
-import { getResolvedAuthMode, type AuthMode } from "./auth-mode"
+import { type AuthMode, getResolvedAuthMode } from "./auth-mode"
 import { resolvePublicServerUrl } from "./public-server-url"
 
 export type RequestAuthUser = {

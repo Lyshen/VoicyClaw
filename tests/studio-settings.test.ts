@@ -213,13 +213,13 @@ describe("studio settings helpers", () => {
     )
     globalThis.window = { localStorage: storage } as Window & typeof globalThis
 
-    expect(loadStudioSettings(undefined, "ws-demo.sayhello-demo")).toMatchObject(
-      {
-        ttsProvider: "google-batched-tts",
-        asrProvider: "demo",
-        channelId: "hosted-welcome-room",
-      },
-    )
+    expect(
+      loadStudioSettings(undefined, "ws-demo.sayhello-demo"),
+    ).toMatchObject({
+      ttsProvider: "google-batched-tts",
+      asrProvider: "demo",
+      channelId: "hosted-welcome-room",
+    })
   })
 })
 
