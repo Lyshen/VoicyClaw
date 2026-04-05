@@ -1,7 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 
-import { getResolvedAuthMode } from "./lib/auth-mode"
+import { getResolvedAuthConfig } from "./lib/auth-mode"
 
 const isProtectedRoute = createRouteMatcher([
   "/studio(.*)",
@@ -10,15 +10,23 @@ const isProtectedRoute = createRouteMatcher([
   "/console(.*)",
 ])
 
+const authConfig = getResolvedAuthConfig()
+
 const proxy =
-  getResolvedAuthMode() === "clerk"
-    ? clerkMiddleware(async (auth, req) => {
-        if (isProtectedRoute(req)) {
-          await auth.protect({
-            unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
-          })
-        }
-      })
+  authConfig.resolvedMode === "clerk"
+    ? clerkMiddleware(
+        async (auth, req) => {
+          if (isProtectedRoute(req)) {
+            await auth.protect({
+              unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
+            })
+          }
+        },
+        {
+          publishableKey: authConfig.clerkPublishableKey ?? undefined,
+          secretKey: authConfig.clerkSecretKey ?? undefined,
+        },
+      )
     : () => NextResponse.next()
 
 export default proxy

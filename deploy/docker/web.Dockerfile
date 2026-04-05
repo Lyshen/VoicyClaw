@@ -21,6 +21,7 @@ COPY apps/web apps/web
 COPY packages packages
 
 RUN pnpm build:packages
+RUN /bin/sh -lc 'mkdir -p /tmp/runtime-deps && cp -R node_modules/.pnpm/yaml@*/node_modules/yaml /tmp/runtime-deps/yaml'
 RUN pnpm --filter @voicyclaw/web build
 
 FROM node:25.5.0-bookworm-slim AS runner
@@ -34,7 +35,10 @@ WORKDIR /app
 COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /app/apps/web/public ./apps/web/public
+COPY --from=build /app/packages/config/dist ./packages/config/dist
+COPY --from=build /tmp/runtime-deps/yaml ./node_modules/yaml
 COPY scripts/start-web-standalone.mjs ./scripts/start-web-standalone.mjs
+COPY scripts/runtime-env.mjs ./scripts/runtime-env.mjs
 
 EXPOSE 3000
 

@@ -1,5 +1,13 @@
+import { mkdtempSync, writeFileSync } from "node:fs"
+import os from "node:os"
+import path from "node:path"
+
 import { describe, expect, it } from "vitest"
 
+import {
+  getResolvedAuthConfig,
+  getResolvedAuthMode,
+} from "../apps/web/lib/auth-mode"
 import {
   getWebRuntimePayload,
   resolvePublicServerUrl,
@@ -111,6 +119,46 @@ describe("runtime config", () => {
         VOICYCLAW_SERVER_PORT: "3101",
       }),
     ).toBe("http://127.0.0.1:3101")
+  })
+
+  it("hydrates standalone web auth env from the unified yaml config", async () => {
+    const cwd = mkdtempSync(path.join(os.tmpdir(), "voicyclaw-web-runtime-"))
+    const filePath = path.join(cwd, "voicyclaw.local.yaml")
+
+    writeFileSync(
+      filePath,
+      [
+        "App:",
+        "  server_port: 6301",
+        "  web_port: 6300",
+        "  public_server_url: https://api.voice.example.com",
+        "",
+        "Auth:",
+        "  mode: clerk",
+        "  clerk_publishable_key: pk_live_example",
+        "  clerk_secret_key: sk_live_example",
+      ].join("\n"),
+    )
+
+    const { getHydratedRuntimeEnvironment } = await import(
+      "../scripts/runtime-env.mjs"
+    )
+    const env = getHydratedRuntimeEnvironment({
+      VOICYCLAW_CONFIG: filePath,
+    })
+
+    expect(env.VOICYCLAW_WEB_PORT).toBe("6300")
+    expect(env.VOICYCLAW_PUBLIC_SERVER_URL).toBe(
+      "https://api.voice.example.com",
+    )
+    expect(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).toBe("pk_live_example")
+    expect(getResolvedAuthMode(env)).toBe("clerk")
+    expect(getResolvedAuthConfig(env)).toEqual({
+      requestedMode: "clerk",
+      resolvedMode: "clerk",
+      clerkPublishableKey: "pk_live_example",
+      clerkSecretKey: "sk_live_example",
+    })
   })
 })
 
