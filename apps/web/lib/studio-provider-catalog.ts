@@ -38,19 +38,19 @@ export type ProviderGuide = {
 export const CONVERSATION_BACKEND_OPTIONS: ConversationBackendOption[] = [
   {
     id: "local-bot",
-    label: "Local demo bot",
+    label: "VoicyClaw Inbound Bot",
     summary:
-      "Uses the current VoicyClaw inbound bot socket and the bundled mock ClawBot flow.",
+      "Delivers turns to bots connected through VoicyClaw's inbound bot socket, including starter workspace bots and token-only installs.",
     runtimeHint:
-      "Best for day-to-day demo work when you want `pnpm dev` to keep everything self-contained.",
+      "Default hosted path for starter workspaces and bots that connect with a VoicyClaw platform key.",
   },
   {
     id: "openclaw-gateway",
     label: "OpenClaw Gateway",
     summary:
-      "VoicyClaw sends final transcript turns to a real OpenClaw Gateway over its WebSocket chat API.",
+      "VoicyClaw sends final transcript turns to an OpenClaw Gateway over its WebSocket chat API.",
     runtimeHint:
-      "Use this to test a real local OpenClaw install with a Gateway URL and token.",
+      "Use this when your agent already lives behind a Gateway URL and token.",
   },
 ]
 
@@ -58,20 +58,20 @@ export const ASR_PROVIDER_OPTIONS: ProviderOption<AsrProviderId>[] = [
   {
     id: "browser",
     mode: "client",
-    label: "Browser SpeechRecognition",
+    label: "Browser Speech Input",
     summary:
       "Fastest zero-setup ASR path. Uses the browser or OS speech stack directly.",
     runtimeHint:
-      "Best for the current English-first demo when Chrome exposes Web Speech.",
+      "Best for quick iteration when your browser exposes Web Speech.",
   },
   {
     id: "demo",
     mode: "server",
-    label: "Demo Server ASR",
+    label: "Built-in Server ASR",
     summary:
-      "Routes microphone audio through the VoicyClaw server and keeps a browser transcript assist while true server ASR is still being wired.",
+      "Routes microphone audio through the VoicyClaw server and keeps a browser transcript assist while vendor ASR adapters are still being wired.",
     runtimeHint:
-      "Use this when you want to exercise the server-owned path without waiting for a real vendor adapter.",
+      "Use this when you want to exercise the server-owned input path without waiting for a vendor adapter.",
   },
 ]
 
@@ -79,20 +79,20 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
   {
     id: "browser",
     mode: "client",
-    label: "Browser SpeechSynthesis",
+    label: "Browser Voice Output",
     summary:
-      "Speaks the bot reply locally in the browser for the most human-readable prototype output.",
+      "Speaks the bot reply in the browser for the fastest zero-setup voice output.",
     runtimeHint:
       "Recommended when you want the answer read aloud immediately without server audio playback.",
   },
   {
     id: "demo",
     mode: "server",
-    label: "Demo Server TTS",
+    label: "Built-in Server TTS",
     summary:
-      "Streams demo PCM frames from the server so the OpenClaw media pipeline stays visible end to end.",
+      "Streams built-in PCM frames from the server so the VoicyClaw media pipeline stays visible end to end.",
     runtimeHint:
-      "Best when you want to verify the server-side audio path instead of browser speech synthesis.",
+      "Best when you want to verify the server-side audio path instead of browser voice output.",
   },
   {
     id: "azure-tts",
@@ -155,7 +155,7 @@ export const TTS_PROVIDER_OPTIONS: ProviderOption<TtsProviderId>[] = [
     summary:
       "Streams bidirectional Volcengine speech audio from the VoicyClaw server for CN-market low-latency playback.",
     runtimeHint:
-      "Requires server-side Volcengine credentials loaded from config/voicyclaw.local.yaml or VOICYCLAW_VOLCENGINE_* environment variables.",
+      "Requires server-side Volcengine credentials from server config or VOICYCLAW_VOLCENGINE_* environment variables.",
   },
 ]
 
@@ -201,7 +201,7 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
     label: "OpenAI TTS",
     status: "planned",
     summary:
-      "Alternative hosted voice path once we broaden beyond browser, demo, Azure, and Google.",
+      "Alternative hosted voice path once we broaden beyond browser, built-in server voice, Azure, and Google.",
     keyHint: "Will require an OpenAI API key once that adapter is added.",
   },
   {
@@ -211,7 +211,7 @@ export const TTS_PROVIDER_GUIDE: ProviderGuide[] = [
     summary:
       "Available now as a server provider when the backend is configured with Volcengine credentials.",
     keyHint:
-      "Use config/voicyclaw.local.yaml or set VOICYCLAW_VOLCENGINE_* env vars; env vars override YAML.",
+      "Use server config or set VOICYCLAW_VOLCENGINE_* env vars; env vars override YAML.",
   },
 ]
 

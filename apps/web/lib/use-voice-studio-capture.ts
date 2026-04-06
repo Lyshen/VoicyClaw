@@ -53,11 +53,11 @@ function getCaptureBlockReason({
   "asrProviderId" | "browserAsrEnabled" | "speechSupported"
 >) {
   if (browserAsrEnabled && !speechSupported) {
-    return "Browser SpeechRecognition is unavailable here. Switch ASR to the server demo path or use the text composer."
+    return "Browser speech input is unavailable here. Switch ASR to the built-in server path or use the text composer."
   }
 
   if (asrProviderId === "demo" && !speechSupported) {
-    return "Demo Server ASR still relies on browser transcript assist in this prototype. Use the text composer or switch back to Browser SpeechRecognition on this device."
+    return "Built-in server ASR still relies on browser transcript assist today. Use the text composer or switch back to browser speech input on this device."
   }
 
   return null
@@ -133,7 +133,7 @@ export function useVoiceStudioCapture({
       !demoAssistNoticeRef.current
     ) {
       appendSystemMessage(
-        "Demo Server ASR is active. Until a real server ASR adapter lands, the browser transcript assist stays on so this path remains runnable.",
+        "Built-in server ASR is active. Until a vendor ASR adapter lands, the browser transcript assist stays on so this path remains runnable.",
       )
       demoAssistNoticeRef.current = true
     }

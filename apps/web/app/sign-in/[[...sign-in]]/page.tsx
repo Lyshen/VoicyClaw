@@ -1,10 +1,10 @@
 import { SignIn } from "@clerk/nextjs"
 import { notFound } from "next/navigation"
 
-import { getResolvedAuthMode } from "../../../lib/auth-mode"
+import { getResolvedAuthConfig } from "../../../lib/auth-mode"
 
 export default function SignInPage() {
-  if (getResolvedAuthMode() !== "clerk") {
+  if (!getResolvedAuthConfig().isEnabled) {
     notFound()
   }
 

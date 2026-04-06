@@ -1,7 +1,4 @@
-import {
-  getHostedOnboardingState,
-  type HostedOnboardingState,
-} from "./hosted-onboarding"
+import type { HostedOnboardingState } from "./hosted-onboarding-shared"
 import {
   type PublicServerUrlEnv,
   type PublicServerUrlRequest,
@@ -21,6 +18,24 @@ type WebRuntimeOptions = {
   ) => Promise<HostedOnboardingState | null>
 }
 
+export function buildWebRuntimePayload({
+  serverUrl,
+  onboarding,
+}: {
+  serverUrl: string
+  onboarding: HostedOnboardingState | null
+}): WebRuntimePayload {
+  return {
+    initialSettings: {
+      serverUrl,
+      channelId: onboarding?.project.channelId,
+      conversationBackend: onboarding ? ("local-bot" as const) : undefined,
+    },
+    settingsNamespace: onboarding?.settingsNamespace,
+    onboarding,
+  }
+}
+
 export function getWebRuntimePayload(
   request: PublicServerUrlRequest,
   env: PublicServerUrlEnv = process.env,
@@ -36,18 +51,13 @@ async function resolveWebRuntimePayload(
 ) {
   const serverUrl = resolvePublicServerUrl(request, env)
   const onboardingResolver =
-    options.getHostedOnboardingState ?? getHostedOnboardingState
+    options.getHostedOnboardingState ?? (async () => null)
   const onboarding = await onboardingResolver(serverUrl)
 
-  return {
-    initialSettings: {
-      serverUrl,
-      channelId: onboarding?.project.channelId,
-      conversationBackend: onboarding ? ("local-bot" as const) : undefined,
-    },
-    settingsNamespace: onboarding?.settingsNamespace,
+  return buildWebRuntimePayload({
+    serverUrl,
     onboarding,
-  }
+  })
 }
 
 export { resolvePublicServerUrl } from "./public-server-url"

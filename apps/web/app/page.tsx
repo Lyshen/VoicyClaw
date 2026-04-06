@@ -1,8 +1,12 @@
 import { LandingPage } from "../components/landing-page"
-import { getResolvedAuthMode } from "../lib/auth-mode"
+import { getWebRequestContext } from "../lib/web-request-context"
 
 export const dynamic = "force-dynamic"
 
-export default function Page() {
-  return <LandingPage authMode={getResolvedAuthMode()} />
+export default async function Page() {
+  const {
+    auth: { isEnabled },
+  } = await getWebRequestContext()
+
+  return <LandingPage authEnabled={isEnabled} />
 }

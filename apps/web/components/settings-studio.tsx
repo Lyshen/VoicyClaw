@@ -16,10 +16,16 @@ import {
 } from "../lib/studio-settings"
 import { useSettingsStudioState } from "../lib/use-settings-studio-state"
 import { useStudioSettings } from "../lib/use-studio-settings"
+import type { WebRuntimePayload } from "../lib/web-runtime"
 import { SettingsStudioView } from "./settings-studio-view"
 
-export function SettingsStudio() {
-  const { settings, ready, updateSetting, onboarding } = useStudioSettings()
+export function SettingsStudio({
+  initialRuntime,
+}: {
+  initialRuntime: WebRuntimePayload
+}) {
+  const { settings, updateSetting, onboarding } =
+    useStudioSettings(initialRuntime)
   const activeAsrProvider = getAsrProviderOption(settings.asrProvider)
   const activeTtsProvider = getTtsProviderOption(settings.ttsProvider)
   const activeBackend = getConversationBackendOption(
@@ -33,7 +39,6 @@ export function SettingsStudio() {
     keyMessage,
     issueKey,
   } = useSettingsStudioState({
-    ready,
     settings,
     onboarding,
   })

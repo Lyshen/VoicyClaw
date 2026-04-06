@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 
-import type { AuthMode } from "../lib/auth-mode"
 import {
   ClerkAppShellAuthControls,
   ClerkLandingCallToActionControls,
@@ -10,8 +9,12 @@ import {
   ClerkLandingNavbarAuthControls,
 } from "./auth-controls-clerk"
 
-export function AppShellAuthControls({ authMode }: { authMode: AuthMode }) {
-  if (authMode !== "clerk") {
+export function AppShellAuthControls({
+  authEnabled,
+}: {
+  authEnabled: boolean
+}) {
+  if (!authEnabled) {
     return null
   }
 
@@ -19,18 +22,18 @@ export function AppShellAuthControls({ authMode }: { authMode: AuthMode }) {
 }
 
 export function LandingNavbarAuthControls({
-  authMode,
+  authEnabled,
 }: {
-  authMode: AuthMode
+  authEnabled: boolean
 }) {
-  if (authMode !== "clerk") {
+  if (!authEnabled) {
     return (
       <Link
         href="/studio"
         prefetch={false}
         className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:from-amber-600 hover:to-orange-600 active:scale-95"
       >
-        Try the demo
+        Open studio
       </Link>
     )
   }
@@ -38,8 +41,12 @@ export function LandingNavbarAuthControls({
   return <ClerkLandingNavbarAuthControls />
 }
 
-export function LandingHeroAuthControls({ authMode }: { authMode: AuthMode }) {
-  if (authMode === "clerk") {
+export function LandingHeroAuthControls({
+  authEnabled,
+}: {
+  authEnabled: boolean
+}) {
+  if (authEnabled) {
     return <ClerkLandingHeroAuthControls />
   }
 
@@ -65,11 +72,11 @@ export function LandingHeroAuthControls({ authMode }: { authMode: AuthMode }) {
 }
 
 export function LandingCallToActionControls({
-  authMode,
+  authEnabled,
 }: {
-  authMode: AuthMode
+  authEnabled: boolean
 }) {
-  if (authMode === "clerk") {
+  if (authEnabled) {
     return <ClerkLandingCallToActionControls />
   }
 

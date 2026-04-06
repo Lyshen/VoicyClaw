@@ -153,6 +153,7 @@ export function SettingsStudioView<AsrId extends string, TtsId extends string>({
         />
 
         <ProviderConfigurator
+          groupId="asr"
           title="ASR path"
           kicker="Input pipeline"
           activeProviderId={activeAsrProvider.id}
@@ -165,6 +166,7 @@ export function SettingsStudioView<AsrId extends string, TtsId extends string>({
         />
 
         <ProviderConfigurator
+          groupId="tts"
           title="TTS path"
           kicker="Output pipeline"
           activeProviderId={activeTtsProvider.id}
@@ -349,7 +351,7 @@ function ConnectionSettingsCard({
           <input
             value={channelId}
             onChange={(event) => onUpdateChannelId(event.target.value)}
-            placeholder="demo-room"
+            placeholder="voice-room"
           />
         </label>
         <label className="field">
@@ -414,20 +416,21 @@ function GatewaySettingsCard({
             placeholder="openclaw gateway token"
           />
           <small className="field-note">
-            Stored in browser local storage for this prototype and sent to the
-            VoicyClaw server only when the runtime connects.
+            Stored in browser storage for this setup and sent to the VoicyClaw
+            server only when the runtime connects.
           </small>
         </label>
       </div>
       <p className="support-copy">
-        For a first local test, run OpenClaw on the same machine and use a local
-        Gateway WebSocket plus a manually set Gateway token.
+        For a first Gateway test, point this at an OpenClaw Gateway WebSocket
+        and set the matching Gateway token.
       </p>
     </section>
   )
 }
 
 type ProviderConfiguratorProps<T extends string> = {
+  groupId: string
   title: string
   kicker: string
   activeProviderId: T
@@ -440,6 +443,7 @@ type ProviderConfiguratorProps<T extends string> = {
 }
 
 function ProviderConfigurator<T extends string>({
+  groupId,
   title,
   kicker,
   activeProviderId,
@@ -472,6 +476,7 @@ function ProviderConfigurator<T extends string>({
           <button
             key={option.id}
             type="button"
+            data-testid={`${groupId}-provider-${option.id}`}
             className={`provider-option ${activeProviderId === option.id ? "active" : ""}`}
             onClick={() => onSelect(option.id)}
           >
@@ -529,9 +534,7 @@ function CredentialWiringCard() {
       </div>
       <p className="support-copy">
         Server-side providers read credentials from server config, not from
-        browser storage. The easiest setup is
-        <code> config/voicyclaw.local.yaml </code>
-        in the repo root, with env vars as optional overrides. Azure uses
+        browser storage. YAML config or env vars both work. Azure uses
         <code> AzureSpeechTTS </code>
         or <code> AzureSpeechStreamingTTS </code>. Google uses
         <code> GoogleCloudTTS </code>
@@ -541,8 +544,6 @@ function CredentialWiringCard() {
         <code> DoubaoStreamTTS </code>.
       </p>
       <div className="code-block">
-        config/voicyclaw.local.yaml
-        {"\n"}
         AzureSpeechTTS.api_key
         {"\n"}
         AzureSpeechTTS.region or AzureSpeechTTS.endpoint
@@ -603,12 +604,12 @@ function PlatformKeysCard({
       <div className="code-block">{issuedKey || "No key issued yet."}</div>
       <ul className="note-list compact-list">
         <li>
-          The demo bot auto-registers itself when you run the root `pnpm dev`
-          script.
+          Use this flow when you want an extra bot key for another OpenClaw
+          install or device.
         </li>
         <li>
-          Use this key flow when you are testing the inbound local-bot path,
-          including `/api/keys` and the token-only HELLO handshake.
+          The issued token is for the VoicyClaw inbound bot path, including
+          `/api/keys` and the token-only HELLO handshake.
         </li>
         <li>
           The backend switch above decides how VoicyClaw reaches the agent,

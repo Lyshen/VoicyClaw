@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { useVoiceStudioSession } from "../lib/use-voice-studio-session"
+import type { WebRuntimePayload } from "../lib/web-runtime"
 import {
   buildConversationEntries,
   ConversationCard,
@@ -11,7 +12,6 @@ import {
   RoomConnectionCard,
   type StepId,
   type StepStatus,
-  StudioBootstrap,
   StudioStepCard,
 } from "./product-studio-view"
 
@@ -22,16 +22,19 @@ const HOSTED_PROMPTS = [
   "What can you help me do today?",
 ] as const
 
-const LOCAL_PROMPTS = [
-  "Introduce yourself.",
-  "Give me a short demo reply.",
-  "What can you do in this demo?",
-  "Summarize what VoicyClaw does.",
+const DEFAULT_PROMPTS = [
+  "Say hello in your new voice.",
+  "What can you help me do?",
+  "Give me a short intro.",
+  "What should I test next?",
 ] as const
 
-export function ProductStudio() {
+export function ProductStudio({
+  initialRuntime,
+}: {
+  initialRuntime: WebRuntimePayload
+}) {
   const {
-    ready,
     onboarding,
     connectionState,
     timeline,
@@ -48,6 +51,7 @@ export function ProductStudio() {
     sendTextUtterance,
     reconnect,
   } = useVoiceStudioSession({
+    initialRuntime,
     includeConnectionSummary: false,
   })
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -61,12 +65,14 @@ export function ProductStudio() {
 
   const installCommand = onboarding
     ? `openclaw plugins install ${onboarding.connectorPackageName}`
-    : "pnpm dev"
+    : "Sign in to provision your starter workspace"
   const configLine =
     onboarding?.connectorConfigLine ??
-    "Starter key is still provisioning. Refresh in a moment if this stays blank."
-  const restartCommand = onboarding ? "openclaw gateway restart" : "pnpm dev"
-  const quickPrompts = onboarding ? HOSTED_PROMPTS : LOCAL_PROMPTS
+    "Starter workspace is still provisioning. Refresh in a moment if this stays blank."
+  const restartCommand = onboarding
+    ? "openclaw gateway restart"
+    : "Refresh after your starter workspace is ready"
+  const quickPrompts = onboarding ? HOSTED_PROMPTS : DEFAULT_PROMPTS
   const conversationEntries = buildConversationEntries(timeline, botDisplayName)
 
   const shellPreviewLines = onboarding
@@ -76,16 +82,16 @@ export function ProductStudio() {
         { id: "restart", prefix: "$", code: restartCommand },
       ]
     : [
-        { id: "install", prefix: "$", code: "pnpm dev" },
+        { id: "install", prefix: ">", code: "Hosted sign-in required" },
         {
           id: "config",
           prefix: ">",
-          code: "server + web + mock bot boot together",
+          code: "Starter workspace appears here after provisioning",
         },
         {
           id: "restart",
           prefix: ">",
-          code: "wait for demo-room, then click check",
+          code: "Open Account or refresh once setup completes",
         },
       ]
 
@@ -109,10 +115,6 @@ export function ProductStudio() {
     }
   }
 
-  if (!ready) {
-    return <StudioBootstrap />
-  }
-
   return (
     <section className="relative overflow-hidden rounded-[2.75rem] border border-amber-100/80 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(249,115,22,0.10),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,249,240,0.98))] px-6 py-8 text-zinc-900 shadow-[0_40px_120px_rgba(24,24,27,0.12)] lg:px-8 lg:py-10">
       <div className="relative z-10 grid gap-8 xl:grid-cols-[0.74fr_1.26fr]">
@@ -120,7 +122,7 @@ export function ProductStudio() {
           <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-100/70 px-4 py-1.5 text-sm font-medium text-amber-700">
               <Sparkles className="h-4 w-4" />
-              {onboarding ? onboarding.workspace.name : "Local preview"}
+              {onboarding ? onboarding.workspace.name : "Hosted setup"}
             </div>
 
             <div className="max-w-2xl space-y-3">
@@ -132,7 +134,7 @@ export function ProductStudio() {
                   ? `${botDisplayName} is live. Ask its name and keep talking.`
                   : onboarding
                     ? "Install once. This room turns live when your bot joins."
-                    : "Run the local stack. This room turns live when the demo bot joins."}
+                    : "Sign in once. This room turns live when your starter workspace is ready."}
               </p>
             </div>
           </div>
@@ -141,7 +143,9 @@ export function ProductStudio() {
             <StudioStepCard
               step="01"
               title={
-                onboarding ? "Add voice in one line" : "Run the local stack"
+                onboarding
+                  ? "Add voice in one line"
+                  : "Provision starter workspace"
               }
               status={stepOneStatus}
               selected={selectedStep === 1}

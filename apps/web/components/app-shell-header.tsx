@@ -3,12 +3,11 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-import type { AuthMode } from "../lib/auth-mode"
 import { AppShellAuthControls } from "./auth-controls"
 import { ClerkAppShellAccountLink } from "./auth-controls-clerk"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
 
-export function AppShellHeader({ authMode }: { authMode: AuthMode }) {
+export function AppShellHeader({ authEnabled }: { authEnabled: boolean }) {
   const pathname = usePathname()
   const leadingLink = { href: "/studio", label: "Studio" }
   const trailingLinks = [
@@ -43,7 +42,7 @@ export function AppShellHeader({ authMode }: { authMode: AuthMode }) {
               {leadingLink.label}
             </Link>
           )}
-          {authMode === "clerk" ? (
+          {authEnabled ? (
             <ClerkAppShellAccountLink pathname={pathname} />
           ) : null}
           {trailingLinks.map((link) => {
@@ -69,7 +68,7 @@ export function AppShellHeader({ authMode }: { authMode: AuthMode }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <AppShellAuthControls authMode={authMode} />
+          <AppShellAuthControls authEnabled={authEnabled} />
         </div>
       </div>
     </header>

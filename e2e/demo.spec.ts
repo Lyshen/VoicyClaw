@@ -82,8 +82,8 @@ test("persists server provider settings back into the channel runtime", async ({
 }) => {
   await page.goto("/settings")
 
-  await page.getByRole("button").filter({ hasText: "Demo Server ASR" }).click()
-  await page.getByRole("button").filter({ hasText: "Demo Server TTS" }).click()
+  await page.getByTestId("asr-provider-demo").click()
+  await page.getByTestId("tts-provider-demo").click()
 
   await expect(page.getByText("ASR Server provider")).toBeVisible()
   await expect(page.getByText("TTS Server provider")).toBeVisible()
