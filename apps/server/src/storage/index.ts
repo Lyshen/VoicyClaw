@@ -12,6 +12,7 @@ import type {
   UsageStatus,
   UserIdentityRecord,
   UserRecord,
+  WorkspaceAllowanceLedgerEntry,
   WorkspaceAllowanceSummary,
   WorkspaceRecord,
   WorkspaceUsageSummary,
@@ -148,7 +149,12 @@ export interface Storage {
     ): Awaitable<WorkspaceUsageSummary>
     listByWorkspace(
       workspaceId: string,
-      limit?: number,
+      feature: BillingFeature,
+      options?: {
+        limit?: number
+        startAt?: string | null
+        endAt?: string | null
+      },
     ): Awaitable<UsageEventRecord[]>
   }
   allowanceLedger: {
@@ -163,6 +169,10 @@ export interface Storage {
     summarizeByWorkspace(
       workspaceId: string,
     ): Awaitable<WorkspaceAllowanceSummary>
+    listByWorkspace(
+      workspaceId: string,
+      limit?: number,
+    ): Awaitable<WorkspaceAllowanceLedgerEntry[]>
   }
   system: {
     init(): Awaitable<void>
@@ -264,14 +274,16 @@ export const storage: Storage = {
     create: (input) => callAdapter("createUsageEvent", input),
     summarizeByWorkspace: (workspaceId, feature) =>
       callAdapter("getWorkspaceUsageSummary", workspaceId, feature),
-    listByWorkspace: (workspaceId, limit) =>
-      callAdapter("listWorkspaceUsageEvents", workspaceId, limit),
+    listByWorkspace: (workspaceId, feature, options) =>
+      callAdapter("listWorkspaceUsageEvents", workspaceId, feature, options),
   },
   allowanceLedger: {
     ensureEntry: (input) =>
       callAdapter("ensureWorkspaceAllowanceLedgerEntry", input),
     summarizeByWorkspace: (workspaceId) =>
       callAdapter("getWorkspaceAllowanceSummary", workspaceId),
+    listByWorkspace: (workspaceId, limit) =>
+      callAdapter("listWorkspaceAllowanceLedgerEntries", workspaceId, limit),
   },
   system: {
     init: () => callAdapter("initStorage"),

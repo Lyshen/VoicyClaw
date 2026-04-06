@@ -138,12 +138,6 @@ textarea {
   background: rgba(249, 115, 22, 0.1);
 }
 
-.landing-user-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .site-main {
   position: relative;
   z-index: 1;
@@ -242,15 +236,10 @@ textarea {
   color: #52525b;
 }
 
-.workspace-grid,
 .settings-grid,
 .product-grid {
   display: grid;
   gap: 24px;
-}
-
-.workspace-grid {
-  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.95fr);
 }
 
 .product-grid {
@@ -262,15 +251,9 @@ textarea {
 }
 
 .transcript-card,
-.sidebar-stack,
 .settings-grid > *,
 .product-grid > * {
   min-width: 0;
-}
-
-.sidebar-stack {
-  display: grid;
-  gap: 24px;
 }
 
 .card-heading {
@@ -861,7 +844,6 @@ textarea {
 }
 
 @media (max-width: 1080px) {
-  .workspace-grid,
   .settings-grid,
   .product-grid {
     grid-template-columns: 1fr;

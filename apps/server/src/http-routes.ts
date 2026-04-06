@@ -1,7 +1,10 @@
 import { PROTOCOL_VERSION } from "@voicyclaw/protocol"
 import type { FastifyInstance } from "fastify"
 
-import { getWorkspaceBillingSummary } from "./domains/billing/service"
+import {
+  getWorkspaceCreditsSummary,
+  getWorkspaceUsageLog,
+} from "./domains/billing/service"
 import { bootstrapHostedResources } from "./domains/hosted-bootstrap/service"
 import { issuePlatformKeyForChannel } from "./domains/platform-keys/service"
 import type { RealtimeGateway } from "./realtime-gateway"
@@ -35,14 +38,37 @@ export function registerApiRoutes(
     return realtimeGateway.getChannelSnapshot(channelId)
   })
 
-  server.get("/api/workspaces/:workspaceId/billing", async (request, reply) => {
-    const workspaceId = sanitizeId(
-      (request.params as { workspaceId: string }).workspaceId,
-      "",
-    )
-
+  server.get("/api/workspaces/:workspaceId/credits", async (request, reply) => {
+    const workspaceId = resolveWorkspaceId(request.params)
     const summary = workspaceId
-      ? await getWorkspaceBillingSummary(workspaceId)
+      ? await getWorkspaceCreditsSummary(workspaceId)
+      : null
+
+    if (!summary) {
+      reply.code(404)
+      return {
+        ok: false,
+        message: "Workspace not found",
+      }
+    }
+
+    return summary
+  })
+
+  server.get("/api/workspaces/:workspaceId/logs", async (request, reply) => {
+    const workspaceId = resolveWorkspaceId(request.params)
+    const query =
+      (request.query as {
+        start?: string
+        end?: string
+        limit?: string
+      } | null) ?? {}
+    const summary = workspaceId
+      ? await getWorkspaceUsageLog(workspaceId, {
+          startAt: normalizeIsoTimestamp(query.start),
+          endAt: normalizeIsoTimestamp(query.end),
+          limit: normalizeLimit(query.limit, 100),
+        })
       : null
 
     if (!summary) {
@@ -110,4 +136,34 @@ export function registerApiRoutes(
       protocolVersion: PROTOCOL_VERSION,
     }
   })
+}
+
+function resolveWorkspaceId(params: unknown) {
+  return sanitizeId(
+    (params as { workspaceId?: string } | null)?.workspaceId,
+    "",
+  )
+}
+
+function normalizeIsoTimestamp(value?: string | null) {
+  const trimmed = value?.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  const parsed = new Date(trimmed)
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return parsed.toISOString()
+}
+
+function normalizeLimit(value: string | undefined, fallback: number) {
+  const parsed = Number.parseInt(value ?? "", 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback
+  }
+
+  return Math.min(parsed, 200)
 }

@@ -6,6 +6,8 @@ import { getResolvedAuthConfig } from "./lib/auth-mode"
 const isProtectedRoute = createRouteMatcher([
   "/studio(.*)",
   "/account(.*)",
+  "/credits(.*)",
+  "/logs(.*)",
   "/settings(.*)",
 ])
 

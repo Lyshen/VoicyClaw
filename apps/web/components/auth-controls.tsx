@@ -1,8 +1,9 @@
 "use client"
 
-import { useAuth, useUser } from "@clerk/nextjs"
+import { useAuth, useClerk, useUser } from "@clerk/nextjs"
 import Link from "next/link"
 import type { ReactNode } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 
 const GITHUB_REPO_URL = "https://github.com/Lyshen/VoicyClaw"
 
@@ -14,7 +15,7 @@ export function AppShellAuthControls({
   return (
     <AuthControls
       authEnabled={authEnabled}
-      signedIn={<AccountAvatarLink />}
+      signedIn={<AccountMenuButton />}
       signedOut={<ActionLink href="/sign-in" label="Sign in" kind="header" />}
     />
   )
@@ -29,7 +30,7 @@ export function LandingNavbarAuthControls({
     <AuthControls
       authEnabled={authEnabled}
       disabled={<ActionLink href="/studio" label="Open studio" kind="header" />}
-      signedIn={<AccountAvatarLink />}
+      signedIn={<AccountMenuButton />}
       signedOut={<ActionLink href="/sign-in" label="Sign in" kind="header" />}
     />
   )
@@ -157,8 +158,38 @@ function ClerkAuthGate({
   return isSignedIn ? signedIn : signedOut
 }
 
-function AccountAvatarLink() {
+function AccountMenuButton() {
+  const clerk = useClerk()
   const { user } = useUser()
+  const [open, setOpen] = useState(false)
+  const menuId = useId()
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [open])
 
   if (!user) {
     return null
@@ -176,25 +207,81 @@ function AccountAvatarLink() {
   const imageUrl = user.imageUrl?.trim()
 
   return (
-    <Link
-      href="/account"
-      title={label}
-      aria-label="Open account"
-      className="group flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white/90 shadow-[0_12px_30px_rgba(24,24,27,0.06)] transition hover:border-amber-300 hover:shadow-[0_18px_44px_rgba(245,158,11,0.16)]"
-    >
-      {imageUrl ? (
-        // biome-ignore lint/performance/noImgElement: Clerk avatar URLs are remote and not wired into the app image pipeline.
-        <img
-          src={imageUrl}
-          alt={label}
-          className="h-9 w-9 rounded-full object-cover"
-        />
-      ) : (
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-sm font-semibold text-white">
-          {initial}
-        </span>
-      )}
-    </Link>
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        title={label}
+        aria-label="Open user menu"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        onClick={() => setOpen((current) => !current)}
+        className="group flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white/90 shadow-[0_12px_30px_rgba(24,24,27,0.06)] transition hover:border-amber-300 hover:shadow-[0_18px_44px_rgba(245,158,11,0.16)]"
+      >
+        {imageUrl ? (
+          // biome-ignore lint/performance/noImgElement: Clerk avatar URLs are remote and not wired into the app image pipeline.
+          <img
+            src={imageUrl}
+            alt={label}
+            className="h-9 w-9 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-sm font-semibold text-white">
+            {initial}
+          </span>
+        )}
+      </button>
+
+      {open ? (
+        <div
+          id={menuId}
+          role="menu"
+          aria-label="User menu"
+          className="absolute top-[calc(100%+0.75rem)] right-0 z-50 min-w-[180px] rounded-[1.4rem] border border-zinc-200 bg-white/96 p-2 shadow-[0_24px_60px_rgba(24,24,27,0.14)] backdrop-blur-xl"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              clerk.openUserProfile()
+            }}
+            className="flex h-11 w-full items-center rounded-2xl px-3 text-left text-sm font-medium text-zinc-700 transition hover:bg-amber-50 hover:text-amber-700"
+          >
+            Personal
+          </button>
+          <Link
+            href="/credits"
+            role="menuitem"
+            prefetch={false}
+            onClick={() => setOpen(false)}
+            className="flex h-11 items-center rounded-2xl px-3 text-sm font-medium text-zinc-700 transition hover:bg-amber-50 hover:text-amber-700"
+          >
+            Credits
+          </Link>
+          <Link
+            href="/logs"
+            role="menuitem"
+            prefetch={false}
+            onClick={() => setOpen(false)}
+            className="flex h-11 items-center rounded-2xl px-3 text-sm font-medium text-zinc-700 transition hover:bg-amber-50 hover:text-amber-700"
+          >
+            Logs
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              void clerk.signOut({ redirectUrl: "/" })
+            }}
+            className="flex h-11 w-full items-center rounded-2xl px-3 text-left text-sm font-medium text-zinc-700 transition hover:bg-amber-50 hover:text-amber-700"
+          >
+            Sign out
+          </button>
+        </div>
+      ) : null}
+    </div>
   )
 }
 

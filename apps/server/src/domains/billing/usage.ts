@@ -3,22 +3,50 @@ import { findProjectByChannelId } from "../projects/service"
 import { findWorkspaceById } from "../workspaces/service"
 import { buildHostedAllowanceSnapshot } from "./allowance"
 import { calculateCharge, ensurePreviewBillingRates } from "./rates"
-import type { TtsUsageStatus, WorkspaceBillingSummary } from "./types"
+import type {
+  TtsUsageStatus,
+  WorkspaceCreditsSummary,
+  WorkspaceUsageLogResult,
+} from "./types"
 
-export async function getWorkspaceBillingSummary(workspaceId: string) {
-  await ensurePreviewBillingRates()
-
-  const workspace = await findWorkspaceById(workspaceId)
-  if (!workspace) {
+export async function getWorkspaceCreditsSummary(
+  workspaceId: string,
+  limit = 50,
+) {
+  const context = await getWorkspaceBillingContext(workspaceId)
+  if (!context) {
     return null
   }
 
   return {
-    workspaceId,
-    allowance: await buildHostedAllowanceSnapshot(workspaceId),
-    usage: await storage.usageEvents.summarizeByWorkspace(workspaceId, "tts"),
-    recentEvents: await storage.usageEvents.listByWorkspace(workspaceId, 10),
-  } satisfies WorkspaceBillingSummary
+    ...context,
+    ledger: await storage.allowanceLedger.listByWorkspace(workspaceId, limit),
+  } satisfies WorkspaceCreditsSummary
+}
+
+export async function getWorkspaceUsageLog(
+  workspaceId: string,
+  input: {
+    startAt?: string | null
+    endAt?: string | null
+    limit?: number
+  } = {},
+) {
+  const context = await getWorkspaceBillingContext(workspaceId)
+  if (!context) {
+    return null
+  }
+
+  const filters = normalizeUsageFilters(input)
+
+  return {
+    ...context,
+    filters,
+    events: await storage.usageEvents.listByWorkspace(workspaceId, "tts", {
+      ...filters,
+      limit: input.limit ?? 100,
+    }),
+  } satisfies WorkspaceUsageLogResult
 }
 
 export async function recordTtsUsageForChannel(input: {
@@ -91,4 +119,53 @@ export async function recordTtsUsageForChannel(input: {
   }
 
   return usageEvent
+}
+
+async function getWorkspaceBillingContext(workspaceId: string) {
+  await ensurePreviewBillingRates()
+
+  const workspace = await findWorkspaceById(workspaceId)
+  if (!workspace) {
+    return null
+  }
+
+  return {
+    workspaceId,
+    allowance: await buildHostedAllowanceSnapshot(workspaceId),
+    usage: await storage.usageEvents.summarizeByWorkspace(workspaceId, "tts"),
+  }
+}
+
+function normalizeUsageFilters(input: {
+  startAt?: string | null
+  endAt?: string | null
+}) {
+  const startAt = normalizeIsoTimestamp(input.startAt)
+  const endAt = normalizeIsoTimestamp(input.endAt)
+
+  if (startAt && endAt && startAt > endAt) {
+    return {
+      startAt: endAt,
+      endAt: startAt,
+    }
+  }
+
+  return {
+    startAt,
+    endAt,
+  }
+}
+
+function normalizeIsoTimestamp(value?: string | null) {
+  const trimmed = value?.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  const parsed = new Date(trimmed)
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return parsed.toISOString()
 }
