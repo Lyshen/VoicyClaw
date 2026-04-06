@@ -53,7 +53,7 @@ export function useSettingsStudioState({
         },
         body: JSON.stringify({
           channelId: settings.channelId,
-          label: "Settings console",
+          label: "Settings panel",
         }),
       })
 
