@@ -37,7 +37,8 @@ export function useVoiceStudioSession(options: UseVoiceStudioSessionOptions) {
     introMessage = null,
     includeConnectionSummary = true,
   } = options
-  const { settings, onboarding } = useStudioSettings(initialRuntime)
+  const { settings, onboarding, updateSetting } =
+    useStudioSettings(initialRuntime)
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("connecting")
   const [timeline, setTimeline] = useState<TimelineEntry[]>([])
@@ -340,6 +341,7 @@ export function useVoiceStudioSession(options: UseVoiceStudioSessionOptions) {
 
   return {
     settings,
+    updateSetting,
     onboarding,
     connectionState,
     timeline,

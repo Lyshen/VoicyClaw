@@ -8,6 +8,7 @@ import {
   CircleDashed,
   LoaderCircle,
   MessageSquareText,
+  Sparkles,
 } from "lucide-react"
 import type { ReactNode, RefObject } from "react"
 
@@ -20,6 +21,11 @@ const VOICE_BARS = [18, 34, 22, 42, 28, 36, 20] as const
 
 export type StepId = 1 | 2 | 3
 export type StepStatus = "done" | "active" | "pending"
+export type StepDescription = {
+  step: string
+  title: string
+  description: string
+}
 
 type ConversationBubble = {
   id: string
@@ -72,12 +78,14 @@ export function StudioBootstrap() {
 export function StudioStepCard({
   step,
   title,
+  description,
   status,
   selected,
   onSelect,
 }: {
   step: string
   title: string
+  description: string
   status: StepStatus
   selected: boolean
   onSelect: () => void
@@ -143,20 +151,46 @@ export function StudioStepCard({
               />
             </span>
           </div>
+
+          <p className="max-w-xl text-sm leading-6 text-zinc-500">
+            {description}
+          </p>
         </div>
       </div>
     </button>
   )
 }
 
-export function InstallPreviewCard({
+export function ConnectAgentCard({
+  title,
+  description,
   lines,
   copiedId,
   onCopy,
+  connectionTargetLabel,
+  workspaceName,
+  channelId,
+  botId,
+  starterBotOnline,
+  connectionState,
+  botDisplayName,
+  onCheck,
+  onContinue,
 }: {
+  title: string
+  description: string
   lines: Array<{ id: string; prefix: string; code: string }>
   copiedId: string | null
   onCopy: (id: string, text: string) => void
+  connectionTargetLabel: string
+  workspaceName?: string
+  channelId: string
+  botId?: string
+  starterBotOnline: boolean
+  connectionState: ConnectionState
+  botDisplayName: string
+  onCheck: () => void
+  onContinue: () => void
 }) {
   return (
     <section className="relative h-[760px] w-full overflow-hidden rounded-[3rem] border border-zinc-900/80 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.18),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(251,146,60,0.14),transparent_22%),linear-gradient(180deg,#1c1917,#09090b)] p-2 shadow-[0_40px_120px_rgba(24,24,27,0.32)]">
@@ -178,7 +212,19 @@ export function InstallPreviewCard({
         </div>
 
         <div className="relative flex min-h-0 flex-1 flex-col bg-[linear-gradient(180deg,rgba(40,37,34,0.18),rgba(16,17,21,0.10))] px-7 py-7">
-          <div className="space-y-1">
+          <div className="mb-6 space-y-2">
+            <p className="text-xs font-semibold tracking-[0.22em] text-amber-200 uppercase">
+              {title}
+            </p>
+            <h3 className="text-3xl font-semibold tracking-tight text-white">
+              Bring your bot online
+            </h3>
+            <p className="max-w-2xl text-sm leading-7 text-zinc-300">
+              {description}
+            </p>
+          </div>
+
+          <div className="rounded-[2rem] border border-white/10 bg-black/15 px-2">
             {lines.map((line, index) => (
               <CommandLine
                 key={line.id}
@@ -191,6 +237,253 @@ export function InstallPreviewCard({
               />
             ))}
           </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <SetupStatCard
+              label="Connection target"
+              value={connectionTargetLabel}
+              tone="neutral"
+            />
+            <SetupStatCard
+              label="Bot status"
+              value={starterBotOnline ? "Online" : "Waiting for bot"}
+              tone={starterBotOnline ? "success" : "warning"}
+            />
+            <SetupStatCard
+              label="Workspace"
+              value={workspaceName ?? "Starter workspace"}
+            />
+            <SetupStatCard label="Channel" value={channelId} mono />
+            {botId ? <SetupStatCard label="Bot ID" value={botId} mono /> : null}
+            <SetupStatCard
+              label="Live room"
+              value={starterBotOnline ? botDisplayName : "Not connected yet"}
+            />
+          </div>
+
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
+            <p className="text-sm leading-7 text-zinc-300">
+              {starterBotOnline
+                ? `${botDisplayName} is online. Continue to voice selection.`
+                : getConnectionSummary(connectionState)}
+            </p>
+
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
+              type="button"
+              onClick={starterBotOnline ? onContinue : onCheck}
+            >
+              {starterBotOnline
+                ? "Continue to voice paths"
+                : getCheckButtonLabel(connectionState, starterBotOnline)}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export type VoicePathCardOption = {
+  id: string
+  eyebrow: string
+  title: string
+  description: string
+  routeLabel: string
+  keywords: string[]
+  accentClassName: string
+  bars: Array<{
+    id: string
+    height: number
+    width: number
+  }>
+  selected: boolean
+  onSelect: () => void
+}
+
+export function VoicePathSelectorCard({
+  title,
+  description,
+  connectionReady,
+  selectedLabel,
+  options,
+  onContinue,
+}: {
+  title: string
+  description: string
+  connectionReady: boolean
+  selectedLabel: string
+  options: VoicePathCardOption[]
+  onContinue: () => void
+}) {
+  return (
+    <section className="relative h-[760px] w-full overflow-hidden rounded-[3rem] border border-zinc-900/80 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.18),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(251,146,60,0.14),transparent_22%),linear-gradient(180deg,#1c1917,#09090b)] p-2 shadow-[0_40px_120px_rgba(24,24,27,0.32)]">
+      <div className="absolute top-0 right-8 h-36 w-36 rounded-full bg-amber-500/20 blur-[84px]" />
+      <div className="absolute bottom-8 left-8 h-24 w-24 rounded-full bg-orange-500/10 blur-[64px]" />
+
+      <div className="relative flex h-full flex-col overflow-hidden rounded-[2.6rem] border border-white/12 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.08),transparent_30%),linear-gradient(180deg,rgba(71,63,54,0.40),rgba(27,29,34,0.30))] text-white shadow-[0_30px_90px_rgba(24,24,27,0.24)] backdrop-blur-[22px]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.03))]" />
+
+        <div className="relative flex items-start justify-between gap-4 border-b border-white/35 px-7 py-6">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold tracking-[0.22em] text-amber-200 uppercase">
+              {title}
+            </p>
+            <h3 className="text-3xl font-semibold tracking-tight text-white">
+              Pick the voice path
+            </h3>
+            <p className="max-w-2xl text-sm leading-7 text-zinc-300">
+              {description}
+            </p>
+          </div>
+
+          <div className="rounded-[1.6rem] border border-emerald-200/60 bg-[linear-gradient(180deg,rgba(255,248,238,0.97),rgba(237,245,239,0.94))] px-4 py-2.5 text-right shadow-[0_20px_46px_rgba(16,185,129,0.12)]">
+            <div className="text-[11px] font-semibold tracking-[0.18em] text-emerald-700 uppercase">
+              Current
+            </div>
+            <div className="mt-1 text-sm font-semibold text-zinc-900">
+              {selectedLabel}
+            </div>
+          </div>
+        </div>
+
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-7 py-6">
+          <div className="grid gap-4 lg:grid-cols-2">
+            {options.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={option.onSelect}
+                className={`relative overflow-hidden rounded-[2rem] border p-5 text-left transition ${
+                  option.selected
+                    ? "border-emerald-300/70 bg-[radial-gradient(circle_at_top_left,rgba(255,221,233,0.42),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(52,211,153,0.12),transparent_30%),linear-gradient(180deg,rgba(255,249,240,0.98),rgba(237,245,239,0.96))] shadow-[0_24px_70px_rgba(16,185,129,0.18)]"
+                    : "border-white/12 bg-[linear-gradient(180deg,rgba(86,74,65,0.94),rgba(52,49,47,0.98))] hover:border-amber-200/30 hover:bg-[linear-gradient(180deg,rgba(98,86,76,0.96),rgba(62,59,57,0.98))]"
+                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40`}
+              >
+                <div
+                  className={`pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-r ${option.accentClassName}`}
+                />
+
+                <div className="relative space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.18em] uppercase ${
+                          option.selected
+                            ? "border-emerald-200/80 bg-white/90 text-emerald-700"
+                            : "border-white/10 bg-white/[0.05] text-zinc-200"
+                        }`}
+                      >
+                        {option.eyebrow}
+                      </span>
+                      <div>
+                        <h4
+                          className={`text-xl font-semibold ${
+                            option.selected ? "text-zinc-900" : "text-white"
+                          }`}
+                        >
+                          {option.title}
+                        </h4>
+                        <p
+                          className={`mt-2 text-sm leading-6 ${
+                            option.selected ? "text-zinc-700" : "text-zinc-300"
+                          }`}
+                        >
+                          {option.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-full border ${
+                        option.selected
+                          ? "border-emerald-300/60 bg-emerald-500/12 text-emerald-600"
+                          : "border-white/10 bg-white/[0.06] text-zinc-200"
+                      }`}
+                    >
+                      {option.selected ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : (
+                        <Sparkles className="h-5 w-5" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    className={`flex items-center justify-between gap-4 rounded-[1.6rem] border px-4 py-3 ${
+                      option.selected
+                        ? "border-emerald-200/70 bg-white/88"
+                        : "border-white/10 bg-white/[0.04]"
+                    }`}
+                  >
+                    <div>
+                      <div
+                        className={`text-[11px] font-semibold tracking-[0.18em] uppercase ${
+                          option.selected ? "text-zinc-500" : "text-zinc-400"
+                        }`}
+                      >
+                        Path
+                      </div>
+                      <div
+                        className={`mt-1 text-sm font-semibold ${
+                          option.selected ? "text-zinc-900" : "text-white"
+                        }`}
+                      >
+                        {option.routeLabel}
+                      </div>
+                    </div>
+
+                    <div className="flex h-11 items-end gap-1">
+                      {option.bars.map((bar) => (
+                        <span
+                          key={`${option.id}-${bar.id}`}
+                          className={`rounded-full ${
+                            option.selected
+                              ? "bg-emerald-500/90"
+                              : "bg-zinc-500/80"
+                          }`}
+                          style={{
+                            height: `${bar.height}px`,
+                            width: `${bar.width}px`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {option.keywords.map((keyword) => (
+                      <span
+                        key={keyword}
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          option.selected
+                            ? "bg-white/92 text-zinc-700"
+                            : "bg-white/[0.06] text-zinc-100"
+                        }`}
+                      >
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative flex flex-wrap items-center justify-between gap-4 border-t border-white/35 px-7 py-5">
+          <p className="text-sm leading-7 text-zinc-300">
+            {connectionReady
+              ? "Your bot is ready. Pick a voice now or keep the default and start talking."
+              : "You can preselect a voice path now. Step 3 still unlocks once your bot comes online."}
+          </p>
+          <button
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
+            type="button"
+            onClick={onContinue}
+          >
+            Continue to talk
+          </button>
         </div>
       </div>
     </section>
@@ -246,7 +539,7 @@ export function RoomConnectionCard({
           {waiting
             ? mode === "check"
               ? "Finish setup, then run one check."
-              : "Wait here until your bot comes online."
+              : "Go back to step 1 and bring your bot online before talking."
             : botDisplayName}
         </p>
 
@@ -256,7 +549,9 @@ export function RoomConnectionCard({
           onClick={waiting ? onCheck : onContinue}
         >
           {waiting
-            ? getCheckButtonLabel(connectionState, starterBotOnline)
+            ? mode === "talk"
+              ? "Back to setup"
+              : getCheckButtonLabel(connectionState, starterBotOnline)
             : "Open talk"}
         </button>
       </div>
@@ -558,8 +853,10 @@ function CommandLine({
         {prefix}
       </span>
       <code
-        className={`min-w-0 flex-1 break-all font-mono text-[13px] leading-7 ${
-          isConfig ? "text-white" : "text-zinc-100"
+        className={`min-w-0 flex-1 font-mono text-[13px] leading-7 ${
+          isConfig
+            ? "whitespace-pre-wrap break-words text-white"
+            : "break-all text-zinc-100"
         }`}
       >
         {code}
@@ -616,4 +913,83 @@ function getCheckButtonLabel(
   }
 
   return "Check bot connection"
+}
+
+function SetupStatCard({
+  label,
+  value,
+  mono = false,
+  tone = "default",
+}: {
+  label: string
+  value: string
+  mono?: boolean
+  tone?: "default" | "neutral" | "success" | "warning"
+}) {
+  const toneClasses =
+    tone === "success"
+      ? "border-emerald-300/60 bg-[linear-gradient(180deg,rgba(16,185,129,0.24),rgba(16,185,129,0.14))] shadow-[0_20px_52px_rgba(16,185,129,0.18)]"
+      : tone === "warning"
+        ? "border-amber-300/30 bg-amber-500/12 shadow-[0_18px_44px_rgba(245,158,11,0.10)]"
+        : tone === "neutral"
+          ? "border-white/14 bg-white/[0.07]"
+          : "border-white/10 bg-white/[0.04]"
+  const labelClasses =
+    tone === "success"
+      ? "text-emerald-50"
+      : tone === "warning"
+        ? "text-amber-100/85"
+        : "text-zinc-500"
+  const valueClasses =
+    tone === "success"
+      ? "text-white"
+      : tone === "warning"
+        ? "text-amber-50"
+        : "text-white"
+  const statusDotClasses =
+    tone === "success"
+      ? "bg-emerald-200 shadow-[0_0_0_6px_rgba(187,247,208,0.12)]"
+      : tone === "warning"
+        ? "bg-amber-200 shadow-[0_0_0_6px_rgba(253,230,138,0.10)]"
+        : null
+
+  return (
+    <div className={`rounded-[1.6rem] border px-4 py-4 ${toneClasses}`}>
+      <div
+        className={`text-[11px] font-semibold tracking-[0.18em] uppercase ${labelClasses}`}
+      >
+        {label}
+      </div>
+      <div
+        className={`mt-2 text-sm ${
+          mono ? "font-mono break-all" : "font-medium"
+        } ${valueClasses}`}
+      >
+        {statusDotClasses ? (
+          <span className="inline-flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${statusDotClasses}`} />
+            <span>{value}</span>
+          </span>
+        ) : (
+          value
+        )}
+      </div>
+    </div>
+  )
+}
+
+function getConnectionSummary(connectionState: ConnectionState) {
+  if (connectionState === "connecting") {
+    return "Checking for your bot now. Finish setup, then run one connection check."
+  }
+
+  if (connectionState === "connected") {
+    return "Studio is ready and listening. Your bot still needs to join this room."
+  }
+
+  if (connectionState === "error") {
+    return "The live room is not reachable yet. Start the server, then check again."
+  }
+
+  return "Run the setup commands, restart OpenClaw, then check the room again."
 }
