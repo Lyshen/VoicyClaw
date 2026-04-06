@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveVoicyClawAccount } from "./config.js";
+import { bindVoicyClawAccount, resolveVoicyClawAccount } from "./config.js";
 import { dispatchVoicyClawTranscript, replyPayloadToText } from "./dispatch.js";
 
 describe("voicyclaw dispatch", () => {
@@ -28,25 +28,23 @@ describe("voicyclaw dispatch", () => {
       sendPreview: vi.fn(),
       sendText: vi.fn(),
     };
-    const account = resolveVoicyClawAccount(
-      {
+    const account = bindVoicyClawAccount(
+      resolveVoicyClawAccount({
         channels: {
           voicyclaw: {
             token: "vc-token",
-            workspaceId: "workspace-1",
           },
         },
+      }),
+      {
+        channel_id: "demo-room",
+        bot_id: "demo-bot",
+        bot_name: "Demo Bot",
       },
-      "default",
     );
-    const boundAccount = {
-      ...account,
-      channelId: "demo-room",
-      botId: "demo-bot",
-    };
 
     await dispatchVoicyClawTranscript({
-      account: boundAccount,
+      account,
       cfg: { session: { store: "/tmp/sessions.json" } },
       channelRuntime: {
         routing: {
@@ -85,7 +83,7 @@ describe("voicyclaw dispatch", () => {
       accountId: "default",
       peer: {
         kind: "direct",
-        id: "workspace-1:demo-room",
+        id: "demo-room",
       },
     });
     expect(finalizeInboundContext).toHaveBeenCalledWith(
@@ -94,7 +92,7 @@ describe("voicyclaw dispatch", () => {
         BodyForAgent: "hello world",
         Provider: "voicyclaw",
         Surface: "voicyclaw",
-        OriginatingTo: "voicyclaw:workspace-1:demo-room",
+        OriginatingTo: "voicyclaw:demo-room",
       }),
     );
     expect(recordInboundSession).toHaveBeenCalledWith(

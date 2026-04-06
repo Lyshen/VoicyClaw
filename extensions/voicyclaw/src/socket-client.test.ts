@@ -2,7 +2,7 @@ import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocketServer } from "ws";
 
-import { resolveVoicyClawAccount } from "./config.js";
+import { DEFAULT_VOICYCLAW_CONNECT_TIMEOUT_MS } from "./config.js";
 import { VoicyClawSocketClient } from "./socket-client.js";
 
 describe("voicyclaw socket client", () => {
@@ -57,15 +57,9 @@ describe("voicyclaw socket client", () => {
     await onceListening(server);
 
     const client = new VoicyClawSocketClient({
-      account: resolveVoicyClawAccount({
-        channels: {
-          voicyclaw: {
-            url: serverUrl(server),
-            token: "vc-token",
-          },
-        },
-      }),
+      token: "vc-token",
       socketUrl: `${serverUrl(server)}/bot/connect`,
+      connectTimeoutMs: DEFAULT_VOICYCLAW_CONNECT_TIMEOUT_MS,
       logger: createLogger(),
     });
 
@@ -148,15 +142,9 @@ describe("voicyclaw socket client", () => {
     await onceListening(server);
 
     const client = new VoicyClawSocketClient({
-      account: resolveVoicyClawAccount({
-        channels: {
-          voicyclaw: {
-            url: serverUrl(server),
-            token: "vc-token",
-          },
-        },
-      }),
+      token: "vc-token",
       socketUrl: `${serverUrl(server)}/bot/connect`,
+      connectTimeoutMs: DEFAULT_VOICYCLAW_CONNECT_TIMEOUT_MS,
       logger,
       onTranscript,
     });

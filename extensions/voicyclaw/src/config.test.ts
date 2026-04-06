@@ -2,103 +2,71 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import { describe, expect, it } from "vitest";
 
 import {
+  bindVoicyClawAccount,
   buildVoicyClawConfigFix,
   buildVoicyClawMissingConfigMessage,
   buildVoicyClawSocketUrl,
-  DEFAULT_VOICYCLAW_ACCOUNT_ID,
   DEFAULT_VOICYCLAW_BASE_URL,
-  listVoicyClawAccountIds,
+  getVoicyClawAccountName,
   resolveVoicyClawAccount,
 } from "./config.js";
 
 describe("voicyclaw config", () => {
-  it("returns the default account when no accounts are configured", () => {
-    const cfg = { channels: {} } as OpenClawConfig;
-
-    expect(listVoicyClawAccountIds(cfg)).toEqual([
-      DEFAULT_VOICYCLAW_ACCOUNT_ID,
-    ]);
-  });
-
-  it("merges top-level defaults with account-specific overrides", () => {
-    const cfg = {
+  it("defaults to the hosted service and supports token-only hosted config", () => {
+    const account = resolveVoicyClawAccount({
       channels: {
         voicyclaw: {
-          url: "https://voice.example.com",
-          workspaceId: "workspace-global",
-          accounts: {
-            prod: {
-              token: "prod-token",
-              displayName: "Prod Connector",
-            },
-          },
+          token: "prod-token",
         },
       },
-    } as OpenClawConfig;
+    } as OpenClawConfig);
 
-    expect(listVoicyClawAccountIds(cfg)).toEqual(["prod"]);
-    expect(resolveVoicyClawAccount(cfg, "prod")).toMatchObject({
-      accountId: "prod",
+    expect(account).toMatchObject({
+      accountId: "default",
+      url: DEFAULT_VOICYCLAW_BASE_URL,
       configured: true,
-      missingConfigFields: [],
-      url: "https://voice.example.com",
-      workspaceId: "workspace-global",
-      channelId: "",
-      botId: "",
-      displayName: "Prod Connector",
-      token: "prod-token",
     });
+    expect(account).not.toHaveProperty("binding");
   });
 
-  it("defaults to the hosted service and supports token-only hosted config", () => {
-    const account = resolveVoicyClawAccount(
-      {
+  it("requires a token even when hosted binding is enabled", () => {
+    const account = resolveVoicyClawAccount({
+      channels: {
+        voicyclaw: {},
+      },
+    } as OpenClawConfig);
+
+    expect(account).toMatchObject({
+      configured: false,
+    });
+    expect(buildVoicyClawMissingConfigMessage()).toBe(
+      "Missing VoicyClaw token.",
+    );
+    expect(buildVoicyClawConfigFix()).toBe("Set channels.voicyclaw.token.");
+  });
+
+  it("applies server binding after welcome and uses the server bot name", () => {
+    const account = bindVoicyClawAccount(
+      resolveVoicyClawAccount({
         channels: {
           voicyclaw: {
             token: "prod-token",
           },
         },
-      } as OpenClawConfig,
-      "default",
-    );
-
-    expect(account).toMatchObject({
-      url: DEFAULT_VOICYCLAW_BASE_URL,
-      configured: true,
-      channelId: "",
-      botId: "",
-      missingConfigFields: [],
-    });
-    expect(
-      buildVoicyClawMissingConfigMessage(account.missingConfigFields),
-    ).toBe("VoicyClaw connector config is complete.");
-    expect(
-      buildVoicyClawConfigFix(account.accountId, account.missingConfigFields),
-    ).toBe("No connector config changes are required.");
-  });
-
-  it("requires a token even when hosted binding is enabled", () => {
-    const account = resolveVoicyClawAccount(
+      } as OpenClawConfig),
       {
-        channels: {
-          voicyclaw: {},
-        },
-      } as OpenClawConfig,
-      "default",
+        channel_id: "sayhello-demo",
+        bot_id: "openclaw-voicyclaw",
+        bot_name: "SayHello Connector",
+      },
     );
 
-    expect(account).toMatchObject({
-      configured: false,
-      missingConfigFields: ["token"],
-      channelId: "",
-      botId: "",
+    expect(account.binding).toEqual({
+      channelId: "sayhello-demo",
+      botId: "openclaw-voicyclaw",
+      botName: "SayHello Connector",
     });
-    expect(
-      buildVoicyClawMissingConfigMessage(account.missingConfigFields),
-    ).toBe("Missing VoicyClaw token.");
-    expect(
-      buildVoicyClawConfigFix(account.accountId, account.missingConfigFields),
-    ).toBe("Set channels.voicyclaw.token.");
+    expect(getVoicyClawAccountName(account)).toBe("SayHello Connector");
   });
 
   it("normalizes the VoicyClaw connect URL onto /bot/connect", () => {

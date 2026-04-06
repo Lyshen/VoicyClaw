@@ -4,10 +4,10 @@ import {
   buildVoicyClawConfigFix,
   buildVoicyClawMissingConfigMessage,
   DEFAULT_VOICYCLAW_ACCOUNT_ID,
-  listVoicyClawAccountIds,
+  getVoicyClawAccountName,
+  getVoicyClawAudience,
   type ResolvedVoicyClawAccount,
   resolveVoicyClawAccount,
-  type VoicyClawRequiredConfigField,
   voicyClawChannelConfigSchema,
 } from "./config.js";
 import { createVoicyClawGatewayAdapter } from "./gateway.js";
@@ -22,10 +22,9 @@ export function createVoicyClawChannel(
     meta: {
       id: "voicyclaw",
       label: "VoicyClaw",
-      selectionLabel: "VoicyClaw (Outbound Connector)",
+      selectionLabel: "VoicyClaw",
       docsPath: "/channels/voicyclaw",
-      blurb:
-        "Outbound VoicyClaw connector that lets OpenClaw attach to a hosted voice workspace.",
+      blurb: "Connect OpenClaw to VoicyClaw over WebSocket.",
       aliases: ["voiceclaw"],
     },
     capabilities: {
@@ -36,20 +35,18 @@ export function createVoicyClawChannel(
     },
     configSchema: voicyClawChannelConfigSchema,
     config: {
-      listAccountIds: (cfg) => listVoicyClawAccountIds(cfg),
-      resolveAccount: (cfg, accountId) =>
-        resolveVoicyClawAccount(cfg, accountId),
+      listAccountIds: () => [DEFAULT_VOICYCLAW_ACCOUNT_ID],
+      resolveAccount: (cfg) => resolveVoicyClawAccount(cfg),
       defaultAccountId: () => DEFAULT_VOICYCLAW_ACCOUNT_ID,
-      isEnabled: (account) => account.enabled,
+      isEnabled: () => true,
       isConfigured: (account) => account.configured,
       describeAccount: (account) => ({
         accountId: account.accountId,
-        name: account.displayName,
-        enabled: account.enabled,
+        name: getVoicyClawAccountName(account),
+        enabled: true,
         configured: account.configured,
         baseUrl: account.url,
-        audience: account.channelId || undefined,
-        tokenSource: account.token ? "config" : undefined,
+        audience: getVoicyClawAudience(account),
       }),
     },
     status: {
@@ -58,8 +55,9 @@ export function createVoicyClawChannel(
 
         return {
           accountId: account.accountId,
-          name: account.displayName,
-          enabled: account.enabled,
+          name:
+            tracked?.name ?? runtime?.name ?? getVoicyClawAccountName(account),
+          enabled: true,
           configured: account.configured,
           running: tracked?.running ?? runtime?.running ?? false,
           connected: tracked?.connected ?? runtime?.connected ?? false,
@@ -79,46 +77,36 @@ export function createVoicyClawChannel(
           lastOutboundAt:
             tracked?.lastOutboundAt ?? runtime?.lastOutboundAt ?? null,
           baseUrl: account.url,
-          audience: account.channelId || undefined,
-          tokenSource: account.token ? "config" : undefined,
+          audience: tracked?.channelId || getVoicyClawAudience(account),
         };
       },
-      resolveAccountState: ({ configured, enabled }) => {
+      resolveAccountState: ({ configured }) => {
         if (!configured) {
           return "not configured";
         }
 
-        return enabled ? "enabled" : "disabled";
+        return "enabled";
       },
       collectStatusIssues: (accounts) => {
         return accounts.flatMap((account) => {
           const issues = [];
-          const missingConfigFields = inferMissingConfigFields(account);
 
           if (!account.configured) {
             issues.push({
               channel: "voicyclaw",
               accountId: account.accountId,
               kind: "config" as const,
-              message: buildVoicyClawMissingConfigMessage(missingConfigFields),
-              fix: buildVoicyClawConfigFix(
-                account.accountId,
-                missingConfigFields,
-              ),
+              message: buildVoicyClawMissingConfigMessage(),
+              fix: buildVoicyClawConfigFix(),
             });
           }
 
-          if (
-            account.enabled &&
-            account.configured &&
-            !account.connected &&
-            account.lastError
-          ) {
+          if (account.configured && !account.connected && account.lastError) {
             issues.push({
               channel: "voicyclaw",
               accountId: account.accountId,
               kind: "runtime" as const,
-              message: `VoicyClaw connector is disconnected: ${account.lastError}`,
+              message: `VoicyClaw is disconnected: ${account.lastError}`,
               fix: "Check the VoicyClaw base URL and token, then restart the gateway.",
             });
           }
@@ -129,16 +117,4 @@ export function createVoicyClawChannel(
     },
     gateway: createVoicyClawGatewayAdapter(runtimeState, channelRuntime),
   };
-}
-
-function inferMissingConfigFields(account: {
-  tokenSource?: string;
-}): VoicyClawRequiredConfigField[] {
-  const missingConfigFields: VoicyClawRequiredConfigField[] = [];
-
-  if (!account.tokenSource) {
-    missingConfigFields.push("token");
-  }
-
-  return missingConfigFields;
 }

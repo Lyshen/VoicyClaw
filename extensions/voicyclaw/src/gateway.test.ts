@@ -56,19 +56,15 @@ describe("voicyclaw gateway adapter", () => {
     socketInstances.length = 0;
   });
 
-  it("echoes final transcripts in devEchoReplies mode without invoking OpenClaw dispatch", async () => {
+  it("dispatches final transcripts with the server-bound connector identity", async () => {
     const controller = new AbortController();
-    const account = resolveVoicyClawAccount(
-      {
-        channels: {
-          voicyclaw: {
-            token: "vc-token",
-            devEchoReplies: true,
-          },
+    const account = resolveVoicyClawAccount({
+      channels: {
+        voicyclaw: {
+          token: "vc-token",
         },
       },
-      "default",
-    );
+    });
     const runtime = createVoicyClawRuntime();
     const setStatus = vi.fn();
 
@@ -76,6 +72,7 @@ describe("voicyclaw gateway adapter", () => {
       session_id: "session-1",
       channel_id: "demo-room",
       bot_id: "server-bound-bot",
+      bot_name: "Server Bound Bot",
     });
     waitUntilClosedMock.mockImplementation(async function (
       this: MockSocketClient,
@@ -113,32 +110,111 @@ describe("voicyclaw gateway adapter", () => {
       throw new Error("socket instance was not created");
     }
 
-    expect(socket.sendText).toHaveBeenCalledWith(
-      "utt-1",
-      "VoicyClaw plugin echo: hello",
-      true,
+    expect(dispatchVoicyClawTranscript).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: expect.objectContaining({
+          accountId: "default",
+          binding: {
+            channelId: "demo-room",
+            botId: "server-bound-bot",
+            botName: "Server Bound Bot",
+          },
+        }),
+      }),
     );
-    expect(dispatchVoicyClawTranscript).not.toHaveBeenCalled();
     expect(setStatus).toHaveBeenCalledWith(
       expect.objectContaining({
         accountId: "default",
-        lastOutboundAt: expect.any(Number),
+        audience: "demo-room",
+        connected: true,
+      }),
+    );
+  });
+
+  it("binds the server welcome before the first transcript arrives", async () => {
+    const controller = new AbortController();
+    const account = resolveVoicyClawAccount({
+      channels: {
+        voicyclaw: {
+          token: "vc-token",
+        },
+      },
+    });
+    const runtime = createVoicyClawRuntime();
+    const setStatus = vi.fn();
+    const welcome = {
+      type: "WELCOME" as const,
+      session_id: "session-race",
+      channel_id: "race-room",
+      bot_id: "race-bot",
+      bot_name: "Race Bot",
+    };
+
+    dispatchVoicyClawTranscript.mockResolvedValue({
+      result: { queuedFinal: false },
+    });
+    connectMock.mockImplementation(async function (this: MockSocketClient) {
+      await this.options.onMessage?.(welcome);
+      await this.options.onTranscript?.({
+        type: "STT_RESULT",
+        session_id: "session-race",
+        utterance_id: "utt-race",
+        text: "hello before connect resolves",
+        is_final: true,
+      });
+
+      return welcome;
+    });
+    waitUntilClosedMock.mockImplementation(async () => {
+      controller.abort();
+    });
+    closeMock.mockResolvedValue(undefined);
+
+    const channelRuntime = {
+      reply: {},
+      routing: {},
+      session: {},
+    } as never;
+    const adapter = createVoicyClawGatewayAdapter(runtime, channelRuntime);
+    const { startAccount } = adapter;
+    if (!startAccount) {
+      throw new Error("startAccount is not available");
+    }
+
+    await startAccount({
+      account,
+      cfg: {},
+      abortSignal: controller.signal,
+      log: createLogger(),
+      setStatus,
+    } as never);
+
+    expect(dispatchVoicyClawTranscript).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: expect.objectContaining({
+          binding: {
+            channelId: "race-room",
+            botId: "race-bot",
+            botName: "Race Bot",
+          },
+        }),
+        message: expect.objectContaining({
+          utterance_id: "utt-race",
+          is_final: true,
+        }),
       }),
     );
   });
 
   it("dispatches only final transcripts into OpenClaw", async () => {
     const controller = new AbortController();
-    const account = resolveVoicyClawAccount(
-      {
-        channels: {
-          voicyclaw: {
-            token: "vc-token",
-          },
+    const account = resolveVoicyClawAccount({
+      channels: {
+        voicyclaw: {
+          token: "vc-token",
         },
       },
-      "default",
-    );
+    });
     const runtime = createVoicyClawRuntime();
     const setStatus = vi.fn();
 
@@ -197,8 +273,10 @@ describe("voicyclaw gateway adapter", () => {
       expect.objectContaining({
         account: expect.objectContaining({
           accountId: "default",
-          channelId: "server-bound-room",
-          botId: "server-bound-bot",
+          binding: {
+            channelId: "server-bound-room",
+            botId: "server-bound-bot",
+          },
         }),
         message: expect.objectContaining({
           utterance_id: "utt-2b",
@@ -220,14 +298,11 @@ describe("voicyclaw gateway adapter", () => {
     const controller = new AbortController();
     controller.abort();
 
-    const account = resolveVoicyClawAccount(
-      {
-        channels: {
-          voicyclaw: {},
-        },
+    const account = resolveVoicyClawAccount({
+      channels: {
+        voicyclaw: {},
       },
-      "default",
-    );
+    });
     const runtime = createVoicyClawRuntime();
     const setStatus = vi.fn();
 
@@ -263,6 +338,9 @@ type MockSocketClient = {
 };
 
 type MockSocketClientOptions = {
+  token?: string;
+  connectTimeoutMs?: number;
+  onMessage?: (message: unknown) => Promise<void> | void;
   onTranscript?: (message: unknown) => Promise<void> | void;
 };
 

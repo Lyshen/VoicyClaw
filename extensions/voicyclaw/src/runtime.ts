@@ -1,12 +1,14 @@
-import type { ResolvedVoicyClawAccount } from "./config.js";
+import {
+  getVoicyClawAccountName,
+  type ResolvedVoicyClawAccount,
+} from "./config.js";
 
 export type VoicyClawRuntimeSnapshot = {
   accountId: string;
-  enabled: boolean;
   configured: boolean;
-  displayName: string;
-  botId: string;
-  channelId: string;
+  name: string;
+  botId: string | null;
+  channelId: string | null;
   baseUrl: string;
   running: boolean;
   connected: boolean;
@@ -36,11 +38,13 @@ export function createVoicyClawRuntime() {
     const existing = snapshots.get(account.accountId);
     const next: VoicyClawRuntimeSnapshot = {
       accountId: account.accountId,
-      enabled: account.enabled,
       configured: account.configured,
-      displayName: account.displayName,
-      botId: account.botId,
-      channelId: account.channelId,
+      name:
+        account.binding?.botName?.trim() ||
+        existing?.name ||
+        getVoicyClawAccountName(account),
+      botId: account.binding?.botId ?? existing?.botId ?? null,
+      channelId: account.binding?.channelId ?? existing?.channelId ?? null,
       baseUrl: account.url,
       running: existing?.running ?? false,
       connected: existing?.connected ?? false,
@@ -87,7 +91,7 @@ export function createVoicyClawRuntime() {
     },
     markDisconnected(account: ResolvedVoicyClawAccount, error?: string) {
       const snapshot = ensureAccount(account);
-      snapshot.running = account.enabled && account.configured;
+      snapshot.running = account.configured;
       snapshot.connected = false;
       snapshot.sessionId = null;
       snapshot.lastError = error ?? null;
@@ -95,7 +99,7 @@ export function createVoicyClawRuntime() {
         at: Date.now(),
         ...(error ? { error } : {}),
       };
-      if (account.enabled && account.configured) {
+      if (account.configured) {
         snapshot.reconnectAttempts += 1;
       }
     },

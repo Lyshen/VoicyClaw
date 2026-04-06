@@ -86,22 +86,17 @@ describe("voicyclaw smoke workflow", () => {
       throw new Error("startAccount is not available");
     }
 
-    const account = resolveVoicyClawAccount(
-      {
-        channels: {
-          voicyclaw: {
-            url: serverBaseUrl(server),
-            token: "vc-smoke-token",
-            displayName: "OpenClaw Smoke",
-            reconnectBackoffMs: 100,
-          },
-        },
-        session: {
-          store: "/tmp/voicyclaw-smoke-sessions.json",
+    const account = resolveVoicyClawAccount({
+      channels: {
+        voicyclaw: {
+          url: serverBaseUrl(server),
+          token: "vc-smoke-token",
         },
       },
-      "default",
-    );
+      session: {
+        store: "/tmp/voicyclaw-smoke-sessions.json",
+      },
+    });
     const setStatus = vi.fn();
 
     const startPromise = startAccount({

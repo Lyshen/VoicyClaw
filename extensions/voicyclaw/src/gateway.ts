@@ -1,8 +1,12 @@
 import type { ChannelGatewayAdapter, PluginRuntime } from "openclaw/plugin-sdk";
 import type { ResolvedVoicyClawAccount } from "./config.js";
 import {
+  bindVoicyClawAccount,
   buildVoicyClawMissingConfigMessage,
   buildVoicyClawSocketUrl,
+  DEFAULT_VOICYCLAW_CONNECT_TIMEOUT_MS,
+  DEFAULT_VOICYCLAW_RECONNECT_BACKOFF_MS,
+  getVoicyClawAudience,
 } from "./config.js";
 import { dispatchVoicyClawTranscript } from "./dispatch.js";
 import type { VoicyClawRuntime } from "./runtime.js";
@@ -17,22 +21,8 @@ export function createVoicyClawGatewayAdapter(
       const account = ctx.account;
       runtime.ensureAccount(account);
 
-      if (!account.enabled) {
-        runtime.markStopped(account);
-        ctx.setStatus({
-          accountId: account.accountId,
-          running: false,
-          connected: false,
-          lastStopAt: Date.now(),
-        });
-        await waitUntilAbortSignal(ctx.abortSignal);
-        return;
-      }
-
       if (!account.configured) {
-        const message = buildVoicyClawMissingConfigMessage(
-          account.missingConfigFields,
-        );
+        const message = buildVoicyClawMissingConfigMessage();
         runtime.markStopped(account);
         ctx.setStatus({
           accountId: account.accountId,
@@ -41,7 +31,7 @@ export function createVoicyClawGatewayAdapter(
           lastStopAt: Date.now(),
           lastError: message,
           baseUrl: account.url,
-          audience: account.channelId || undefined,
+          audience: getVoicyClawAudience(account),
         });
         await waitUntilAbortSignal(ctx.abortSignal);
         return;
@@ -60,14 +50,22 @@ export function createVoicyClawGatewayAdapter(
           lastStartAt: Date.now(),
           lastError: null,
           baseUrl: account.url,
-          audience: account.channelId || undefined,
+          audience: getVoicyClawAudience(account),
         });
 
         try {
           client = new VoicyClawSocketClient({
-            account,
+            token: account.token ?? "",
             socketUrl,
+            connectTimeoutMs: DEFAULT_VOICYCLAW_CONNECT_TIMEOUT_MS,
             logger: ctx.log ?? consoleLogger,
+            onMessage: (message) => {
+              if (message.type !== "WELCOME") {
+                return;
+              }
+
+              activeAccount = bindVoicyClawAccount(activeAccount, message);
+            },
             onTranscript: async (message) => {
               runtime.markInbound(account.accountId);
               ctx.setStatus({
@@ -76,20 +74,6 @@ export function createVoicyClawGatewayAdapter(
               });
 
               if (!message.is_final) {
-                return;
-              }
-
-              if (account.devEchoReplies) {
-                client?.sendText(
-                  message.utterance_id,
-                  `VoicyClaw plugin echo: ${message.text || "(empty transcript)"}`,
-                  true,
-                );
-                runtime.markOutbound(account.accountId);
-                ctx.setStatus({
-                  accountId: account.accountId,
-                  lastOutboundAt: Date.now(),
-                });
                 return;
               }
 
@@ -117,7 +101,7 @@ export function createVoicyClawGatewayAdapter(
           });
 
           const welcome = await client.connect();
-          activeAccount = applyWelcomeBinding(account, welcome);
+          activeAccount = bindVoicyClawAccount(activeAccount, welcome);
           runtime.markConnected(activeAccount, welcome.session_id);
           ctx.setStatus({
             accountId: account.accountId,
@@ -126,7 +110,7 @@ export function createVoicyClawGatewayAdapter(
             lastConnectedAt: Date.now(),
             lastError: null,
             lastDisconnect: null,
-            audience: welcome.channel_id,
+            audience: getVoicyClawAudience(activeAccount),
           });
           ctx.log?.info?.(
             `[voicyclaw] connected ${account.accountId} to ${socketUrl}`,
@@ -161,10 +145,10 @@ export function createVoicyClawGatewayAdapter(
               at: Date.now(),
               error: message,
             },
-            audience: activeAccount.channelId || undefined,
+            audience: getVoicyClawAudience(activeAccount),
           });
           ctx.log?.warn?.(
-            `[voicyclaw] connector ${account.accountId} disconnected: ${message}`,
+            `[voicyclaw] ${account.accountId} disconnected: ${message}`,
           );
         } finally {
           await client?.close().catch(() => undefined);
@@ -174,7 +158,7 @@ export function createVoicyClawGatewayAdapter(
           break;
         }
 
-        await sleep(account.reconnectBackoffMs, ctx.abortSignal);
+        await sleep(DEFAULT_VOICYCLAW_RECONNECT_BACKOFF_MS, ctx.abortSignal);
       }
 
       runtime.markStopped(account);
@@ -185,20 +169,6 @@ export function createVoicyClawGatewayAdapter(
         lastStopAt: Date.now(),
       });
     },
-  };
-}
-
-function applyWelcomeBinding(
-  account: ResolvedVoicyClawAccount,
-  welcome: {
-    channel_id: string;
-    bot_id: string;
-  },
-): ResolvedVoicyClawAccount {
-  return {
-    ...account,
-    channelId: welcome.channel_id,
-    botId: welcome.bot_id,
   };
 }
 
