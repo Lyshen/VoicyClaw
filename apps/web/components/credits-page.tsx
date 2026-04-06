@@ -84,13 +84,8 @@ export function CreditsPage({ state }: { state: CreditsPageState }) {
           <div className="space-y-5">
             <div>
               <p className="hero-eyebrow">Credits</p>
-              <h1 className="hero-title">
-                Balance, grants, and credit activity
-              </h1>
-              <p className="hero-copy">
-                Keep billing simple: one place for remaining balance, one place
-                for every grant or deduction, and no extra account clutter.
-              </p>
+              <h1 className="hero-title">Balance and credit activity</h1>
+              <p className="hero-copy">Balance first. Ledger below.</p>
             </div>
 
             <div className="status-row">
@@ -98,14 +93,9 @@ export function CreditsPage({ state }: { state: CreditsPageState }) {
                 {credits.allowance.status}
               </span>
               <span className="status-pill neutral">{primaryEmail}</span>
-              <span className="status-pill neutral">
-                {credits.usage.totalEvents} metered calls
-              </span>
             </div>
 
-            <p className="text-sm leading-7 text-zinc-500">
-              {credits.allowance.note}
-            </p>
+            <p className="text-sm text-zinc-500">Starter preview allowance.</p>
 
             <div className="flex flex-wrap items-center gap-3">
               <button
@@ -116,8 +106,7 @@ export function CreditsPage({ state }: { state: CreditsPageState }) {
                 Add credit soon
               </button>
               <span className="text-sm text-zinc-500">
-                Payments are not wired yet. This page is ready for grants,
-                purchases, refunds, and adjustments once checkout lands.
+                Payments coming soon.
               </span>
             </div>
           </div>
