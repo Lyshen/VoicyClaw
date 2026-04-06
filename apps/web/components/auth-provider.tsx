@@ -1,11 +1,11 @@
-import { getResolvedAuthMode } from "../lib/auth-mode"
+import { getResolvedAuthConfig } from "../lib/auth-mode"
 
 export async function AuthProvider({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  if (getResolvedAuthMode() !== "clerk") {
+  if (!getResolvedAuthConfig().isEnabled) {
     return children
   }
 

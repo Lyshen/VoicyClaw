@@ -11,6 +11,7 @@ type WebAuthEnvironment = NodeJS.ProcessEnv & {
 export type ResolvedWebAuthConfig = {
   requestedMode: AuthMode
   resolvedMode: AuthMode
+  isEnabled: boolean
   clerkPublishableKey: string | null
   clerkSecretKey: string | null
 }
@@ -39,6 +40,7 @@ export function getResolvedAuthConfig(
   return {
     requestedMode,
     resolvedMode,
+    isEnabled: resolvedMode === "clerk",
     clerkPublishableKey:
       resolvedMode === "clerk" ? configuredPublishableKey : null,
     clerkSecretKey: resolvedMode === "clerk" ? configuredSecretKey : null,
@@ -48,8 +50,7 @@ export function getResolvedAuthConfig(
 export function isClerkConfigured(
   env: WebAuthEnvironment = process.env,
 ): boolean {
-  const auth = getResolvedAuthConfig(env)
-  return Boolean(auth.clerkPublishableKey && auth.clerkSecretKey)
+  return getResolvedAuthConfig(env).isEnabled
 }
 
 export function getResolvedAuthMode(

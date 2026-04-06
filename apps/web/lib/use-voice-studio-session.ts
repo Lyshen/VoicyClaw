@@ -23,17 +23,21 @@ import {
   type TimelineEntry,
 } from "./voice-studio-session-helpers"
 import { openVoiceStudioSocket } from "./voice-studio-transport"
+import type { WebRuntimePayload } from "./web-runtime"
 
 type UseVoiceStudioSessionOptions = {
+  initialRuntime: WebRuntimePayload
   introMessage?: string | null
   includeConnectionSummary?: boolean
 }
 
-export function useVoiceStudioSession(
-  options: UseVoiceStudioSessionOptions = {},
-) {
-  const { introMessage = null, includeConnectionSummary = true } = options
-  const { settings, ready, onboarding } = useStudioSettings()
+export function useVoiceStudioSession(options: UseVoiceStudioSessionOptions) {
+  const {
+    initialRuntime,
+    introMessage = null,
+    includeConnectionSummary = true,
+  } = options
+  const { settings, onboarding } = useStudioSettings(initialRuntime)
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("connecting")
   const [timeline, setTimeline] = useState<TimelineEntry[]>([])
@@ -144,8 +148,6 @@ export function useVoiceStudioSession(
   }, [timeline])
 
   useEffect(() => {
-    if (!ready) return
-
     if (introMessage && !introShownRef.current) {
       appendSystemMessage(introMessage)
       introShownRef.current = true
@@ -186,7 +188,6 @@ export function useVoiceStudioSession(
     handleServerMessage,
     includeConnectionSummary,
     introMessage,
-    ready,
     reconnectIndex,
     settings.channelId,
     settings.conversationBackend,
@@ -339,7 +340,6 @@ export function useVoiceStudioSession(
 
   return {
     settings,
-    ready,
     onboarding,
     connectionState,
     timeline,

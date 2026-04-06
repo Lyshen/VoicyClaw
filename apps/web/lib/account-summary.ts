@@ -5,8 +5,7 @@ import {
   buildAccountUserSummary,
   type WorkspaceBillingSummary,
 } from "./account-summary-shared"
-import { getRequestHostedOnboardingState } from "./hosted-onboarding"
-import { getRequestAuthContext } from "./request-auth"
+import { getWebRequestContext } from "./web-request-context"
 
 export type {
   AccountSummary,
@@ -16,7 +15,7 @@ export type {
 
 export type AccountSummaryState =
   | {
-      kind: "auth-disabled"
+      kind: "unavailable"
       serverUrl: string
     }
   | {
@@ -40,36 +39,33 @@ export async function getAccountSummary(): Promise<AccountSummary | null> {
 }
 
 export async function getAccountSummaryState(): Promise<AccountSummaryState> {
-  const authContext = await getRequestAuthContext()
+  const requestContext = await getWebRequestContext()
+  const { auth, onboarding, serverUrl } = requestContext
 
-  if (!authContext.isEnabled) {
+  if (!auth.isEnabled) {
     return {
-      kind: "auth-disabled",
-      serverUrl: authContext.serverUrl,
+      kind: "unavailable",
+      serverUrl,
     }
   }
 
-  if (!authContext.isSignedIn || !authContext.user) {
+  if (!auth.isSignedIn || !auth.user) {
     return {
       kind: "signed-out",
-      serverUrl: authContext.serverUrl,
+      serverUrl,
     }
   }
 
-  const onboarding = await getRequestHostedOnboardingState()
   if (!onboarding) {
     return {
       kind: "setup-pending",
-      serverUrl: authContext.serverUrl,
-      user: buildAccountUserSummary(authContext.user),
+      serverUrl,
+      user: buildAccountUserSummary(auth.user),
     }
   }
 
   const billingResponse = await fetch(
-    new URL(
-      `/api/workspaces/${onboarding.workspace.id}/billing`,
-      authContext.serverUrl,
-    ),
+    new URL(`/api/workspaces/${onboarding.workspace.id}/billing`, serverUrl),
     {
       cache: "no-store",
     },
@@ -85,9 +81,9 @@ export async function getAccountSummaryState(): Promise<AccountSummaryState> {
 
   return {
     kind: "ready",
-    serverUrl: authContext.serverUrl,
+    serverUrl,
     summary: buildAccountSummary({
-      user: authContext.user,
+      user: auth.user,
       onboarding,
       billing,
     }),

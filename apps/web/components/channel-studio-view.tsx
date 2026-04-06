@@ -68,7 +68,7 @@ export function ChannelStudioView({
           <p className="hero-copy">
             {onboarding
               ? "This is the full console view for your starter voice project. Use it when you want to inspect transport, streaming text, and runtime state in detail."
-              : "This is the live demo console. Speak or type, watch the reply stream in, and inspect the raw runtime behavior."}
+              : "This is the live room console. Speak or type, watch replies stream in, and inspect the raw runtime behavior."}
           </p>
         </div>
         <div className="status-row">
@@ -277,7 +277,7 @@ export function ChannelStudioView({
               </li>
               <li>
                 Settings lets you switch providers without changing the main
-                demo flow.
+                studio flow.
               </li>
             </ul>
           </section>

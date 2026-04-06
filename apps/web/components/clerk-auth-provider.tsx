@@ -11,7 +11,9 @@ export function ClerkAuthProvider({
 
   return (
     <ClerkProvider
-      publishableKey={auth.clerkPublishableKey ?? undefined}
+      publishableKey={
+        auth.isEnabled ? (auth.clerkPublishableKey ?? undefined) : undefined
+      }
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >

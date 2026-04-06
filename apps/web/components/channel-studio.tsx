@@ -1,9 +1,14 @@
 "use client"
 
 import { useVoiceStudioSession } from "../lib/use-voice-studio-session"
+import type { WebRuntimePayload } from "../lib/web-runtime"
 import { ChannelStudioView } from "./channel-studio-view"
 
-export function ChannelStudio() {
+export function ChannelStudio({
+  initialRuntime,
+}: {
+  initialRuntime: WebRuntimePayload
+}) {
   const {
     settings,
     onboarding,
@@ -26,8 +31,9 @@ export function ChannelStudio() {
     sendTextUtterance,
     reconnect,
   } = useVoiceStudioSession({
+    initialRuntime,
     introMessage:
-      "Run `pnpm dev` at the repo root to boot the server, the Next.js shell, and the local demo ClawBot together.",
+      "Use this console to inspect the live room, streaming replies, and runtime state in detail.",
     includeConnectionSummary: true,
   })
 

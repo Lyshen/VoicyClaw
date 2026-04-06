@@ -22,7 +22,7 @@ export const STUDIO_SETTINGS_STORAGE_KEY = "voicyclaw.studio.settings"
 
 export const defaultStudioSettings: StudioSettings = {
   serverUrl: "http://localhost:3001",
-  channelId: "demo-room",
+  channelId: "voice-room",
   language: "en-US",
   conversationBackend: "local-bot",
   asrProvider: "browser",

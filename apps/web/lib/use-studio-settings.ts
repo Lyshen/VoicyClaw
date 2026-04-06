@@ -17,48 +17,29 @@ const defaultRuntimePayload: WebRuntimePayload = {
   onboarding: null,
 }
 
-export function useStudioSettings() {
-  const [settings, setSettings] = useState<StudioSettings>(
-    defaultStudioSettings,
+export function useStudioSettings(
+  initialRuntime: WebRuntimePayload = defaultRuntimePayload,
+) {
+  const [runtime] = useState<WebRuntimePayload>(initialRuntime)
+  const [settings, setSettings] = useState<StudioSettings>(() =>
+    buildRuntimeDefaults(initialRuntime),
   )
-  const [runtime, setRuntime] = useState<WebRuntimePayload>(
-    defaultRuntimePayload,
-  )
-  const [ready, setReady] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    let active = true
-
-    const bootstrap = async () => {
-      const nextRuntime = await loadWebRuntimePayload()
-      if (!active) {
-        return
-      }
-
-      setRuntime(nextRuntime)
-      setSettings(
-        loadStudioSettings(
-          nextRuntime.initialSettings,
-          nextRuntime.settingsNamespace,
-        ),
-      )
-      setReady(true)
-    }
-
-    void bootstrap()
-
-    return () => {
-      active = false
-    }
-  }, [])
+    setSettings(
+      loadStudioSettings(runtime.initialSettings, runtime.settingsNamespace),
+    )
+    setHydrated(true)
+  }, [runtime.initialSettings, runtime.settingsNamespace])
 
   useEffect(() => {
-    if (!ready) {
+    if (!hydrated) {
       return
     }
 
     persistStudioSettings(settings, runtime.settingsNamespace)
-  }, [ready, runtime.settingsNamespace, settings])
+  }, [hydrated, runtime.settingsNamespace, settings])
 
   function updateSetting<Key extends keyof StudioSettings>(
     key: Key,
@@ -74,22 +55,13 @@ export function useStudioSettings() {
     settings,
     setSettings,
     updateSetting,
-    ready,
     onboarding: runtime.onboarding,
   }
 }
 
-async function loadWebRuntimePayload(): Promise<WebRuntimePayload> {
-  try {
-    const response = await fetch("/api/runtime-config", {
-      cache: "no-store",
-    })
-    if (!response.ok) {
-      return defaultRuntimePayload
-    }
-
-    return (await response.json()) as WebRuntimePayload
-  } catch {
-    return defaultRuntimePayload
+function buildRuntimeDefaults(runtime: WebRuntimePayload): StudioSettings {
+  return {
+    ...defaultStudioSettings,
+    ...runtime.initialSettings,
   }
 }

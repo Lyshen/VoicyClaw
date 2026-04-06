@@ -14,7 +14,6 @@ import {
 import { motion } from "motion/react"
 import Link from "next/link"
 
-import type { AuthMode } from "../lib/auth-mode"
 import {
   LandingCallToActionControls,
   LandingHeroAuthControls,
@@ -102,23 +101,23 @@ const footerGroups = [
   },
 ]
 
-export function LandingPage({ authMode }: { authMode: AuthMode }) {
+export function LandingPage({ authEnabled }: { authEnabled: boolean }) {
   return (
     <div className="min-h-screen bg-white text-zinc-900 [color-scheme:light] selection:bg-amber-200">
-      <Navbar authMode={authMode} />
+      <Navbar authEnabled={authEnabled} />
       <main>
-        <Hero authMode={authMode} />
+        <Hero authEnabled={authEnabled} />
         <ValueProps />
         <Features />
         <HowItWorks />
-        <CallToAction authMode={authMode} />
+        <CallToAction authEnabled={authEnabled} />
       </main>
       <Footer />
     </div>
   )
 }
 
-function Navbar({ authMode }: { authMode: AuthMode }) {
+function Navbar({ authEnabled }: { authEnabled: boolean }) {
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-zinc-100 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
@@ -155,14 +154,14 @@ function Navbar({ authMode }: { authMode: AuthMode }) {
           </a>
         </div>
         <div className="flex items-center gap-4">
-          <LandingNavbarAuthControls authMode={authMode} />
+          <LandingNavbarAuthControls authEnabled={authEnabled} />
         </div>
       </div>
     </nav>
   )
 }
 
-function Hero({ authMode }: { authMode: AuthMode }) {
+function Hero({ authEnabled }: { authEnabled: boolean }) {
   return (
     <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-amber-50 via-white to-white pb-20 pt-32 lg:pb-40 lg:pt-48">
       <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
@@ -204,7 +203,7 @@ function Hero({ authMode }: { authMode: AuthMode }) {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="flex flex-col items-center justify-center gap-5 sm:flex-row"
         >
-          <LandingHeroAuthControls authMode={authMode} />
+          <LandingHeroAuthControls authEnabled={authEnabled} />
         </motion.div>
       </div>
 
@@ -324,7 +323,7 @@ function HowItWorks() {
       step: "01",
       title: "Connect your agent",
       description:
-        "Use the local demo bot or point VoicyClaw at your OpenClaw setup.",
+        "Connect your starter bot or point VoicyClaw at your OpenClaw setup.",
     },
     {
       step: "02",
@@ -411,7 +410,7 @@ function HowItWorks() {
   )
 }
 
-function CallToAction({ authMode }: { authMode: AuthMode }) {
+function CallToAction({ authEnabled }: { authEnabled: boolean }) {
   return (
     <section id="get-started" className="bg-white py-32">
       <div className="mx-auto max-w-5xl px-6">
@@ -423,16 +422,16 @@ function CallToAction({ authMode }: { authMode: AuthMode }) {
               Try the live studio now.
             </h2>
             <p className="mx-auto mb-12 max-w-2xl text-xl text-amber-50 opacity-90 lg:text-2xl">
-              The demo is already live. Open the studio first, then fine-tune
-              the voice path in Settings.
+              Your live room is already waiting. Open the studio first, then
+              fine-tune the voice path in Settings.
             </p>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <LandingCallToActionControls authMode={authMode} />
+              <LandingCallToActionControls authEnabled={authEnabled} />
             </div>
 
             <p className="mt-10 font-medium text-amber-100 opacity-80">
-              Same demo flow. Cleaner front door.
+              Same live flow. Cleaner front door.
             </p>
           </div>
         </div>

@@ -4,7 +4,7 @@ import {
   buildAccountSummary,
   type WorkspaceBillingSummary,
 } from "../apps/web/lib/account-summary-shared"
-import type { HostedOnboardingState } from "../apps/web/lib/hosted-onboarding"
+import type { HostedOnboardingState } from "../apps/web/lib/hosted-onboarding-shared"
 
 describe("account summary shared helpers", () => {
   it("builds a complete account summary from hosted onboarding and billing data", () => {

@@ -7,13 +7,11 @@ import type { StudioSettings } from "./studio-settings"
 import { buildApiUrl, normalizeServerUrl } from "./studio-settings"
 
 type UseSettingsStudioStateArgs = {
-  ready: boolean
   settings: StudioSettings
   onboarding: HostedOnboardingState | null
 }
 
 export function useSettingsStudioState({
-  ready,
   settings,
   onboarding,
 }: UseSettingsStudioStateArgs) {
@@ -28,15 +26,11 @@ export function useSettingsStudioState({
   )
 
   useEffect(() => {
-    if (!ready) {
-      return
-    }
-
     void fetchServerStatus(settings, setServerStatus)
-  }, [ready, settings.serverUrl])
+  }, [settings.serverUrl])
 
   useEffect(() => {
-    if (!ready || !onboarding) {
+    if (!onboarding) {
       return
     }
 
@@ -46,7 +40,7 @@ export function useSettingsStudioState({
       setStarterBotOnline,
       setStarterProjectStatus,
     )
-  }, [onboarding, ready, settings.serverUrl])
+  }, [onboarding, settings.serverUrl])
 
   const issueKey = useCallback(async () => {
     setKeyMessage("Issuing a fresh platform key...")
@@ -114,7 +108,7 @@ async function fetchServerStatus(
     )
   } catch {
     setServerStatus(
-      "Server is unreachable right now. Start `pnpm dev` or confirm the server URL.",
+      "Server is unreachable right now. Confirm the server URL and make sure the backend is running.",
     )
   }
 }

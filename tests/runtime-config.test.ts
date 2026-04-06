@@ -156,6 +156,7 @@ describe("runtime config", () => {
     expect(getResolvedAuthConfig(env)).toEqual({
       requestedMode: "clerk",
       resolvedMode: "clerk",
+      isEnabled: true,
       clerkPublishableKey: "pk_live_example",
       clerkSecretKey: "sk_live_example",
     })

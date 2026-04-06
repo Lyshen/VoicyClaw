@@ -3,12 +3,12 @@ import Link from "next/link"
 import type { AccountSummaryState } from "../lib/account-summary"
 
 export function AccountPage({ state }: { state: AccountSummaryState }) {
-  if (state.kind === "auth-disabled") {
+  if (state.kind === "unavailable") {
     return (
       <EmptyAccountState
         eyebrow="Account"
-        title="Hosted account is turned off for this deployment"
-        copy="This environment is running in local auth mode, so hosted profile, billing, and workspace setup are not active here."
+        title="Hosted account is not configured for this deployment"
+        copy="This environment does not have hosted sign-in enabled, so profile, billing, and workspace setup are unavailable here."
         actions={[
           {
             href: "/studio",
