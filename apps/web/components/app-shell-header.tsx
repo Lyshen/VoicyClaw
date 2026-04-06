@@ -4,15 +4,13 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import { AppShellAuthControls } from "./auth-controls"
-import { ClerkAppShellAccountLink } from "./auth-controls-clerk"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
 
 export function AppShellHeader({ authEnabled }: { authEnabled: boolean }) {
   const pathname = usePathname()
-  const leadingLink = { href: "/studio", label: "Studio" }
-  const trailingLinks = [
+  const navigationLinks = [
+    { href: "/studio", label: "Studio" },
     { href: "/settings", label: "Settings" },
-    { href: "/console", label: "Console" },
   ]
 
   return (
@@ -30,22 +28,7 @@ export function AppShellHeader({ authEnabled }: { authEnabled: boolean }) {
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
-          {pathname === leadingLink.href ? (
-            <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
-              {leadingLink.label}
-            </span>
-          ) : (
-            <Link
-              href={leadingLink.href}
-              className="text-sm font-medium text-zinc-500 transition-colors hover:text-amber-600"
-            >
-              {leadingLink.label}
-            </Link>
-          )}
-          {authEnabled ? (
-            <ClerkAppShellAccountLink pathname={pathname} />
-          ) : null}
-          {trailingLinks.map((link) => {
+          {navigationLinks.map((link) => {
             const active = pathname === link.href
 
             return active ? (
@@ -68,7 +51,7 @@ export function AppShellHeader({ authEnabled }: { authEnabled: boolean }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <AppShellAuthControls authEnabled={authEnabled} />
+          <AppShellAuthControls authEnabled={authEnabled} pathname={pathname} />
         </div>
       </div>
     </header>

@@ -1,7 +1,5 @@
 "use client"
 
-import Link from "next/link"
-
 import {
   type ConversationBackendId,
   getProviderModeLabel,
@@ -616,11 +614,6 @@ function PlatformKeysCard({
           while the provider cards make it clear which side owns ASR and TTS.
         </li>
       </ul>
-      <div className="support-actions support-actions-single">
-        <Link href="/console" className="ghost-button">
-          Open debug console
-        </Link>
-      </div>
     </aside>
   )
 }

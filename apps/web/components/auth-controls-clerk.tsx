@@ -1,13 +1,15 @@
 "use client"
 
-import { UserButton, useAuth } from "@clerk/nextjs"
+import { useAuth } from "@clerk/nextjs"
 import Link from "next/link"
 import type { ReactNode } from "react"
 
-export function ClerkAppShellAuthControls() {
+const GITHUB_REPO_URL = "https://github.com/Lyshen/VoicyClaw"
+
+export function ClerkAppShellAuthControls({ pathname }: { pathname: string }) {
   return (
     <ClerkAuthGate
-      signedIn={<AccountMenu />}
+      signedIn={<AppShellAccountLink pathname={pathname} />}
       signedOut={<PrimaryAuthLink href="/sign-in" label="Log in" />}
     />
   )
@@ -16,7 +18,7 @@ export function ClerkAppShellAuthControls() {
 export function ClerkLandingNavbarAuthControls() {
   return (
     <ClerkAuthGate
-      signedIn={<AccountMenu />}
+      signedIn={<PrimaryAuthLink href="/studio" label="Open studio" />}
       signedOut={<PrimaryAuthLink href="/sign-in" label="Log in" />}
     />
   )
@@ -28,7 +30,7 @@ export function ClerkLandingHeroAuthControls() {
       signedIn={
         <>
           <HeroPrimaryLink href="/studio" label="Open studio" />
-          <HeroSecondaryLink href="/account" label="Account" />
+          <HeroSecondaryAnchor href={GITHUB_REPO_URL} label="Open on GitHub" />
         </>
       }
       signedOut={
@@ -47,7 +49,10 @@ export function ClerkLandingCallToActionControls() {
       signedIn={
         <>
           <CallToActionPrimaryLink href="/studio" label="Open studio" />
-          <CallToActionSecondaryLink href="/account" label="Account" />
+          <CallToActionSecondaryAnchor
+            href={GITHUB_REPO_URL}
+            label="Open on GitHub"
+          />
         </>
       }
       signedOut={
@@ -60,24 +65,18 @@ export function ClerkLandingCallToActionControls() {
   )
 }
 
-export function ClerkAppShellAccountLink({ pathname }: { pathname: string }) {
-  return (
-    <ClerkAuthGate
-      signedIn={
-        pathname === "/account" ? (
-          <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
-            Account
-          </span>
-        ) : (
-          <Link
-            href="/account"
-            className="text-sm font-medium text-zinc-500 transition-colors hover:text-amber-600"
-          >
-            Account
-          </Link>
-        )
-      }
-    />
+function AppShellAccountLink({ pathname }: { pathname: string }) {
+  return pathname === "/account" ? (
+    <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
+      Account
+    </span>
+  ) : (
+    <Link
+      href="/account"
+      className="rounded-full border border-zinc-200 bg-white/90 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_12px_30px_rgba(24,24,27,0.06)] transition hover:border-amber-300 hover:text-amber-700"
+    >
+      Account
+    </Link>
   )
 }
 
@@ -95,22 +94,6 @@ function ClerkAuthGate({
   }
 
   return isSignedIn ? signedIn : signedOut
-}
-
-function AccountMenu() {
-  return (
-    <div className="flex items-center gap-3">
-      <Link
-        href="/account"
-        className="rounded-full border border-zinc-200 bg-white/90 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_12px_30px_rgba(24,24,27,0.06)] transition hover:border-amber-300 hover:text-amber-700"
-      >
-        Account
-      </Link>
-      <div className="landing-user-button">
-        <UserButton />
-      </div>
-    </div>
-  )
 }
 
 function PrimaryAuthLink({ href, label }: { href: string; label: string }) {
@@ -149,6 +132,19 @@ function HeroSecondaryLink({ href, label }: { href: string; label: string }) {
   )
 }
 
+function HeroSecondaryAnchor({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-10 py-5 text-lg font-bold text-zinc-900 transition-all hover:bg-zinc-50 active:scale-95 sm:w-auto"
+    >
+      {label}
+    </a>
+  )
+}
+
 function CallToActionPrimaryLink({
   href,
   label,
@@ -182,5 +178,24 @@ function CallToActionSecondaryLink({
     >
       {label}
     </Link>
+  )
+}
+
+function CallToActionSecondaryAnchor({
+  href,
+  label,
+}: {
+  href: string
+  label: string
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="w-full rounded-2xl border border-white/40 bg-white/14 px-10 py-5 text-center text-xl font-bold text-white shadow-xl backdrop-blur-sm transition-all hover:bg-white/20 active:scale-95 sm:w-auto"
+    >
+      {label}
+    </a>
   )
 }

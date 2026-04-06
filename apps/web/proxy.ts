@@ -7,7 +7,6 @@ const isProtectedRoute = createRouteMatcher([
   "/studio(.*)",
   "/account(.*)",
   "/settings(.*)",
-  "/console(.*)",
 ])
 
 const authConfig = getResolvedAuthConfig()

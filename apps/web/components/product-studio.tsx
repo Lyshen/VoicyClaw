@@ -91,7 +91,7 @@ export function ProductStudio({
         {
           id: "restart",
           prefix: ">",
-          code: "Open Account or refresh once setup completes",
+          code: "Refresh once setup completes",
         },
       ]
 

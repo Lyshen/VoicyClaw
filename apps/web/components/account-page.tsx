@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import type { AccountSummaryState } from "../lib/account-summary"
+import { AccountSessionPanel } from "./account-session-panel"
 
 export function AccountPage({ state }: { state: AccountSummaryState }) {
   if (state.kind === "unavailable") {
@@ -254,6 +255,8 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
             <DetailRow label="Username" value={user.username ?? "Not set"} />
             <DetailRow label="User ID" value={shortId(user.id)} mono />
           </section>
+
+          <AccountSessionPanel />
 
           <section className="card stack-card p-6">
             <div className="card-heading compact">

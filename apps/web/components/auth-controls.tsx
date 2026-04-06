@@ -11,14 +11,16 @@ import {
 
 export function AppShellAuthControls({
   authEnabled,
+  pathname,
 }: {
   authEnabled: boolean
+  pathname: string
 }) {
   if (!authEnabled) {
     return null
   }
 
-  return <ClerkAppShellAuthControls />
+  return <ClerkAppShellAuthControls pathname={pathname} />
 }
 
 export function LandingNavbarAuthControls({
