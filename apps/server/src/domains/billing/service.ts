@@ -5,6 +5,11 @@ export {
 export type {
   HostedAllowanceSnapshot,
   TtsUsageStatus,
-  WorkspaceBillingSummary,
+  WorkspaceCreditsSummary,
+  WorkspaceUsageLogResult,
 } from "./types"
-export { getWorkspaceBillingSummary, recordTtsUsageForChannel } from "./usage"
+export {
+  getWorkspaceCreditsSummary,
+  getWorkspaceUsageLog,
+  recordTtsUsageForChannel,
+} from "./usage"

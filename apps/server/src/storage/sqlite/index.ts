@@ -7,6 +7,7 @@ export {
   findActiveBillingRate,
   getWorkspaceAllowanceSummary,
   getWorkspaceUsageSummary,
+  listWorkspaceAllowanceLedgerEntries,
   listWorkspaceUsageEvents,
   upsertBillingRate,
 } from "./billing"

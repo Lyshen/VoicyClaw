@@ -1020,6 +1020,32 @@ export async function getWorkspaceAllowanceSummary(workspaceId: string) {
   } satisfies WorkspaceAllowanceSummary
 }
 
+export async function listWorkspaceAllowanceLedgerEntries(
+  workspaceId: string,
+  limit = 50,
+) {
+  const [rows] = await query<RowDataPacket[]>(
+    `
+      SELECT
+        id,
+        workspace_id AS workspaceId,
+        entry_type AS entryType,
+        source_type AS sourceType,
+        source_id AS sourceId,
+        credits_delta_millis AS creditsDeltaMillis,
+        note,
+        created_at AS createdAt
+      FROM workspace_allowance_ledger
+      WHERE workspace_id = ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `,
+    [workspaceId, limit],
+  )
+
+  return rows as unknown as WorkspaceAllowanceLedgerEntry[]
+}
+
 export async function getWorkspaceUsageSummary(
   workspaceId: string,
   feature: BillingFeature,
@@ -1053,10 +1079,14 @@ export async function getWorkspaceUsageSummary(
 
 export async function listWorkspaceUsageEvents(
   workspaceId: string,
-  limit = 20,
+  feature: BillingFeature,
+  options: {
+    limit?: number
+    startAt?: string | null
+    endAt?: string | null
+  } = {},
 ) {
-  const [rows] = await query<RowDataPacket[]>(
-    `
+  let sql = `
       SELECT
         id,
         workspace_id AS workspaceId,
@@ -1075,12 +1105,27 @@ export async function listWorkspaceUsageEvents(
         error_message AS errorMessage,
         created_at AS createdAt
       FROM usage_events
-      WHERE workspace_id = ?
+      WHERE workspace_id = ? AND feature = ?
+    `
+  const params: Array<number | string> = [workspaceId, feature]
+
+  if (options.startAt) {
+    sql += " AND created_at >= ?"
+    params.push(options.startAt)
+  }
+
+  if (options.endAt) {
+    sql += " AND created_at <= ?"
+    params.push(options.endAt)
+  }
+
+  sql += `
       ORDER BY created_at DESC
       LIMIT ?
-    `,
-    [workspaceId, limit],
-  )
+    `
+  params.push(options.limit ?? 50)
+
+  const [rows] = await query<RowDataPacket[]>(sql, params)
 
   return rows as unknown as UsageEventRecord[]
 }

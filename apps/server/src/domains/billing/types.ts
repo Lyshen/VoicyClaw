@@ -1,4 +1,8 @@
-import type { UsageEventRecord } from "../../storage"
+import type {
+  UsageEventRecord,
+  WorkspaceAllowanceLedgerEntry,
+  WorkspaceUsageSummary,
+} from "../../storage"
 
 export type TtsUsageStatus = "succeeded" | "failed"
 
@@ -12,16 +16,20 @@ export type HostedAllowanceSnapshot = {
   remainingCreditsMillis: number
 }
 
-export type WorkspaceBillingSummary = {
+export type WorkspaceCreditsSummary = {
   workspaceId: string
   allowance: HostedAllowanceSnapshot
-  usage: {
-    totalEvents: number
-    successCount: number
-    failureCount: number
-    inputChars: number
-    outputAudioMs: number
-    chargedCreditsMillis: number
+  usage: WorkspaceUsageSummary
+  ledger: WorkspaceAllowanceLedgerEntry[]
+}
+
+export type WorkspaceUsageLogResult = {
+  workspaceId: string
+  allowance: HostedAllowanceSnapshot
+  usage: WorkspaceUsageSummary
+  filters: {
+    startAt: string | null
+    endAt: string | null
   }
-  recentEvents: UsageEventRecord[]
+  events: UsageEventRecord[]
 }

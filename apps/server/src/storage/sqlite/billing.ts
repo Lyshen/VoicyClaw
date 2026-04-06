@@ -113,6 +113,22 @@ const selectWorkspaceAllowanceSummaryStatement = db.prepare(`
   WHERE workspace_id = ?
 `)
 
+const selectWorkspaceAllowanceLedgerEntriesStatement = db.prepare(`
+  SELECT
+    id,
+    workspace_id AS workspaceId,
+    entry_type AS entryType,
+    source_type AS sourceType,
+    source_id AS sourceId,
+    credits_delta_millis AS creditsDeltaMillis,
+    note,
+    created_at AS createdAt
+  FROM workspace_allowance_ledger
+  WHERE workspace_id = ?
+  ORDER BY created_at DESC
+  LIMIT ?
+`)
+
 const selectWorkspaceUsageSummaryStatement = db.prepare(`
   SELECT
     COUNT(*) AS totalEvents,
@@ -123,30 +139,6 @@ const selectWorkspaceUsageSummaryStatement = db.prepare(`
     COALESCE(SUM(charged_credits_millis), 0) AS chargedCreditsMillis
   FROM usage_events
   WHERE workspace_id = ? AND feature = ?
-`)
-
-const selectWorkspaceUsageEventsStatement = db.prepare(`
-  SELECT
-    id,
-    workspace_id AS workspaceId,
-    project_id AS projectId,
-    channel_id AS channelId,
-    request_id AS requestId,
-    feature,
-    provider_id AS providerId,
-    status,
-    input_chars AS inputChars,
-    output_audio_bytes AS outputAudioBytes,
-    output_audio_ms AS outputAudioMs,
-    billing_rate_id AS billingRateId,
-    charged_credits_millis AS chargedCreditsMillis,
-    estimated_provider_cost_usd_micros AS estimatedProviderCostUsdMicros,
-    error_message AS errorMessage,
-    created_at AS createdAt
-  FROM usage_events
-  WHERE workspace_id = ?
-  ORDER BY created_at DESC
-  LIMIT ?
 `)
 
 export function upsertBillingRate(input: {
@@ -318,6 +310,16 @@ export function getWorkspaceAllowanceSummary(workspaceId: string) {
   } satisfies WorkspaceAllowanceSummary
 }
 
+export function listWorkspaceAllowanceLedgerEntries(
+  workspaceId: string,
+  limit = 50,
+) {
+  return selectWorkspaceAllowanceLedgerEntriesStatement.all(
+    workspaceId,
+    limit,
+  ) as unknown as WorkspaceAllowanceLedgerEntry[]
+}
+
 export function getWorkspaceUsageSummary(
   workspaceId: string,
   feature: BillingFeature,
@@ -337,9 +339,53 @@ export function getWorkspaceUsageSummary(
   } satisfies WorkspaceUsageSummary
 }
 
-export function listWorkspaceUsageEvents(workspaceId: string, limit = 20) {
-  return selectWorkspaceUsageEventsStatement.all(
-    workspaceId,
-    limit,
-  ) as unknown as UsageEventRecord[]
+export function listWorkspaceUsageEvents(
+  workspaceId: string,
+  feature: BillingFeature,
+  options: {
+    limit?: number
+    startAt?: string | null
+    endAt?: string | null
+  } = {},
+) {
+  const filters = ["workspace_id = ?", "feature = ?"]
+  const params: Array<number | string> = [workspaceId, feature]
+
+  if (options.startAt) {
+    filters.push("created_at >= ?")
+    params.push(options.startAt)
+  }
+
+  if (options.endAt) {
+    filters.push("created_at <= ?")
+    params.push(options.endAt)
+  }
+
+  params.push(options.limit ?? 50)
+
+  const statement = db.prepare(`
+    SELECT
+      id,
+      workspace_id AS workspaceId,
+      project_id AS projectId,
+      channel_id AS channelId,
+      request_id AS requestId,
+      feature,
+      provider_id AS providerId,
+      status,
+      input_chars AS inputChars,
+      output_audio_bytes AS outputAudioBytes,
+      output_audio_ms AS outputAudioMs,
+      billing_rate_id AS billingRateId,
+      charged_credits_millis AS chargedCreditsMillis,
+      estimated_provider_cost_usd_micros AS estimatedProviderCostUsdMicros,
+      error_message AS errorMessage,
+      created_at AS createdAt
+    FROM usage_events
+    WHERE ${filters.join(" AND ")}
+    ORDER BY created_at DESC
+    LIMIT ?
+  `)
+
+  return statement.all(...params) as unknown as UsageEventRecord[]
 }
