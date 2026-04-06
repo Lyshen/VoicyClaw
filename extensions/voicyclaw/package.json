@@ -63,11 +63,11 @@
     "channel": {
       "id": "voicyclaw",
       "label": "VoicyClaw",
-      "selectionLabel": "VoicyClaw (Outbound Connector)",
+      "selectionLabel": "VoicyClaw",
       "detailLabel": "VoicyClaw",
       "docsPath": "/channels/voicyclaw",
       "docsLabel": "voicyclaw",
-      "blurb": "Connect OpenClaw outward to a VoicyClaw service over WebSocket.",
+      "blurb": "Connect OpenClaw to VoicyClaw over WebSocket.",
       "aliases": [
         "voiceclaw"
       ],

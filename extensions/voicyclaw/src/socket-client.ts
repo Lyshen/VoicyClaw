@@ -1,5 +1,4 @@
 import WebSocket from "ws";
-import type { ResolvedVoicyClawAccount } from "./config.js";
 import {
   createHelloMessage,
   createPreviewTextMessage,
@@ -18,8 +17,9 @@ type Logger = {
 };
 
 export type VoicyClawSocketClientOptions = {
-  account: ResolvedVoicyClawAccount;
+  token: string;
   socketUrl: string;
+  connectTimeoutMs: number;
   logger: Logger;
   onMessage?: (message: VoicyClawServerMessage) => Promise<void> | void;
   onTranscript?: (message: VoicyClawSttResultMessage) => Promise<void> | void;
@@ -46,14 +46,14 @@ export class VoicyClawSocketClient {
       let settled = false;
       const timeout = globalThis.setTimeout(() => {
         const error = new Error(
-          `Timed out after ${this.options.account.connectTimeoutMs}ms waiting for VoicyClaw welcome.`,
+          `Timed out after ${this.options.connectTimeoutMs}ms waiting for VoicyClaw welcome.`,
         );
         if (!settled) {
           settled = true;
           reject(error);
         }
         socket.close();
-      }, this.options.account.connectTimeoutMs);
+      }, this.options.connectTimeoutMs);
 
       const settleResolve = (message: VoicyClawWelcomeMessage) => {
         if (settled) {
@@ -79,7 +79,7 @@ export class VoicyClawSocketClient {
         socket.send(
           JSON.stringify(
             createHelloMessage({
-              token: this.options.account.token ?? "",
+              token: this.options.token,
             }),
           ),
         );

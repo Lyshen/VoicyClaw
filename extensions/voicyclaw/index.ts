@@ -7,7 +7,7 @@ import { createVoicyClawRuntime, setVoicyClawRuntime } from "./src/runtime.js";
 const plugin = {
   id: "voicyclaw",
   name: "VoicyClaw",
-  description: "Outbound VoicyClaw channel connector for OpenClaw",
+  description: "VoicyClaw plugin for OpenClaw",
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
     const runtime = createVoicyClawRuntime();

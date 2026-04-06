@@ -2,20 +2,13 @@
 
 This package is the standalone OpenClaw plugin for VoicyClaw.
 
-Current scope:
+This package gives OpenClaw one minimal VoicyClaw integration:
 
-- registers a real `voicyclaw` channel plugin
-- owns an outbound WebSocket gateway connector
-- performs the VoicyClaw `HELLO` / `WELCOME` handshake
-- forwards final `STT_RESULT` turns into the OpenClaw agent runtime
-- maps OpenClaw block/final replies back into VoicyClaw preview/text events
-- tracks connection status through `voicyclaw.status`
-- keeps a guarded `devEchoReplies` mode for transport smoke tests
-
-What is not wired yet:
-
-- audio frame handling beyond the protocol skeleton
-- richer non-text payload delivery beyond text plus attachment URLs
+- authenticate with a VoicyClaw token
+- open the `HELLO` / `WELCOME` WebSocket session
+- forward final `STT_RESULT` turns into OpenClaw
+- map OpenClaw block/final replies back into `BOT_PREVIEW` and `TTS_TEXT`
+- expose runtime state through `voicyclaw.status`
 
 ## Install In OpenClaw
 
@@ -26,9 +19,8 @@ openclaw gateway restart
 
 ## Hosted Quick Start
 
-Configure the connector under `channels.voicyclaw`. For the hosted VoicyClaw
-service, the plugin already defaults to `https://api.voicyclaw.com`, so the
-smallest working config is:
+For the hosted VoicyClaw service, the plugin already defaults to
+`https://api.voicyclaw.com`, so the smallest working config is:
 
 ```json
 {
@@ -48,13 +40,12 @@ openclaw gateway restart
 
 ## Config Notes
 
-- `channels.voicyclaw.token` is the VoicyClaw API key issued by the VoicyClaw
-  server
-- the plugin no longer accepts local `channelId` or `botId` selection; room and
-  bot binding come from the VoicyClaw server after the token is authenticated
-- it is not the same thing as `gateway.auth.token` from OpenClaw
-- if the wrong token is configured, the OpenClaw logs will show
-  `AUTH_FAILED Invalid or expired API key.`
+- the plugin reads one block only: `channels.voicyclaw`
+- `channels.voicyclaw.token` is the VoicyClaw API key
+- room and bot binding come from the VoicyClaw server after the token is accepted
+- `channels.voicyclaw.url` is optional and is only for self-hosted deployments
+- this token is unrelated to `gateway.auth.token` from OpenClaw
+- a bad token will fail the handshake with `AUTH_FAILED Invalid or expired API key.`
 
 ## Self-Hosted Override
 
@@ -71,25 +62,6 @@ non-default VoicyClaw deployment:
   }
 }
 ```
-
-Advanced fields such as `workspaceId` and `displayName` remain available, but
-the connector itself always binds room and bot from the server-side token.
-
-Optional development-only transport echo:
-
-```json
-{
-  "channels": {
-    "voicyclaw": {
-      "devEchoReplies": true
-    }
-  }
-}
-```
-
-When `devEchoReplies` is enabled, the plugin sends a simple echoed `TTS_TEXT`
-reply after a final transcript arrives, bypassing the real OpenClaw dispatch
-path. That is only for isolating transport problems during local debugging.
 
 ## Local Development
 

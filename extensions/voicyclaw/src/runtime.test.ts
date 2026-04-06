@@ -1,26 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveVoicyClawAccount } from "./config.js";
+import { bindVoicyClawAccount, resolveVoicyClawAccount } from "./config.js";
 import { createVoicyClawRuntime } from "./runtime.js";
 
 describe("voicyclaw runtime", () => {
   it("tracks start, connect, traffic, and disconnect transitions", () => {
     const runtime = createVoicyClawRuntime();
-    const account = resolveVoicyClawAccount(
-      {
-        channels: {
-          voicyclaw: {
-            token: "vc-token",
-          },
+    const account = resolveVoicyClawAccount({
+      channels: {
+        voicyclaw: {
+          token: "vc-token",
         },
       },
-      "default",
-    );
-    const connectedAccount = {
-      ...account,
-      channelId: "demo-room",
-      botId: "demo-bot",
-    };
+    });
+    const connectedAccount = bindVoicyClawAccount(account, {
+      channel_id: "demo-room",
+      bot_id: "demo-bot",
+      bot_name: "Demo Bot",
+    });
 
     runtime.markStarting(account);
     runtime.markConnected(connectedAccount, "session-1");
@@ -30,6 +27,9 @@ describe("voicyclaw runtime", () => {
 
     expect(runtime.getSnapshot(account.accountId)).toMatchObject({
       accountId: "default",
+      name: "Demo Bot",
+      channelId: "demo-room",
+      botId: "demo-bot",
       connected: false,
       running: true,
       reconnectAttempts: 1,
@@ -39,16 +39,13 @@ describe("voicyclaw runtime", () => {
 
   it("marks stopped connectors as no longer running", () => {
     const runtime = createVoicyClawRuntime();
-    const account = resolveVoicyClawAccount(
-      {
-        channels: {
-          voicyclaw: {
-            token: "vc-token",
-          },
+    const account = resolveVoicyClawAccount({
+      channels: {
+        voicyclaw: {
+          token: "vc-token",
         },
       },
-      "default",
-    );
+    });
 
     runtime.markStarting(account);
     runtime.markStopped(account);

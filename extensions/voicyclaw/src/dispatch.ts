@@ -147,21 +147,23 @@ export async function dispatchVoicyClawTranscript(params: {
 }
 
 function buildConversationLabel(account: ResolvedVoicyClawAccount) {
-  if (account.workspaceId) {
-    return `${account.workspaceId}/${account.channelId}`;
-  }
-
-  return account.channelId;
+  return getRequiredBinding(account).channelId;
 }
 
 function buildVoicyClawPeerId(account: ResolvedVoicyClawAccount) {
-  return account.workspaceId
-    ? `${account.workspaceId}:${account.channelId}`
-    : account.channelId;
+  return getRequiredBinding(account).channelId;
 }
 
 function buildVoicyClawTarget(account: ResolvedVoicyClawAccount) {
   return `voicyclaw:${buildVoicyClawPeerId(account)}`;
+}
+
+function getRequiredBinding(account: ResolvedVoicyClawAccount) {
+  if (!account.binding) {
+    throw new Error("VoicyClaw binding is not ready.");
+  }
+
+  return account.binding;
 }
 
 export function replyPayloadToText(payload: ReplyPayload) {
