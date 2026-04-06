@@ -38,20 +38,49 @@ test.beforeEach(async ({ page }) => {
 async function openStudioConversation(page: Page) {
   await page.goto("/studio")
 
-  await page.getByRole("button", { name: /Check bot online/i }).click()
-
-  const openTalkButton = page.getByRole("button", { name: /Open talk/i })
   const composer = page.getByPlaceholder(/Speak or type here/i)
+  const checkConnectionButton = page.getByRole("button", {
+    name: /Check bot (online|connection)/i,
+  })
+  const continueVoicePathsButton = page.getByRole("button", {
+    name: /Continue to voice paths/i,
+  })
+  const continueTalkButton = page.getByRole("button", {
+    name: /Continue to talk/i,
+  })
+  const openTalkButton = page.getByRole("button", { name: /Open talk/i })
+  const backToSetupButton = page.getByRole("button", { name: /Back to setup/i })
 
   await expect
     .poll(
       async () => {
-        if (await composer.isVisible()) {
+        if (await composer.isVisible().catch(() => false)) {
           return "ready"
         }
 
-        if (await openTalkButton.isVisible()) {
+        if (await continueTalkButton.isVisible().catch(() => false)) {
+          await continueTalkButton.click()
+          return "advancing"
+        }
+
+        if (await openTalkButton.isVisible().catch(() => false)) {
           await openTalkButton.click()
+          return "advancing"
+        }
+
+        if (await continueVoicePathsButton.isVisible().catch(() => false)) {
+          await continueVoicePathsButton.click()
+          return "advancing"
+        }
+
+        if (await backToSetupButton.isVisible().catch(() => false)) {
+          await backToSetupButton.click()
+          return "advancing"
+        }
+
+        if (await checkConnectionButton.isVisible().catch(() => false)) {
+          await checkConnectionButton.click()
+          return "checking"
         }
 
         return "waiting"
