@@ -2,15 +2,12 @@
 
 import { UserButton } from "@clerk/nextjs"
 
+import { SectionCardHeader } from "./section-card-header"
+
 export function AccountSessionPanel() {
   return (
     <section className="card stack-card p-6">
-      <div className="card-heading compact">
-        <div>
-          <p className="card-kicker">Session</p>
-          <h2>Manage sign-in</h2>
-        </div>
-      </div>
+      <SectionCardHeader kicker="Session" title="Manage sign-in" />
 
       <p className="support-copy text-sm leading-7">
         Use the session controls here when you want to manage the current

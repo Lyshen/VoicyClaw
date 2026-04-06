@@ -1,7 +1,7 @@
-import Link from "next/link"
-
 import type { AccountSummaryState } from "../lib/account-summary"
 import { AccountSessionPanel } from "./account-session-panel"
+import { PageActionLink } from "./page-action-link"
+import { SectionCardHeader } from "./section-card-header"
 
 export function AccountPage({ state }: { state: AccountSummaryState }) {
   if (state.kind === "unavailable") {
@@ -103,15 +103,15 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
       <div className="workspace-grid">
         <div className="page-stack">
           <section className="card stack-card p-6">
-            <div className="card-heading compact">
-              <div>
-                <p className="card-kicker">Allowance</p>
-                <h2>Starter preview balance</h2>
-              </div>
-              <span className="status-pill live">
-                {billing.allowance.status}
-              </span>
-            </div>
+            <SectionCardHeader
+              kicker="Allowance"
+              title="Starter preview balance"
+              aside={
+                <span className="status-pill live">
+                  {billing.allowance.status}
+                </span>
+              }
+            />
 
             <div className="grid gap-4 md:grid-cols-3">
               <MetricCard
@@ -137,12 +137,7 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
           </section>
 
           <section className="card stack-card p-6">
-            <div className="card-heading compact">
-              <div>
-                <p className="card-kicker">Usage</p>
-                <h2>Workspace TTS summary</h2>
-              </div>
-            </div>
+            <SectionCardHeader kicker="Usage" title="Workspace TTS summary" />
 
             <div className="grid gap-4 md:grid-cols-3">
               <MetricCard
@@ -179,12 +174,10 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
           </section>
 
           <section className="card stack-card p-6">
-            <div className="card-heading compact">
-              <div>
-                <p className="card-kicker">Recent usage</p>
-                <h2>Latest metered events</h2>
-              </div>
-            </div>
+            <SectionCardHeader
+              kicker="Recent usage"
+              title="Latest metered events"
+            />
 
             {billing.recentEvents.length === 0 ? (
               <div className="timeline-empty">
@@ -243,12 +236,7 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
 
         <div className="sidebar-stack">
           <section className="card stack-card p-6">
-            <div className="card-heading compact">
-              <div>
-                <p className="card-kicker">Profile</p>
-                <h2>Your account</h2>
-              </div>
-            </div>
+            <SectionCardHeader kicker="Profile" title="Your account" />
 
             <DetailRow label="Name" value={user.displayName} />
             <DetailRow label="Email" value={user.email ?? "No primary email"} />
@@ -259,12 +247,10 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
           <AccountSessionPanel />
 
           <section className="card stack-card p-6">
-            <div className="card-heading compact">
-              <div>
-                <p className="card-kicker">Workspace</p>
-                <h2>Hosted starter setup</h2>
-              </div>
-            </div>
+            <SectionCardHeader
+              kicker="Workspace"
+              title="Hosted starter setup"
+            />
 
             <DetailRow label="Workspace" value={onboarding.workspace.name} />
             <DetailRow label="Project" value={onboarding.project.name} />
@@ -281,12 +267,10 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
           </section>
 
           <section className="card stack-card p-6">
-            <div className="card-heading compact">
-              <div>
-                <p className="card-kicker">Next step</p>
-                <h2>Keep testing live voice</h2>
-              </div>
-            </div>
+            <SectionCardHeader
+              kicker="Next step"
+              title="Keep testing live voice"
+            />
 
             <p className="support-copy text-sm leading-7">
               Use Studio for the real conversation loop, and use Settings when
@@ -294,18 +278,16 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
             </p>
 
             <div className="flex flex-wrap gap-3">
-              <Link
+              <PageActionLink
                 href="/studio"
-                className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
-              >
-                Open studio
-              </Link>
-              <Link
+                label="Open studio"
+                tone="primary"
+              />
+              <PageActionLink
                 href="/settings"
-                className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:border-amber-300 hover:text-amber-700"
-              >
-                Open settings
-              </Link>
+                label="Open settings"
+                tone="secondary"
+              />
             </div>
           </section>
         </div>
@@ -339,17 +321,12 @@ function EmptyAccountState({
         </div>
         <div className="status-row">
           {actions.map((action) => (
-            <Link
+            <PageActionLink
               key={action.href}
               href={action.href}
-              className={
-                action.tone === "primary"
-                  ? "rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
-                  : "rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:border-amber-300 hover:text-amber-700"
-              }
-            >
-              {action.label}
-            </Link>
+              label={action.label}
+              tone={action.tone}
+            />
           ))}
         </div>
       </section>

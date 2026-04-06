@@ -6,6 +6,7 @@ import {
   type ProviderGuide,
   type ProviderMode,
 } from "../lib/studio-provider-catalog"
+import { SectionCardHeader } from "./section-card-header"
 
 type BackendOption = {
   id: ConversationBackendId
@@ -200,27 +201,27 @@ function StarterSetupCard({
 }) {
   return (
     <section className="card stack-card">
-      <div className="card-heading compact">
-        <div>
-          <p className="card-kicker">Starter setup</p>
-          <h2>Your first voice project is ready</h2>
-        </div>
-        <span
-          className={`status-pill ${
-            starterBotOnline === null
-              ? "neutral"
+      <SectionCardHeader
+        kicker="Starter setup"
+        title="Your first voice project is ready"
+        aside={
+          <span
+            className={`status-pill ${
+              starterBotOnline === null
+                ? "neutral"
+                : starterBotOnline
+                  ? "live"
+                  : "warn"
+            }`}
+          >
+            {starterBotOnline === null
+              ? "Checking status"
               : starterBotOnline
-                ? "live"
-                : "warn"
-          }`}
-        >
-          {starterBotOnline === null
-            ? "Checking status"
-            : starterBotOnline
-              ? "Bot online"
-              : "Waiting for bot"}
-        </span>
-      </div>
+                ? "Bot online"
+                : "Waiting for bot"}
+          </span>
+        }
+      />
       <p className="support-copy">{starterProjectStatus}</p>
       <div className="stats-grid">
         <div className="stat">
@@ -276,12 +277,10 @@ function AgentSourceCard({
 }) {
   return (
     <section className="card stack-card">
-      <div className="card-heading compact">
-        <div>
-          <p className="card-kicker">Agent source</p>
-          <h2>How VoicyClaw reaches your agent</h2>
-        </div>
-      </div>
+      <SectionCardHeader
+        kicker="Agent source"
+        title="How VoicyClaw reaches your agent"
+      />
       <p className="support-copy">
         Active path: <strong>{activeBackend.label}</strong>.{" "}
         {activeBackend.runtimeHint}
@@ -329,12 +328,7 @@ function ConnectionSettingsCard({
 }) {
   return (
     <section className="card stack-card">
-      <div className="card-heading compact">
-        <div>
-          <p className="card-kicker">Basics</p>
-          <h2>Connection settings</h2>
-        </div>
-      </div>
+      <SectionCardHeader kicker="Basics" title="Connection settings" />
       <div className="form-grid">
         <label className="field">
           <span>Server URL</span>
@@ -384,15 +378,15 @@ function GatewaySettingsCard({
 }) {
   return (
     <section className="card stack-card">
-      <div className="card-heading compact">
-        <div>
-          <p className="card-kicker">OpenClaw bridge</p>
-          <h2>Gateway settings</h2>
-        </div>
-        <span className={`status-pill ${active ? "warn" : "neutral"}`}>
-          {active ? "Active" : "Optional"}
-        </span>
-      </div>
+      <SectionCardHeader
+        kicker="OpenClaw bridge"
+        title="Gateway settings"
+        aside={
+          <span className={`status-pill ${active ? "warn" : "neutral"}`}>
+            {active ? "Active" : "Optional"}
+          </span>
+        }
+      />
       <div className="form-grid">
         <label className="field">
           <span>Gateway URL</span>
@@ -454,15 +448,15 @@ function ProviderConfigurator<T extends string>({
 }: ProviderConfiguratorProps<T>) {
   return (
     <section className="card stack-card provider-section">
-      <div className="card-heading compact">
-        <div>
-          <p className="card-kicker">{kicker}</p>
-          <h2>{title}</h2>
-        </div>
-        <span className={`status-pill ${toneForMode(activeProviderMode)}`}>
-          {getProviderModeLabel(activeProviderMode)}
-        </span>
-      </div>
+      <SectionCardHeader
+        kicker={kicker}
+        title={title}
+        aside={
+          <span className={`status-pill ${toneForMode(activeProviderMode)}`}>
+            {getProviderModeLabel(activeProviderMode)}
+          </span>
+        }
+      />
 
       <p className="support-copy">
         Active provider: <strong>{activeProviderLabel}</strong>.{" "}
@@ -493,12 +487,11 @@ function ProviderConfigurator<T extends string>({
       </div>
 
       <div className="guide-stack">
-        <div className="card-heading compact provider-guide-heading">
-          <div>
-            <p className="card-kicker">Provider guide</p>
-            <h2>What to try next</h2>
-          </div>
-        </div>
+        <SectionCardHeader
+          kicker="Provider guide"
+          title="What to try next"
+          className="provider-guide-heading"
+        />
         <div className="guide-card-grid">
           {guides.map((guide) => {
             const tone = guide.status === "next" ? "neutral" : "warn"
@@ -524,12 +517,10 @@ function ProviderConfigurator<T extends string>({
 function CredentialWiringCard() {
   return (
     <section className="card stack-card">
-      <div className="card-heading compact">
-        <div>
-          <p className="card-kicker">Server-provider prep</p>
-          <h2>Credential wiring</h2>
-        </div>
-      </div>
+      <SectionCardHeader
+        kicker="Server-provider prep"
+        title="Credential wiring"
+      />
       <p className="support-copy">
         Server-side providers read credentials from server config, not from
         browser storage. YAML config or env vars both work. Azure uses
@@ -587,17 +578,15 @@ function PlatformKeysCard({
 }) {
   return (
     <aside className="card stack-card">
-      <div className="card-heading compact">
-        <div>
-          <p className="card-kicker">
-            {onboarding ? "Extra platform keys" : "Platform keys"}
-          </p>
-          <h2>{onboarding ? "Issue another bot key" : "Create a bot key"}</h2>
-        </div>
-        <button className="ghost-button" type="button" onClick={onIssueKey}>
-          {onboarding ? "Issue another key" : "Issue key"}
-        </button>
-      </div>
+      <SectionCardHeader
+        kicker={onboarding ? "Extra platform keys" : "Platform keys"}
+        title={onboarding ? "Issue another bot key" : "Create a bot key"}
+        aside={
+          <button className="ghost-button" type="button" onClick={onIssueKey}>
+            {onboarding ? "Issue another key" : "Issue key"}
+          </button>
+        }
+      />
       <p className="support-copy">{keyMessage}</p>
       <div className="code-block">{issuedKey || "No key issued yet."}</div>
       <ul className="note-list compact-list">

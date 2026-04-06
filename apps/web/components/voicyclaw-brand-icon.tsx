@@ -17,7 +17,7 @@ export function VoicyClawBrandIcon({
       alt={alt}
       width={size}
       height={size}
-      className={className}
+      className={className ? `block ${className}` : "block"}
       priority
     />
   )

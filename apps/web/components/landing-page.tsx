@@ -12,13 +12,13 @@ import {
   Zap,
 } from "lucide-react"
 import { motion } from "motion/react"
-import Link from "next/link"
 
 import {
   LandingCallToActionControls,
   LandingHeroAuthControls,
   LandingNavbarAuthControls,
 } from "./auth-controls"
+import { SiteHeader } from "./site-header"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
 
 const waveformBars = Array.from({ length: 60 }, (_, index) => ({
@@ -119,45 +119,19 @@ export function LandingPage({ authEnabled }: { authEnabled: boolean }) {
 
 function Navbar({ authEnabled }: { authEnabled: boolean }) {
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-zinc-100 bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-2xl font-bold tracking-tight text-zinc-900"
-        >
-          <VoicyClawBrandIcon
-            alt="VoicyClaw"
-            className="h-10 w-10 rounded-2xl shadow-lg shadow-amber-500/20"
-          />
-          VoicyClaw
-        </Link>
-        <div className="hidden items-center gap-8 md:flex">
-          <a
-            href="#features"
-            className="text-sm font-medium text-zinc-500 transition-colors hover:text-amber-600"
-          >
-            Features
-          </a>
-          <a
-            href="#how-it-works"
-            className="text-sm font-medium text-zinc-500 transition-colors hover:text-amber-600"
-          >
-            How it works
-          </a>
-          <a
-            href="https://github.com/Lyshen/VoicyClaw"
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm font-medium text-zinc-500 transition-colors hover:text-amber-600"
-          >
-            GitHub
-          </a>
-        </div>
-        <div className="flex items-center gap-4">
-          <LandingNavbarAuthControls authEnabled={authEnabled} />
-        </div>
-      </div>
-    </nav>
+    <SiteHeader
+      mode="fixed"
+      navigation={[
+        { href: "#features", label: "Features" },
+        { href: "#how-it-works", label: "How it works" },
+        {
+          href: "https://github.com/Lyshen/VoicyClaw",
+          label: "GitHub",
+          external: true,
+        },
+      ]}
+      actions={<LandingNavbarAuthControls authEnabled={authEnabled} />}
+    />
   )
 }
 
