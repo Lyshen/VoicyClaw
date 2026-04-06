@@ -35,7 +35,7 @@ export function AccountPage({ state }: { state: AccountSummaryState }) {
         actions={[
           {
             href: "/sign-in",
-            label: "Log in",
+            label: "Sign in",
             tone: "primary",
           },
           {

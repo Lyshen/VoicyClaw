@@ -1,25 +1,16 @@
 "use client"
 
-import { useAuth } from "@clerk/nextjs"
+import { useAuth, useUser } from "@clerk/nextjs"
 import Link from "next/link"
 import type { ReactNode } from "react"
 
 const GITHUB_REPO_URL = "https://github.com/Lyshen/VoicyClaw"
 
-export function ClerkAppShellAuthControls({ pathname }: { pathname: string }) {
+export function ClerkHeaderAuthControls() {
   return (
     <ClerkAuthGate
-      signedIn={<AppShellAccountLink pathname={pathname} />}
-      signedOut={<PrimaryAuthLink href="/sign-in" label="Log in" />}
-    />
-  )
-}
-
-export function ClerkLandingNavbarAuthControls() {
-  return (
-    <ClerkAuthGate
-      signedIn={<PrimaryAuthLink href="/studio" label="Open studio" />}
-      signedOut={<PrimaryAuthLink href="/sign-in" label="Log in" />}
+      signedIn={<AccountAvatarLink />}
+      signedOut={<PrimaryAuthLink href="/sign-in" label="Sign in" />}
     />
   )
 }
@@ -36,7 +27,7 @@ export function ClerkLandingHeroAuthControls() {
       signedOut={
         <>
           <HeroPrimaryLink href="/sign-up" label="Create account" />
-          <HeroSecondaryLink href="/sign-in" label="Log in" />
+          <HeroSecondaryLink href="/sign-in" label="Sign in" />
         </>
       }
     />
@@ -58,24 +49,50 @@ export function ClerkLandingCallToActionControls() {
       signedOut={
         <>
           <CallToActionPrimaryLink href="/sign-up" label="Create account" />
-          <CallToActionSecondaryLink href="/sign-in" label="Log in" />
+          <CallToActionSecondaryLink href="/sign-in" label="Sign in" />
         </>
       }
     />
   )
 }
 
-function AppShellAccountLink({ pathname }: { pathname: string }) {
-  return pathname === "/account" ? (
-    <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
-      Account
-    </span>
-  ) : (
+function AccountAvatarLink() {
+  const { user } = useUser()
+
+  if (!user) {
+    return null
+  }
+
+  const primaryEmail =
+    user.primaryEmailAddress?.emailAddress ||
+    user.emailAddresses?.[0]?.emailAddress
+  const label =
+    user.fullName?.trim() ||
+    primaryEmail ||
+    user.username?.trim() ||
+    "VoicyClaw account"
+  const initial = label.charAt(0).toUpperCase()
+  const imageUrl = user.imageUrl?.trim()
+
+  return (
     <Link
       href="/account"
-      className="rounded-full border border-zinc-200 bg-white/90 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_12px_30px_rgba(24,24,27,0.06)] transition hover:border-amber-300 hover:text-amber-700"
+      title={label}
+      aria-label="Open account"
+      className="group flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white/90 shadow-[0_12px_30px_rgba(24,24,27,0.06)] transition hover:border-amber-300 hover:shadow-[0_18px_44px_rgba(245,158,11,0.16)]"
     >
-      Account
+      {imageUrl ? (
+        // biome-ignore lint/performance/noImgElement: Clerk avatar URLs are remote and not wired into the app image pipeline.
+        <img
+          src={imageUrl}
+          alt={label}
+          className="h-9 w-9 rounded-full object-cover"
+        />
+      ) : (
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-sm font-semibold text-white">
+          {initial}
+        </span>
+      )}
     </Link>
   )
 }

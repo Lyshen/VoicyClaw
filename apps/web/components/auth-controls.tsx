@@ -3,24 +3,21 @@
 import Link from "next/link"
 
 import {
-  ClerkAppShellAuthControls,
+  ClerkHeaderAuthControls,
   ClerkLandingCallToActionControls,
   ClerkLandingHeroAuthControls,
-  ClerkLandingNavbarAuthControls,
 } from "./auth-controls-clerk"
 
 export function AppShellAuthControls({
   authEnabled,
-  pathname,
 }: {
   authEnabled: boolean
-  pathname: string
 }) {
   if (!authEnabled) {
     return null
   }
 
-  return <ClerkAppShellAuthControls pathname={pathname} />
+  return <ClerkHeaderAuthControls />
 }
 
 export function LandingNavbarAuthControls({
@@ -40,7 +37,7 @@ export function LandingNavbarAuthControls({
     )
   }
 
-  return <ClerkLandingNavbarAuthControls />
+  return <ClerkHeaderAuthControls />
 }
 
 export function LandingHeroAuthControls({

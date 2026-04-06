@@ -51,7 +51,7 @@ export function AppShellHeader({ authEnabled }: { authEnabled: boolean }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <AppShellAuthControls authEnabled={authEnabled} pathname={pathname} />
+          <AppShellAuthControls authEnabled={authEnabled} />
         </div>
       </div>
     </header>
