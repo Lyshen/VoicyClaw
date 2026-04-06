@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  buildAccountSummary,
-  type WorkspaceBillingSummary,
-} from "../apps/web/lib/account-summary-shared"
 import type { HostedOnboardingState } from "../apps/web/lib/hosted-onboarding-shared"
+import { buildHostedViewerSummary } from "../apps/web/lib/hosted-viewer-shared"
 
-describe("account summary shared helpers", () => {
-  it("builds a complete account summary from hosted onboarding and billing data", () => {
+describe("hosted viewer shared helpers", () => {
+  it("builds a complete hosted viewer summary from onboarding data", () => {
     const onboarding = {
       version: 1 as const,
       workspace: {
@@ -41,22 +38,8 @@ describe("account summary shared helpers", () => {
       settingsNamespace: "ws-demo.sayhello-demo",
     } satisfies HostedOnboardingState
 
-    const billing = {
-      workspaceId: "ws-demo",
-      allowance: onboarding.allowance,
-      usage: {
-        totalEvents: 3,
-        successCount: 2,
-        failureCount: 1,
-        inputChars: 1234,
-        outputAudioMs: 5678,
-        chargedCreditsMillis: 12_500,
-      },
-      recentEvents: [],
-    } satisfies WorkspaceBillingSummary
-
     expect(
-      buildAccountSummary({
+      buildHostedViewerSummary({
         user: {
           id: "user_demo",
           fullName: "Lyshen Demo",
@@ -68,7 +51,6 @@ describe("account summary shared helpers", () => {
           emailAddresses: [],
         },
         onboarding,
-        billing,
       }),
     ).toEqual({
       user: {
@@ -78,7 +60,6 @@ describe("account summary shared helpers", () => {
         username: "lyshen-demo",
       },
       onboarding,
-      billing,
     })
   })
 
@@ -112,28 +93,13 @@ describe("account summary shared helpers", () => {
       settingsNamespace: "ws-demo.sayhello-demo",
     } satisfies HostedOnboardingState
 
-    const billing = {
-      workspaceId: "ws-demo",
-      allowance: onboarding.allowance,
-      usage: {
-        totalEvents: 0,
-        successCount: 0,
-        failureCount: 0,
-        inputChars: 0,
-        outputAudioMs: 0,
-        chargedCreditsMillis: 0,
-      },
-      recentEvents: [],
-    } satisfies WorkspaceBillingSummary
-
     expect(
-      buildAccountSummary({
+      buildHostedViewerSummary({
         user: {
           id: "user_demo",
           emailAddresses: [],
         },
         onboarding,
-        billing,
       }).user,
     ).toEqual({
       id: "user_demo",

@@ -21,7 +21,7 @@ type HostedBootstrapPayload = {
   starterKey: { value: string; label: string; createdAt: string } | null
 }
 
-type WorkspaceBillingPayload = {
+type WorkspaceCreditsPayload = {
   workspaceId: string
   allowance: {
     label: string
@@ -40,7 +40,27 @@ type WorkspaceBillingPayload = {
     outputAudioMs: number
     chargedCreditsMillis: number
   }
-  recentEvents: Array<{
+  ledger: Array<{
+    id: string
+    workspaceId: string
+    entryType: "grant" | "usage" | "adjustment"
+    sourceType: string
+    sourceId: string
+    creditsDeltaMillis: number
+    note: string | null
+    createdAt: string
+  }>
+}
+
+type WorkspaceLogsPayload = {
+  workspaceId: string
+  allowance: WorkspaceCreditsPayload["allowance"]
+  usage: WorkspaceCreditsPayload["usage"]
+  filters: {
+    startAt: string | null
+    endAt: string | null
+  }
+  events: Array<{
     workspaceId: string | null
     projectId: string | null
     channelId: string
@@ -97,13 +117,20 @@ describe.sequential("billing foundation", () => {
     expect(bootstrapResponse.status).toBe(200)
     const bootstrap = (await bootstrapResponse.json()) as HostedBootstrapPayload
 
-    const summaryBefore = await fetchWorkspaceBillingSummary(
+    const creditsBefore = await fetchWorkspaceCreditsSummary(
       bootstrap.workspace.id,
     )
-    expect(summaryBefore.allowance.grantedCreditsMillis).toBe(500_000)
-    expect(summaryBefore.allowance.usedCreditsMillis).toBe(0)
-    expect(summaryBefore.allowance.remainingCreditsMillis).toBe(500_000)
-    expect(summaryBefore.usage.totalEvents).toBe(0)
+    expect(creditsBefore.allowance.grantedCreditsMillis).toBe(500_000)
+    expect(creditsBefore.allowance.usedCreditsMillis).toBe(0)
+    expect(creditsBefore.allowance.remainingCreditsMillis).toBe(500_000)
+    expect(creditsBefore.usage.totalEvents).toBe(0)
+    expect(creditsBefore.ledger[0]).toMatchObject({
+      workspaceId: bootstrap.workspace.id,
+      entryType: "grant",
+      sourceType: "starter-preview",
+      sourceId: "starter-preview-v1",
+      creditsDeltaMillis: 500_000,
+    })
 
     bot = await runtime.connectBotRaw()
     bot.sendJson({
@@ -170,21 +197,34 @@ describe.sequential("billing foundation", () => {
     expect(audioEnd.sampleRate).toBe(16_000)
     expect(finalText.text).toBe("Hello from the billing foundation test bot.")
 
-    const summaryAfter = await fetchWorkspaceBillingSummary(
+    const creditsAfter = await fetchWorkspaceCreditsSummary(
       bootstrap.workspace.id,
     )
-    expect(summaryAfter.usage.totalEvents).toBe(1)
-    expect(summaryAfter.usage.successCount).toBe(1)
-    expect(summaryAfter.usage.failureCount).toBe(0)
-    expect(summaryAfter.usage.inputChars).toBeGreaterThan(0)
-    expect(summaryAfter.usage.outputAudioMs).toBeGreaterThan(0)
-    expect(summaryAfter.usage.chargedCreditsMillis).toBeGreaterThan(0)
-    expect(summaryAfter.allowance.usedCreditsMillis).toBe(
-      summaryAfter.usage.chargedCreditsMillis,
+    expect(creditsAfter.usage.totalEvents).toBe(1)
+    expect(creditsAfter.usage.successCount).toBe(1)
+    expect(creditsAfter.usage.failureCount).toBe(0)
+    expect(creditsAfter.usage.inputChars).toBeGreaterThan(0)
+    expect(creditsAfter.usage.outputAudioMs).toBeGreaterThan(0)
+    expect(creditsAfter.usage.chargedCreditsMillis).toBeGreaterThan(0)
+    expect(creditsAfter.allowance.usedCreditsMillis).toBe(
+      creditsAfter.usage.chargedCreditsMillis,
     )
-    expect(summaryAfter.allowance.remainingCreditsMillis).toBeLessThan(500_000)
-    expect(summaryAfter.allowance.note).toContain("voice credits remaining")
-    expect(summaryAfter.recentEvents[0]).toMatchObject({
+    expect(creditsAfter.allowance.remainingCreditsMillis).toBeLessThan(500_000)
+    expect(creditsAfter.allowance.note).toContain("voice credits remaining")
+    expect(creditsAfter.ledger[0]).toMatchObject({
+      workspaceId: bootstrap.workspace.id,
+      entryType: "usage",
+      sourceType: "tts-usage",
+      creditsDeltaMillis: -creditsAfter.usage.chargedCreditsMillis,
+      note: "demo TTS usage",
+    })
+
+    const logsAfter = await fetchWorkspaceUsageLog(bootstrap.workspace.id)
+    expect(logsAfter.filters).toEqual({
+      startAt: null,
+      endAt: null,
+    })
+    expect(logsAfter.events[0]).toMatchObject({
       workspaceId: bootstrap.workspace.id,
       projectId: bootstrap.project.id,
       channelId: bootstrap.project.channelId,
@@ -230,11 +270,11 @@ describe.sequential("billing foundation", () => {
       const bootstrap =
         (await bootstrapResponse.json()) as HostedBootstrapPayload
 
-      const summaryBefore = await fetchWorkspaceBillingSummary(
+      const creditsBefore = await fetchWorkspaceCreditsSummary(
         bootstrap.workspace.id,
         failingRuntime.serverUrl,
       )
-      expect(summaryBefore.allowance.remainingCreditsMillis).toBe(500_000)
+      expect(creditsBefore.allowance.remainingCreditsMillis).toBe(500_000)
 
       failingBot = await failingRuntime.connectBotRaw()
       failingBot.sendJson({
@@ -277,17 +317,23 @@ describe.sequential("billing foundation", () => {
 
       expect(notice.message).toContain("Google Cloud batched TTS")
 
-      const summaryAfter = await fetchWorkspaceBillingSummary(
+      const creditsAfter = await fetchWorkspaceCreditsSummary(
         bootstrap.workspace.id,
         failingRuntime.serverUrl,
       )
-      expect(summaryAfter.usage.totalEvents).toBe(1)
-      expect(summaryAfter.usage.successCount).toBe(0)
-      expect(summaryAfter.usage.failureCount).toBe(1)
-      expect(summaryAfter.usage.chargedCreditsMillis).toBe(0)
-      expect(summaryAfter.allowance.usedCreditsMillis).toBe(0)
-      expect(summaryAfter.allowance.remainingCreditsMillis).toBe(500_000)
-      expect(summaryAfter.recentEvents[0]).toMatchObject({
+      expect(creditsAfter.usage.totalEvents).toBe(1)
+      expect(creditsAfter.usage.successCount).toBe(0)
+      expect(creditsAfter.usage.failureCount).toBe(1)
+      expect(creditsAfter.usage.chargedCreditsMillis).toBe(0)
+      expect(creditsAfter.allowance.usedCreditsMillis).toBe(0)
+      expect(creditsAfter.allowance.remainingCreditsMillis).toBe(500_000)
+      expect(creditsAfter.ledger).toHaveLength(1)
+
+      const logsAfter = await fetchWorkspaceUsageLog(
+        bootstrap.workspace.id,
+        failingRuntime.serverUrl,
+      )
+      expect(logsAfter.events[0]).toMatchObject({
         workspaceId: bootstrap.workspace.id,
         projectId: bootstrap.project.id,
         channelId: bootstrap.project.channelId,
@@ -304,15 +350,27 @@ describe.sequential("billing foundation", () => {
     }
   })
 
-  async function fetchWorkspaceBillingSummary(
+  async function fetchWorkspaceCreditsSummary(
     workspaceId: string,
     serverUrl = runtime.serverUrl,
   ) {
     const response = await fetch(
-      new URL(`/api/workspaces/${workspaceId}/billing`, serverUrl),
+      new URL(`/api/workspaces/${workspaceId}/credits`, serverUrl),
     )
 
     expect(response.status).toBe(200)
-    return (await response.json()) as WorkspaceBillingPayload
+    return (await response.json()) as WorkspaceCreditsPayload
+  }
+
+  async function fetchWorkspaceUsageLog(
+    workspaceId: string,
+    serverUrl = runtime.serverUrl,
+  ) {
+    const response = await fetch(
+      new URL(`/api/workspaces/${workspaceId}/logs`, serverUrl),
+    )
+
+    expect(response.status).toBe(200)
+    return (await response.json()) as WorkspaceLogsPayload
   }
 })
