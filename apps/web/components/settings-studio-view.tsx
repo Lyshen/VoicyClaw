@@ -153,6 +153,7 @@ export function SettingsStudioView<AsrId extends string, TtsId extends string>({
         />
 
         <ProviderConfigurator
+          groupId="asr"
           title="ASR path"
           kicker="Input pipeline"
           activeProviderId={activeAsrProvider.id}
@@ -165,6 +166,7 @@ export function SettingsStudioView<AsrId extends string, TtsId extends string>({
         />
 
         <ProviderConfigurator
+          groupId="tts"
           title="TTS path"
           kicker="Output pipeline"
           activeProviderId={activeTtsProvider.id}
@@ -428,6 +430,7 @@ function GatewaySettingsCard({
 }
 
 type ProviderConfiguratorProps<T extends string> = {
+  groupId: string
   title: string
   kicker: string
   activeProviderId: T
@@ -440,6 +443,7 @@ type ProviderConfiguratorProps<T extends string> = {
 }
 
 function ProviderConfigurator<T extends string>({
+  groupId,
   title,
   kicker,
   activeProviderId,
@@ -472,6 +476,7 @@ function ProviderConfigurator<T extends string>({
           <button
             key={option.id}
             type="button"
+            data-testid={`${groupId}-provider-${option.id}`}
             className={`provider-option ${activeProviderId === option.id ? "active" : ""}`}
             onClick={() => onSelect(option.id)}
           >

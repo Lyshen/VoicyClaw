@@ -145,8 +145,8 @@ const RESERVED_TOP_LEVEL_KEYS = new Set(["App", "Auth", "Storage", "DemoBot"])
 const DEFAULT_SERVER_PORT = 3001
 const DEFAULT_WEB_PORT = 3000
 const DEFAULT_MYSQL_POOL_SIZE = 10
-const DEFAULT_CHANNEL_ID = "demo-room"
-const DEFAULT_CHANNEL_NAME = "Demo Room"
+const DEFAULT_CHANNEL_ID = "voice-room"
+const DEFAULT_CHANNEL_NAME = "Voice Room"
 const DEFAULT_BOT_ID = "demo-clawbot"
 const DEFAULT_BOT_NAME = "Studio Claw"
 

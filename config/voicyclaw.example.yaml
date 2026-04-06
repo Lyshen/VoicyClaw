@@ -10,8 +10,8 @@ App:
   public_server_url:
   public_server_port:
   server_url: http://127.0.0.1:3001
-  default_channel_id: demo-room
-  default_channel_name: Demo Room
+  default_channel_id: voice-room
+  default_channel_name: Voice Room
 
 Auth:
   mode: local
@@ -26,7 +26,7 @@ Storage:
 
 DemoBot:
   server_url: http://127.0.0.1:3001
-  channel_id: demo-room
+  channel_id: voice-room
   bot_id: demo-clawbot
   bot_name: Studio Claw
   bot_api_key:

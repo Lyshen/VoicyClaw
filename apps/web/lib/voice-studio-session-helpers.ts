@@ -202,5 +202,5 @@ export function badgeTone(state: ConnectionState) {
 }
 
 export function getStarterTitle(onboarding: HostedOnboardingState | null) {
-  return onboarding?.project.name ?? "Demo Room"
+  return onboarding?.project.name ?? "Voice Room"
 }
