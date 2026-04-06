@@ -3,16 +3,23 @@
 import { Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
 
+import {
+  TTS_PROVIDER_OPTIONS,
+  type TtsProviderId,
+} from "../lib/studio-provider-catalog"
 import { useVoiceStudioSession } from "../lib/use-voice-studio-session"
 import type { WebRuntimePayload } from "../lib/web-runtime"
 import {
   buildConversationEntries,
+  ConnectAgentCard,
   ConversationCard,
-  InstallPreviewCard,
   RoomConnectionCard,
+  type StepDescription,
   type StepId,
   type StepStatus,
   StudioStepCard,
+  type VoicePathCardOption,
+  VoicePathSelectorCard,
 } from "./product-studio-view"
 
 const HOSTED_PROMPTS = [
@@ -29,13 +36,186 @@ const DEFAULT_PROMPTS = [
   "What should I test next?",
 ] as const
 
+const STUDIO_STEPS: StepDescription[] = [
+  {
+    step: "01",
+    title: "Connect your agent",
+    description:
+      "Connect your starter bot or point VoicyClaw at your OpenClaw setup.",
+  },
+  {
+    step: "02",
+    title: "Choose a voice path",
+    description: "Pick the provider and voice path you want to test.",
+  },
+  {
+    step: "03",
+    title: "Start talking",
+    description: "Speak naturally and hear the reply back.",
+  },
+]
+
+const VOICE_PATH_META: Record<
+  TtsProviderId,
+  Omit<VoicePathCardOption, "id" | "selected" | "onSelect">
+> = {
+  browser: {
+    eyebrow: "Default",
+    title: "Browser voice",
+    description: "The fastest way to hear replies immediately on this device.",
+    routeLabel: "On-device output",
+    keywords: ["instant", "zero setup"],
+    accentClassName: "from-amber-400/28 via-orange-300/18 to-transparent",
+    bars: [
+      { id: "a", height: 18, width: 7 },
+      { id: "b", height: 28, width: 5 },
+      { id: "c", height: 20, width: 6 },
+      { id: "d", height: 34, width: 7 },
+      { id: "e", height: 24, width: 5 },
+      { id: "f", height: 30, width: 6 },
+    ],
+  },
+  demo: {
+    eyebrow: "Built-in",
+    title: "Server voice",
+    description: "Keep audio inside the VoicyClaw media pipeline end to end.",
+    routeLabel: "Starter server path",
+    keywords: ["server audio", "starter-friendly"],
+    accentClassName: "from-emerald-400/24 via-teal-300/16 to-transparent",
+    bars: [
+      { id: "a", height: 16, width: 6 },
+      { id: "b", height: 24, width: 5 },
+      { id: "c", height: 32, width: 7 },
+      { id: "d", height: 20, width: 5 },
+      { id: "e", height: 36, width: 7 },
+      { id: "f", height: 26, width: 6 },
+    ],
+  },
+  "azure-tts": {
+    eyebrow: "Azure",
+    title: "Azure clear",
+    description: "Simple Azure output for steady, full-reply playback.",
+    routeLabel: "Azure full reply",
+    keywords: ["clear", "stable"],
+    accentClassName: "from-sky-400/24 via-cyan-300/18 to-transparent",
+    bars: [
+      { id: "a", height: 18, width: 5 },
+      { id: "b", height: 30, width: 6 },
+      { id: "c", height: 24, width: 5 },
+      { id: "d", height: 38, width: 7 },
+      { id: "e", height: 22, width: 5 },
+      { id: "f", height: 32, width: 6 },
+    ],
+  },
+  "azure-streaming-tts": {
+    eyebrow: "Azure",
+    title: "Azure segmented",
+    description: "Start Azure playback earlier with segmented streaming.",
+    routeLabel: "Azure segmented stream",
+    keywords: ["faster start", "server"],
+    accentClassName: "from-cyan-400/24 via-sky-300/16 to-transparent",
+    bars: [
+      { id: "a", height: 20, width: 5 },
+      { id: "b", height: 36, width: 7 },
+      { id: "c", height: 18, width: 5 },
+      { id: "d", height: 32, width: 6 },
+      { id: "e", height: 26, width: 5 },
+      { id: "f", height: 40, width: 7 },
+    ],
+  },
+  "google-tts": {
+    eyebrow: "Google",
+    title: "Google live",
+    description: "A more realtime Google path with Chirp streaming voices.",
+    routeLabel: "Google live stream",
+    keywords: ["natural", "streaming"],
+    accentClassName: "from-violet-400/24 via-fuchsia-300/16 to-transparent",
+    bars: [
+      { id: "a", height: 16, width: 6 },
+      { id: "b", height: 34, width: 7 },
+      { id: "c", height: 22, width: 5 },
+      { id: "d", height: 40, width: 7 },
+      { id: "e", height: 28, width: 6 },
+      { id: "f", height: 18, width: 5 },
+    ],
+  },
+  "google-batched-tts": {
+    eyebrow: "Google",
+    title: "Google balanced",
+    description: "Sentence-batched Google playback with a calmer rhythm.",
+    routeLabel: "Google batched playback",
+    keywords: ["balanced", "lower cost"],
+    accentClassName: "from-indigo-400/22 via-violet-300/16 to-transparent",
+    bars: [
+      { id: "a", height: 18, width: 5 },
+      { id: "b", height: 26, width: 6 },
+      { id: "c", height: 22, width: 5 },
+      { id: "d", height: 30, width: 6 },
+      { id: "e", height: 24, width: 5 },
+      { id: "f", height: 28, width: 6 },
+    ],
+  },
+  "tencent-tts": {
+    eyebrow: "Tencent",
+    title: "Tencent stream",
+    description: "Full-reply Tencent output through the server audio path.",
+    routeLabel: "Tencent unary stream",
+    keywords: ["server", "cn-ready"],
+    accentClassName: "from-rose-400/24 via-orange-300/18 to-transparent",
+    bars: [
+      { id: "a", height: 20, width: 5 },
+      { id: "b", height: 28, width: 6 },
+      { id: "c", height: 34, width: 7 },
+      { id: "d", height: 24, width: 5 },
+      { id: "e", height: 36, width: 7 },
+      { id: "f", height: 22, width: 5 },
+    ],
+  },
+  "tencent-streaming-tts": {
+    eyebrow: "Tencent",
+    title: "Tencent live",
+    description: "Tencent's closest match to a realtime voice path.",
+    routeLabel: "Tencent bidirectional",
+    keywords: ["realtime", "cn"],
+    accentClassName: "from-pink-400/24 via-rose-300/16 to-transparent",
+    bars: [
+      { id: "a", height: 18, width: 5 },
+      { id: "b", height: 38, width: 7 },
+      { id: "c", height: 20, width: 5 },
+      { id: "d", height: 34, width: 6 },
+      { id: "e", height: 26, width: 5 },
+      { id: "f", height: 42, width: 7 },
+    ],
+  },
+  "volcengine-tts": {
+    eyebrow: "Volcengine",
+    title: "Volcengine CN",
+    description: "Low-latency server voice output aimed at CN deployments.",
+    routeLabel: "Volcengine low latency",
+    keywords: ["cn", "low latency"],
+    accentClassName: "from-red-400/24 via-orange-300/16 to-transparent",
+    bars: [
+      { id: "a", height: 22, width: 6 },
+      { id: "b", height: 32, width: 7 },
+      { id: "c", height: 18, width: 5 },
+      { id: "d", height: 36, width: 7 },
+      { id: "e", height: 24, width: 5 },
+      { id: "f", height: 30, width: 6 },
+    ],
+  },
+}
+
 export function ProductStudio({
   initialRuntime,
 }: {
   initialRuntime: WebRuntimePayload
 }) {
   const {
+    settings,
+    updateSetting,
     onboarding,
+    conversationBackend,
+    ttsProvider,
     connectionState,
     timeline,
     draftText,
@@ -58,20 +238,29 @@ export function ProductStudio({
   const [selectedStep, setSelectedStep] = useState<StepId>(1)
 
   useEffect(() => {
-    if (starterBotOnline) {
-      setSelectedStep(3)
-    }
+    setSelectedStep((current) =>
+      starterBotOnline && current === 1 ? 2 : current,
+    )
   }, [starterBotOnline])
 
-  const installCommand = onboarding
-    ? `openclaw plugins install ${onboarding.connectorPackageName}`
-    : "Sign in to provision your starter workspace"
+  const gatewayMode = conversationBackend.id === "openclaw-gateway"
+  const installCommand =
+    gatewayMode && !onboarding
+      ? "OpenClaw Gateway already selected"
+      : onboarding
+        ? `openclaw plugins install ${onboarding.connectorPackageName}`
+        : "Sign in to provision your starter workspace"
   const configLine =
-    onboarding?.connectorConfigLine ??
-    "Starter workspace is still provisioning. Refresh in a moment if this stays blank."
-  const restartCommand = onboarding
-    ? "openclaw gateway restart"
-    : "Refresh after your starter workspace is ready"
+    gatewayMode && !onboarding
+      ? "Gateway URL and token still live in the advanced route for now."
+      : (onboarding?.connectorConfigJson ??
+        "Starter config appears here as soon as the starter key is ready.")
+  const restartCommand =
+    gatewayMode && !onboarding
+      ? "Reconnect once your OpenClaw Gateway credentials are ready"
+      : onboarding
+        ? "openclaw gateway restart"
+        : "Refresh after your starter workspace is ready"
   const quickPrompts = onboarding ? HOSTED_PROMPTS : DEFAULT_PROMPTS
   const conversationEntries = buildConversationEntries(timeline, botDisplayName)
 
@@ -95,13 +284,33 @@ export function ProductStudio({
         },
       ]
 
-  const stepOneStatus: StepStatus = onboarding?.starterKey?.value
-    ? "done"
-    : onboarding
-      ? "active"
-      : "done"
-  const stepTwoStatus: StepStatus = starterBotOnline ? "done" : "active"
-  const stepThreeStatus: StepStatus = starterBotOnline ? "active" : "pending"
+  const stepOneStatus: StepStatus = starterBotOnline ? "done" : "active"
+  const stepTwoStatus: StepStatus =
+    selectedStep === 3
+      ? "done"
+      : starterBotOnline || selectedStep === 2
+        ? "active"
+        : "pending"
+  const stepThreeStatus: StepStatus = selectedStep === 3 ? "active" : "pending"
+
+  const voicePathOptions: VoicePathCardOption[] = TTS_PROVIDER_OPTIONS.map(
+    (option) => {
+      const meta = VOICE_PATH_META[option.id]
+
+      return {
+        id: option.id,
+        eyebrow: meta.eyebrow,
+        title: meta.title,
+        description: meta.description,
+        routeLabel: meta.routeLabel,
+        keywords: meta.keywords,
+        accentClassName: meta.accentClassName,
+        bars: meta.bars,
+        selected: option.id === ttsProvider.id,
+        onSelect: () => updateSetting("ttsProvider", option.id),
+      }
+    },
+  )
 
   async function copyText(id: string, text: string) {
     try {
@@ -127,42 +336,32 @@ export function ProductStudio({
 
             <div className="max-w-2xl space-y-3">
               <h1 className="text-3xl leading-tight font-semibold tracking-tight text-zinc-900 lg:text-4xl">
-                Three steps to hear your bot.
+                Three steps to make your agent speak.
               </h1>
               <p className="max-w-xl text-[15px] leading-7 text-zinc-600 lg:text-base">
-                {starterBotOnline
-                  ? `${botDisplayName} is live. Ask its name and keep talking.`
-                  : onboarding
-                    ? "Install once. This room turns live when your bot joins."
-                    : "Sign in once. This room turns live when your starter workspace is ready."}
+                Connect your bot, choose a voice path, and keep the whole flow
+                in Studio.
               </p>
             </div>
           </div>
 
           <div className="space-y-4">
             <StudioStepCard
-              step="01"
-              title={
-                onboarding
-                  ? "Add voice in one line"
-                  : "Provision starter workspace"
-              }
+              {...STUDIO_STEPS[0]}
               status={stepOneStatus}
               selected={selectedStep === 1}
               onSelect={() => setSelectedStep(1)}
             />
 
             <StudioStepCard
-              step="02"
-              title="Check bot online"
+              {...STUDIO_STEPS[1]}
               status={stepTwoStatus}
               selected={selectedStep === 2}
               onSelect={() => setSelectedStep(2)}
             />
 
             <StudioStepCard
-              step="03"
-              title="Start talking"
+              {...STUDIO_STEPS[2]}
               status={stepThreeStatus}
               selected={selectedStep === 3}
               onSelect={() => setSelectedStep(3)}
@@ -172,21 +371,39 @@ export function ProductStudio({
 
         <div className="flex xl:pl-2">
           {selectedStep === 1 ? (
-            <InstallPreviewCard
+            <ConnectAgentCard
+              title={STUDIO_STEPS[0].title}
+              description={
+                gatewayMode && !onboarding
+                  ? "Point VoicyClaw at your OpenClaw setup, then verify the room is online."
+                  : onboarding
+                    ? "Run the install command, paste the starter config, restart OpenClaw, then confirm the bot is online."
+                    : "Sign in to provision your starter bot, then come back here to finish the connection."
+              }
               lines={shellPreviewLines}
               copiedId={copiedId}
               onCopy={(id, text) => void copyText(id, text)}
-            />
-          ) : selectedStep === 2 ? (
-            <RoomConnectionCard
-              mode="check"
+              connectionTargetLabel={conversationBackend.label}
+              workspaceName={
+                onboarding?.workspace.name ??
+                (gatewayMode ? "Existing OpenClaw setup" : undefined)
+              }
+              channelId={settings.channelId}
+              botId={onboarding?.project.botId}
               starterBotOnline={starterBotOnline}
               connectionState={connectionState}
               botDisplayName={botDisplayName}
-              onCheck={() => {
-                setSelectedStep(2)
-                reconnect()
-              }}
+              onCheck={() => reconnect()}
+              onContinue={() => setSelectedStep(2)}
+            />
+          ) : selectedStep === 2 ? (
+            <VoicePathSelectorCard
+              title={STUDIO_STEPS[1].title}
+              description={STUDIO_STEPS[1].description}
+              connectionReady={starterBotOnline}
+              selectedLabel={ttsProvider.label}
+              selectedRuntimeHint={ttsProvider.runtimeHint}
+              options={voicePathOptions}
               onContinue={() => setSelectedStep(3)}
             />
           ) : starterBotOnline ? (
@@ -210,10 +427,7 @@ export function ProductStudio({
               starterBotOnline={starterBotOnline}
               connectionState={connectionState}
               botDisplayName={botDisplayName}
-              onCheck={() => {
-                setSelectedStep(2)
-                reconnect()
-              }}
+              onCheck={() => setSelectedStep(1)}
               onContinue={() => setSelectedStep(3)}
             />
           )}

@@ -1,12 +1,12 @@
 "use client"
 
 import {
+  Bot,
   Globe,
   Layers,
   MessageSquare,
   Mic,
   Radio,
-  Settings,
   ShieldCheck,
   Sparkles,
   Zap,
@@ -43,7 +43,8 @@ const valueProps = [
   {
     icon: ShieldCheck,
     title: "Your own keys",
-    description: "Use your own provider keys and stay in control of the setup.",
+    description:
+      "Start with a starter key now, then bring your own provider keys when you are ready.",
   },
 ]
 
@@ -65,9 +66,10 @@ const featureCards = [
     description: "OpenClaw runs the agent. VoicyClaw handles the voice.",
   },
   {
-    icon: Settings,
-    title: "Quick setup",
-    description: "Pick a provider, paste your keys, and start.",
+    icon: Bot,
+    title: "Starter setup",
+    description:
+      "Copy one install command, paste the starter config, and bring your bot online.",
   },
 ]
 
@@ -88,7 +90,7 @@ const footerGroups = [
         label: "README",
         href: "https://github.com/Lyshen/VoicyClaw/blob/main/README.md",
       },
-      { label: "Settings", href: "/settings" },
+      { label: "Studio", href: "/studio" },
     ],
   },
   {
@@ -96,7 +98,7 @@ const footerGroups = [
     links: [
       { label: "Landing Page", href: "/" },
       { label: "Voice Studio", href: "/studio" },
-      { label: "Provider Config", href: "/settings" },
+      { label: "Credits", href: "/credits" },
     ],
   },
 ]
@@ -396,8 +398,8 @@ function CallToAction({ authEnabled }: { authEnabled: boolean }) {
               Try the live studio now.
             </h2>
             <p className="mx-auto mb-12 max-w-2xl text-xl text-amber-50 opacity-90 lg:text-2xl">
-              Your live room is already waiting. Open the studio first, then
-              fine-tune the voice path in Settings.
+              Your live room is already waiting. Open the studio, connect your
+              bot, choose a voice path, and start talking.
             </p>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">

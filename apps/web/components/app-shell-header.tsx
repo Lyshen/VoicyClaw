@@ -7,10 +7,7 @@ import { SiteHeader } from "./site-header"
 
 export function AppShellHeader({ authEnabled }: { authEnabled: boolean }) {
   const pathname = usePathname()
-  const navigationLinks = [
-    { href: "/studio", label: "Studio" },
-    { href: "/settings", label: "Settings" },
-  ]
+  const navigationLinks = [{ href: "/studio", label: "Studio" }]
 
   return (
     <SiteHeader
