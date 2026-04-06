@@ -402,7 +402,6 @@ export function ProductStudio({
               description={STUDIO_STEPS[1].description}
               connectionReady={starterBotOnline}
               selectedLabel={ttsProvider.label}
-              selectedRuntimeHint={ttsProvider.runtimeHint}
               options={voicePathOptions}
               onContinue={() => setSelectedStep(3)}
             />

@@ -306,7 +306,6 @@ export function VoicePathSelectorCard({
   description,
   connectionReady,
   selectedLabel,
-  selectedRuntimeHint,
   options,
   onContinue,
 }: {
@@ -314,7 +313,6 @@ export function VoicePathSelectorCard({
   description: string
   connectionReady: boolean
   selectedLabel: string
-  selectedRuntimeHint: string
   options: VoicePathCardOption[]
   onContinue: () => void
 }) {
@@ -323,31 +321,28 @@ export function VoicePathSelectorCard({
       <div className="absolute top-0 right-8 h-36 w-36 rounded-full bg-amber-500/20 blur-[84px]" />
       <div className="absolute bottom-8 left-8 h-24 w-24 rounded-full bg-orange-500/10 blur-[64px]" />
 
-      <div className="relative flex h-full flex-col overflow-hidden rounded-[2.6rem] border border-white/12 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.10),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.80),rgba(255,248,238,0.72))] shadow-[0_30px_90px_rgba(24,24,27,0.18)] backdrop-blur-[22px]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.06))]" />
+      <div className="relative flex h-full flex-col overflow-hidden rounded-[2.6rem] border border-white/12 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.08),transparent_30%),linear-gradient(180deg,rgba(71,63,54,0.40),rgba(27,29,34,0.30))] text-white shadow-[0_30px_90px_rgba(24,24,27,0.24)] backdrop-blur-[22px]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.03))]" />
 
         <div className="relative flex items-start justify-between gap-4 border-b border-white/35 px-7 py-6">
           <div className="space-y-2">
-            <p className="text-xs font-semibold tracking-[0.22em] text-amber-700 uppercase">
+            <p className="text-xs font-semibold tracking-[0.22em] text-amber-200 uppercase">
               {title}
             </p>
-            <h3 className="text-3xl font-semibold tracking-tight text-zinc-900">
+            <h3 className="text-3xl font-semibold tracking-tight text-white">
               Pick the voice path
             </h3>
-            <p className="max-w-2xl text-sm leading-7 text-zinc-500">
+            <p className="max-w-2xl text-sm leading-7 text-zinc-300">
               {description}
             </p>
           </div>
 
-          <div className="rounded-[1.6rem] border border-amber-200/80 bg-white/55 px-4 py-3 text-right shadow-[0_16px_40px_rgba(245,158,11,0.08)] backdrop-blur-sm">
-            <div className="text-[11px] font-semibold tracking-[0.18em] text-amber-700 uppercase">
+          <div className="rounded-[1.6rem] border border-emerald-200/60 bg-[linear-gradient(180deg,rgba(255,248,238,0.97),rgba(237,245,239,0.94))] px-4 py-2.5 text-right shadow-[0_20px_46px_rgba(16,185,129,0.12)]">
+            <div className="text-[11px] font-semibold tracking-[0.18em] text-emerald-700 uppercase">
               Current
             </div>
             <div className="mt-1 text-sm font-semibold text-zinc-900">
               {selectedLabel}
-            </div>
-            <div className="mt-1 max-w-[220px] text-xs leading-5 text-zinc-500">
-              {selectedRuntimeHint}
             </div>
           </div>
         </div>
@@ -361,9 +356,9 @@ export function VoicePathSelectorCard({
                 onClick={option.onSelect}
                 className={`relative overflow-hidden rounded-[2rem] border p-5 text-left transition ${
                   option.selected
-                    ? "border-amber-300/90 bg-white/72 shadow-[0_24px_70px_rgba(245,158,11,0.16)] backdrop-blur-sm"
-                    : "border-white/50 bg-white/40 hover:border-amber-200 hover:bg-white/56 hover:backdrop-blur-sm"
-                }`}
+                    ? "border-emerald-300/70 bg-[radial-gradient(circle_at_top_left,rgba(255,221,233,0.42),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(52,211,153,0.12),transparent_30%),linear-gradient(180deg,rgba(255,249,240,0.98),rgba(237,245,239,0.96))] shadow-[0_24px_70px_rgba(16,185,129,0.18)]"
+                    : "border-white/12 bg-[linear-gradient(180deg,rgba(86,74,65,0.94),rgba(52,49,47,0.98))] hover:border-amber-200/30 hover:bg-[linear-gradient(180deg,rgba(98,86,76,0.96),rgba(62,59,57,0.98))]"
+                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/40`}
               >
                 <div
                   className={`pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-r ${option.accentClassName}`}
@@ -372,14 +367,28 @@ export function VoicePathSelectorCard({
                 <div className="relative space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-2">
-                      <span className="inline-flex rounded-full border border-white/65 bg-white/72 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-zinc-500 uppercase backdrop-blur-sm">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.18em] uppercase ${
+                          option.selected
+                            ? "border-emerald-200/80 bg-white/90 text-emerald-700"
+                            : "border-white/10 bg-white/[0.05] text-zinc-200"
+                        }`}
+                      >
                         {option.eyebrow}
                       </span>
                       <div>
-                        <h4 className="text-xl font-semibold text-zinc-900">
+                        <h4
+                          className={`text-xl font-semibold ${
+                            option.selected ? "text-zinc-900" : "text-white"
+                          }`}
+                        >
                           {option.title}
                         </h4>
-                        <p className="mt-2 text-sm leading-6 text-zinc-500">
+                        <p
+                          className={`mt-2 text-sm leading-6 ${
+                            option.selected ? "text-zinc-700" : "text-zinc-300"
+                          }`}
+                        >
                           {option.description}
                         </p>
                       </div>
@@ -388,8 +397,8 @@ export function VoicePathSelectorCard({
                     <div
                       className={`flex h-11 w-11 items-center justify-center rounded-full border ${
                         option.selected
-                          ? "border-amber-300 bg-amber-50 text-amber-600"
-                          : "border-white/65 bg-white/72 text-zinc-400 backdrop-blur-sm"
+                          ? "border-emerald-300/60 bg-emerald-500/12 text-emerald-600"
+                          : "border-white/10 bg-white/[0.06] text-zinc-200"
                       }`}
                     >
                       {option.selected ? (
@@ -400,12 +409,26 @@ export function VoicePathSelectorCard({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-4 rounded-[1.6rem] border border-white/55 bg-white/52 px-4 py-3 backdrop-blur-sm">
+                  <div
+                    className={`flex items-center justify-between gap-4 rounded-[1.6rem] border px-4 py-3 ${
+                      option.selected
+                        ? "border-emerald-200/70 bg-white/88"
+                        : "border-white/10 bg-white/[0.04]"
+                    }`}
+                  >
                     <div>
-                      <div className="text-[11px] font-semibold tracking-[0.18em] text-zinc-500 uppercase">
+                      <div
+                        className={`text-[11px] font-semibold tracking-[0.18em] uppercase ${
+                          option.selected ? "text-zinc-500" : "text-zinc-400"
+                        }`}
+                      >
                         Path
                       </div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                      <div
+                        className={`mt-1 text-sm font-semibold ${
+                          option.selected ? "text-zinc-900" : "text-white"
+                        }`}
+                      >
                         {option.routeLabel}
                       </div>
                     </div>
@@ -416,8 +439,8 @@ export function VoicePathSelectorCard({
                           key={`${option.id}-${bar.id}`}
                           className={`rounded-full ${
                             option.selected
-                              ? "bg-amber-500/80"
-                              : "bg-zinc-300/80"
+                              ? "bg-emerald-500/90"
+                              : "bg-zinc-500/80"
                           }`}
                           style={{
                             height: `${bar.height}px`,
@@ -432,7 +455,11 @@ export function VoicePathSelectorCard({
                     {option.keywords.map((keyword) => (
                       <span
                         key={keyword}
-                        className="rounded-full bg-white/72 px-3 py-1 text-xs font-medium text-zinc-600 backdrop-blur-sm"
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          option.selected
+                            ? "bg-white/92 text-zinc-700"
+                            : "bg-white/[0.06] text-zinc-100"
+                        }`}
                       >
                         {keyword}
                       </span>
@@ -445,13 +472,13 @@ export function VoicePathSelectorCard({
         </div>
 
         <div className="relative flex flex-wrap items-center justify-between gap-4 border-t border-white/35 px-7 py-5">
-          <p className="text-sm leading-7 text-zinc-500">
+          <p className="text-sm leading-7 text-zinc-300">
             {connectionReady
               ? "Your bot is ready. Pick a voice now or keep the default and start talking."
               : "You can preselect a voice path now. Step 3 still unlocks once your bot comes online."}
           </p>
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
             type="button"
             onClick={onContinue}
           >
@@ -901,7 +928,7 @@ function SetupStatCard({
 }) {
   const toneClasses =
     tone === "success"
-      ? "border-emerald-400/30 bg-emerald-500/14 shadow-[0_18px_44px_rgba(16,185,129,0.12)]"
+      ? "border-emerald-300/60 bg-[linear-gradient(180deg,rgba(16,185,129,0.24),rgba(16,185,129,0.14))] shadow-[0_20px_52px_rgba(16,185,129,0.18)]"
       : tone === "warning"
         ? "border-amber-300/30 bg-amber-500/12 shadow-[0_18px_44px_rgba(245,158,11,0.10)]"
         : tone === "neutral"
@@ -909,16 +936,22 @@ function SetupStatCard({
           : "border-white/10 bg-white/[0.04]"
   const labelClasses =
     tone === "success"
-      ? "text-emerald-100/80"
+      ? "text-emerald-50"
       : tone === "warning"
         ? "text-amber-100/85"
         : "text-zinc-500"
   const valueClasses =
     tone === "success"
-      ? "text-emerald-50"
+      ? "text-white"
       : tone === "warning"
         ? "text-amber-50"
         : "text-white"
+  const statusDotClasses =
+    tone === "success"
+      ? "bg-emerald-200 shadow-[0_0_0_6px_rgba(187,247,208,0.12)]"
+      : tone === "warning"
+        ? "bg-amber-200 shadow-[0_0_0_6px_rgba(253,230,138,0.10)]"
+        : null
 
   return (
     <div className={`rounded-[1.6rem] border px-4 py-4 ${toneClasses}`}>
@@ -932,7 +965,14 @@ function SetupStatCard({
           mono ? "font-mono break-all" : "font-medium"
         } ${valueClasses}`}
       >
-        {value}
+        {statusDotClasses ? (
+          <span className="inline-flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${statusDotClasses}`} />
+            <span>{value}</span>
+          </span>
+        ) : (
+          value
+        )}
       </div>
     </div>
   )
