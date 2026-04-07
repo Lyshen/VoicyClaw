@@ -46,7 +46,7 @@ export function LandingHeroAuthControls({
       authEnabled={authEnabled}
       disabled={
         <>
-          <ActionLink href="/studio" label="Start now" kind="hero-primary" />
+          <ActionLink href="/studio" label="Try now" kind="hero-primary" />
           <ActionLink
             href={GITHUB_REPO_URL}
             label="Open on GitHub"
@@ -68,12 +68,13 @@ export function LandingHeroAuthControls({
       }
       signedOut={
         <>
+          <ActionLink href="/sign-in" label="Try now" kind="hero-primary" />
           <ActionLink
-            href="/sign-up"
-            label="Create account"
-            kind="hero-primary"
+            href={GITHUB_REPO_URL}
+            label="Open on GitHub"
+            kind="hero-secondary"
+            external
           />
-          <ActionLink href="/sign-in" label="Sign in" kind="hero-secondary" />
         </>
       }
     />
@@ -90,7 +91,7 @@ export function LandingCallToActionControls({
       authEnabled={authEnabled}
       disabled={
         <>
-          <ActionLink href="/studio" label="Start now" kind="cta-primary" />
+          <ActionLink href="/studio" label="Try now" kind="cta-primary" />
           <ActionLink
             href={GITHUB_REPO_URL}
             label="Open on GitHub"
@@ -112,12 +113,13 @@ export function LandingCallToActionControls({
       }
       signedOut={
         <>
+          <ActionLink href="/sign-in" label="Try now" kind="cta-primary" />
           <ActionLink
-            href="/sign-up"
-            label="Create account"
-            kind="cta-primary"
+            href={GITHUB_REPO_URL}
+            label="Open on GitHub"
+            kind="cta-secondary"
+            external
           />
-          <ActionLink href="/sign-in" label="Sign in" kind="cta-secondary" />
         </>
       }
     />
