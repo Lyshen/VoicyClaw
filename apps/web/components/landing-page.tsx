@@ -28,6 +28,11 @@ const waveformBars = Array.from({ length: 60 }, (_, index) => ({
   delay: (index % 8) * 0.08,
 }))
 const listeningBars = ["bar-1", "bar-2", "bar-3", "bar-4", "bar-5"] as const
+const productHuntBadge = {
+  href: "https://www.producthunt.com/products/voicyclaw?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-voicyclaw",
+  image:
+    "https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1118669&theme=light&t=1775703142013",
+}
 
 const valueProps = [
   {
@@ -180,6 +185,31 @@ function Hero({ authEnabled }: { authEnabled: boolean }) {
           className="flex flex-col items-center justify-center gap-5 sm:flex-row"
         >
           <LandingHeroAuthControls authEnabled={authEnabled} />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-10 flex flex-col items-center gap-3"
+        >
+          <p className="text-xs font-semibold tracking-[0.24em] text-zinc-400 uppercase">
+            Featured on Product Hunt
+          </p>
+          <a
+            href={productHuntBadge.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex overflow-hidden rounded-2xl shadow-sm transition-transform hover:-translate-y-0.5"
+          >
+            <img
+              alt="VoicyClaw - specific voice of private agent | Product Hunt"
+              width={250}
+              height={54}
+              src={productHuntBadge.image}
+              className="h-[54px] w-[250px] max-w-full"
+            />
+          </a>
         </motion.div>
       </div>
 
