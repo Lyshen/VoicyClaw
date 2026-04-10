@@ -1,5 +1,7 @@
 import type { ClientHelloMessage } from "@voicyclaw/protocol"
 
+import type { OrchestrationDerivation } from "../orchestration"
+
 export type ConversationSettings = ClientHelloMessage["settings"]
 export type ConversationBackendId = NonNullable<
   ConversationSettings["conversationBackend"]
@@ -7,6 +9,8 @@ export type ConversationBackendId = NonNullable<
 
 export interface ConversationChunk {
   utteranceId: string
+  botId?: string
+  botName?: string
   text: string
   isFinal: boolean
 }
@@ -18,6 +22,7 @@ export interface ConversationTurnInput {
   text: string
   language: string
   settings: ConversationSettings
+  orchestration?: OrchestrationDerivation
 }
 
 export interface ConversationBackend {

@@ -194,6 +194,8 @@ export function createRealtimeRuntime(
 
       pending.queue.push({
         utteranceId: message.utterance_id,
+        botId: this.botId,
+        botName: this.displayName,
         text: message.text,
         isFinal: message.is_final,
       })
@@ -224,6 +226,7 @@ export function createRealtimeRuntime(
         type: "BOT_PREVIEW",
         utteranceId: message.utterance_id,
         botId: this.botId,
+        botName: this.displayName,
         text: message.text,
         isFinal: message.is_final,
       })

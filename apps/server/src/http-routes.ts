@@ -7,6 +7,7 @@ import {
 } from "./domains/billing/service"
 import { bootstrapHostedResources } from "./domains/hosted-bootstrap/service"
 import { issuePlatformKeyForChannel } from "./domains/platform-keys/service"
+import { ensureStarter2Room } from "./domains/starter2/service"
 import type { RealtimeGateway } from "./realtime-gateway"
 import {
   DEFAULT_CHANNEL_ID,
@@ -114,6 +115,24 @@ export function registerApiRoutes(
       fullName: body.fullName,
       username: body.username,
     })
+  })
+
+  server.post("/api/starter2/bootstrap", async (request, reply) => {
+    const body =
+      (request.body as {
+        workspaceId?: string | null
+        workspaceName?: string | null
+        channelId?: string | null
+      } | null) ?? {}
+
+    const room = await ensureStarter2Room({
+      workspaceId: body.workspaceId,
+      workspaceName: body.workspaceName,
+      channelId: body.channelId,
+    })
+
+    reply.code(201)
+    return room
   })
 
   server.post("/api/keys", async (request, reply) => {

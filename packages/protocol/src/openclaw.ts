@@ -68,6 +68,8 @@ export interface PreviewTextMessage {
 
 export interface BotChannelMessage {
   utteranceId: string
+  botId?: string
+  botName?: string
   text: string
   isFinal: boolean
 }

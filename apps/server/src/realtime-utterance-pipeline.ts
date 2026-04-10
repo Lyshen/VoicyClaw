@@ -1,13 +1,23 @@
+import { randomUUID } from "node:crypto"
+
 import { DemoASRProvider } from "@voicyclaw/asr"
 import type { BotChannelMessage } from "@voicyclaw/protocol"
 
-import type {
-  ConversationBackend,
-  ConversationTurnInput,
+import {
+  type ConversationBackend,
+  type ConversationTurnInput,
+  getConversationBackendId,
 } from "./backends/conversation-backend"
-import { getConversationBackendId } from "./backends/conversation-backend"
 import { OpenClawGatewayConversationBackend } from "./backends/openclaw-gateway"
+import { Starter2RoomConversationBackend } from "./backends/starter2-room"
 import { recordTtsUsageForChannel } from "./domains/billing/service"
+import {
+  buildRoomConfigFromRealtime,
+  buildUtteranceFromTranscript,
+  deriveOrchestration,
+  type OrchestrationAction,
+  type RoomConfig,
+} from "./orchestration"
 import type {
   ActiveUtterance,
   ClientSession,
@@ -44,6 +54,10 @@ function getConversationBackendForClient(
   client: ClientSession,
 ) {
   const backendId = getConversationBackendId(client.settings)
+  if (backendId === "starter2-room") {
+    return new Starter2RoomConversationBackend(runtime, client)
+  }
+
   if (backendId === "openclaw-gateway") {
     return new OpenClawGatewayConversationBackend(
       client.settings ?? {
@@ -73,10 +87,14 @@ async function* forwardBotText(
   source: AsyncGenerator<BotChannelMessage>,
 ) {
   for await (const message of source) {
+    const botId = message.botId ?? backend.botId
+    const botName = message.botName
+
     runtime.logPipeline("BOT_TEXT_FORWARD", {
       channelId: client.channelId,
       clientId: client.id,
-      botId: backend.botId,
+      botId,
+      botName,
       backend: backend.kind,
       utteranceId,
       isFinal: message.isFinal,
@@ -86,13 +104,77 @@ async function* forwardBotText(
     runtime.sendJson(client.ws, {
       type: "BOT_TEXT",
       utteranceId,
-      botId: backend.botId,
+      botId,
+      botName,
       text: message.text,
       isFinal: message.isFinal,
     })
 
     yield message.text
   }
+}
+
+function emitDerivedOrchestrationEvents(
+  runtime: RealtimeRuntime,
+  client: ClientSession,
+  room: RoomConfig,
+  utteranceId: string,
+  actions: OrchestrationAction[],
+) {
+  for (const action of actions) {
+    const actorName = resolveParticipantName(room, action.actorId, "You")
+    const targetId = "target" in action ? action.target : undefined
+    const targetName =
+      targetId === "*"
+        ? "Everyone"
+        : targetId
+          ? resolveParticipantName(room, targetId)
+          : undefined
+
+    runtime.sendJson(client.ws, {
+      type: "ORCHESTRATION_EVENT",
+      eventId: randomUUID(),
+      roomId: client.channelId,
+      utteranceId,
+      action: action.action,
+      actorId: action.actorId,
+      actorName,
+      targetId,
+      targetName,
+      summary: buildOrchestrationSummary(action.action, actorName, targetName),
+    })
+  }
+}
+
+function buildOrchestrationSummary(
+  action: OrchestrationAction["action"],
+  actorName: string,
+  targetName?: string,
+) {
+  if (action === "CALL") {
+    return targetName
+      ? `${actorName} called ${targetName}.`
+      : `${actorName} issued a call.`
+  }
+
+  if (action === "CLAIM") {
+    return `${actorName} claimed the turn.`
+  }
+
+  return `${actorName} dropped the turn.`
+}
+
+function resolveParticipantName(
+  room: RoomConfig,
+  participantId: string,
+  fallback?: string,
+) {
+  return (
+    room.participants.find((participant) => participant.id === participantId)
+      ?.name ??
+    fallback ??
+    participantId
+  )
 }
 
 async function resolveTranscript(
@@ -204,6 +286,34 @@ export async function processUtterance(
     return
   }
 
+  const room = buildRoomConfigFromRealtime(runtime, client)
+  const resolvedUtterance = buildUtteranceFromTranscript(
+    client,
+    utterance.utteranceId,
+    transcript,
+  )
+  const orchestration = deriveOrchestration(room, resolvedUtterance)
+
+  runtime.logPipeline("ORCHESTRATION_DERIVED", {
+    channelId: client.channelId,
+    clientId: client.id,
+    utteranceId: utterance.utteranceId,
+    participantCount: orchestration.room.participants.length,
+    targets: orchestration.resolution.targets,
+    actions: orchestration.actions.map((action) => ({
+      action: action.action,
+      target: "target" in action ? action.target : null,
+    })),
+  })
+
+  emitDerivedOrchestrationEvents(
+    runtime,
+    client,
+    orchestration.room,
+    utterance.utteranceId,
+    orchestration.actions,
+  )
+
   const backend = getConversationBackendForClient(runtime, client)
   if (!backend) {
     runtime.sendNotice(
@@ -238,6 +348,7 @@ export async function processUtterance(
         ttsProvider: "browser",
         language: "en-US",
       },
+      orchestration,
     })
     const textStream = forwardBotText(
       runtime,
