@@ -5,7 +5,10 @@ export interface RuntimeBotInfo {
 }
 
 export type ProviderMode = "client" | "server"
-export type ConversationBackendId = "local-bot" | "openclaw-gateway"
+export type ConversationBackendId =
+  | "local-bot"
+  | "openclaw-gateway"
+  | "starter2-room"
 
 export interface ClientHelloMessage {
   type: "CLIENT_HELLO"
@@ -74,6 +77,7 @@ export interface BotTextMessage {
   type: "BOT_TEXT"
   utteranceId: string
   botId: string
+  botName?: string
   text: string
   isFinal: boolean
 }
@@ -82,8 +86,22 @@ export interface BotPreviewMessage {
   type: "BOT_PREVIEW"
   utteranceId: string
   botId: string
+  botName?: string
   text: string
   isFinal: boolean
+}
+
+export interface OrchestrationEventMessage {
+  type: "ORCHESTRATION_EVENT"
+  eventId: string
+  roomId: string
+  utteranceId: string
+  action: "CALL" | "CLAIM" | "DROP"
+  actorId: string
+  actorName: string
+  targetId?: string | "*"
+  targetName?: string
+  summary: string
 }
 
 export interface AudioChunkMessage {
@@ -109,6 +127,7 @@ export type ServerToClientMessage =
   | SessionReadyMessage
   | ChannelStateMessage
   | BotPreviewMessage
+  | OrchestrationEventMessage
   | TranscriptMessage
   | BotTextMessage
   | AudioChunkMessage

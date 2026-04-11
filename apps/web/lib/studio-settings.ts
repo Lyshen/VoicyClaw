@@ -203,6 +203,10 @@ function normalizeTtsProvider(
 function normalizeConversationBackend(
   backendId: string | undefined,
 ): ConversationBackendId {
+  if (backendId === "starter2-room") {
+    return "starter2-room"
+  }
+
   if (backendId === "openclaw-gateway") {
     return "openclaw-gateway"
   }

@@ -20,7 +20,7 @@ export type ConnectionState =
 
 export type TimelineEntry = {
   id: string
-  role: "user" | "bot" | "system" | "preview"
+  role: "user" | "bot" | "system" | "preview" | "orchestration"
   title: string
   text: string
   meta: string
@@ -93,12 +93,25 @@ export function handleVoiceStudioServerMessage(
     }
     case "BOT_PREVIEW": {
       clearPendingReply(message.utteranceId)
+      const entryKey = `${message.utteranceId}:${message.botId}`
       options.upsertEntry({
-        id: `preview-${message.utteranceId}`,
+        id: `preview-${entryKey}`,
         role: "preview",
-        title: `${message.botId} preview`,
+        title: `${message.botName ?? message.botId} preview`,
         text: message.text,
         meta: message.isFinal ? "preview locked" : "preview streaming",
+      })
+      break
+    }
+    case "ORCHESTRATION_EVENT": {
+      options.upsertEntry({
+        id: `orchestration-${message.eventId}`,
+        role: "orchestration",
+        title: message.action,
+        text: message.summary,
+        meta: message.targetName
+          ? `${message.actorName} → ${message.targetName}`
+          : message.actorName,
       })
       break
     }
@@ -114,19 +127,20 @@ export function handleVoiceStudioServerMessage(
     }
     case "BOT_TEXT": {
       clearPendingReply(message.utteranceId)
-      const previous = options.botSpeechBuffer[message.utteranceId] ?? ""
+      const entryKey = `${message.utteranceId}:${message.botId}`
+      const previous = options.botSpeechBuffer[entryKey] ?? ""
       const combined = [previous, message.text]
         .filter(Boolean)
         .join(" ")
         .replace(/\s+/g, " ")
         .trim()
 
-      options.botSpeechBuffer[message.utteranceId] = combined
+      options.botSpeechBuffer[entryKey] = combined
 
       options.upsertEntry({
-        id: `bot-${message.utteranceId}`,
+        id: `bot-${entryKey}`,
         role: "bot",
-        title: message.botId,
+        title: message.botName ?? message.botId,
         text: combined,
         meta: message.isFinal ? "bot stream complete" : "bot block streaming",
       })

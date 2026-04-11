@@ -10,7 +10,10 @@ export type TtsProviderId =
   | "tencent-tts"
   | "tencent-streaming-tts"
   | "volcengine-tts"
-export type ConversationBackendId = "local-bot" | "openclaw-gateway"
+export type ConversationBackendId =
+  | "local-bot"
+  | "openclaw-gateway"
+  | "starter2-room"
 
 export type ProviderOption<T extends string> = {
   id: T
@@ -51,6 +54,14 @@ export const CONVERSATION_BACKEND_OPTIONS: ConversationBackendOption[] = [
       "VoicyClaw sends final transcript turns to an OpenClaw Gateway over its WebSocket chat API.",
     runtimeHint:
       "Use this when your agent already lives behind a Gateway URL and token.",
+  },
+  {
+    id: "starter2-room",
+    label: "Starter 2 Room",
+    summary:
+      "Routes a turn into the Starter 2 multi-agent room so named agents such as Claude, OpenAI, Gemini, and DeepSeek can respond in one shared timeline.",
+    runtimeHint:
+      "Best for the product MVP where room state, orchestration events, and multi-agent replies need to stay visible in one place.",
   },
 ]
 
