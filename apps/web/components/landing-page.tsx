@@ -4,22 +4,41 @@ import {
   Bot,
   Globe,
   Layers,
-  MessageSquare,
   Mic,
   Radio,
-  ShieldCheck,
   Sparkles,
-  Zap,
 } from "lucide-react"
 import { motion } from "motion/react"
+import { useRef, useState } from "react"
 
 import {
-  LandingCallToActionControls,
   LandingHeroAuthControls,
   LandingNavbarAuthControls,
 } from "./auth-controls"
+import {
+  DEFAULT_PROMPTS,
+  HOSTED_PROMPTS,
+  STUDIO_STEPS,
+  VOICE_PATH_META,
+} from "./product-studio"
+import {
+  buildConversationEntries,
+  ConnectAgentCard,
+  ConversationCard,
+  StudioStepCard,
+  StudioSupportCard,
+  type StepStatus,
+  type VoicePathCardOption,
+  VoicePathSelectorCard,
+} from "./product-studio-view"
 import { SiteHeader } from "./site-header"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
+import { TTS_PROVIDER_OPTIONS, type TtsProviderId } from "../lib/studio-provider-catalog"
+import type { TimelineEntry } from "../lib/voice-studio-session-helpers"
+import {
+  buildConnectorConfigJson,
+  STARTER_CONNECTOR_PACKAGE,
+} from "../lib/hosted-onboarding-shared"
 
 const waveformBars = Array.from({ length: 60 }, (_, index) => ({
   key: index,
@@ -33,25 +52,6 @@ const productHuntBadge = {
   image:
     "https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1118669&theme=light&t=1775703142013",
 }
-
-const valueProps = [
-  {
-    icon: MessageSquare,
-    title: "Talk, don't type",
-    description: "Speak to your agent and hear it answer back.",
-  },
-  {
-    icon: Zap,
-    title: "Real-time replies",
-    description: "Replies can start playing before the full answer is done.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Your own keys",
-    description:
-      "Start with a starter key now, then bring your own provider keys when you are ready.",
-  },
-]
 
 const featureCards = [
   {
@@ -108,16 +108,43 @@ const footerGroups = [
   },
 ]
 
+type TryCard = {
+  id: number
+  step: string
+  title: string
+  description: string
+}
+
+const tryCards: TryCard[] = [
+  {
+    id: 1,
+    step: STUDIO_STEPS[0].step,
+    title: STUDIO_STEPS[0].title,
+    description: STUDIO_STEPS[0].description,
+  },
+  {
+    id: 2,
+    step: STUDIO_STEPS[1].step,
+    title: STUDIO_STEPS[1].title,
+    description: STUDIO_STEPS[1].description,
+  },
+  {
+    id: 3,
+    step: STUDIO_STEPS[2].step,
+    title: STUDIO_STEPS[2].title,
+    description: STUDIO_STEPS[2].description,
+  },
+]
+
 export function LandingPage({ authEnabled }: { authEnabled: boolean }) {
   return (
     <div className="min-h-screen bg-white text-zinc-900 [color-scheme:light] selection:bg-amber-200">
       <Navbar authEnabled={authEnabled} />
       <main>
         <Hero authEnabled={authEnabled} />
-        <ValueProps />
-        <Features />
         <HowItWorks />
-        <CallToAction authEnabled={authEnabled} />
+        <Features />
+        <TryNowSection />
       </main>
       <Footer />
     </div>
@@ -237,39 +264,6 @@ function Waveform() {
         />
       ))}
     </div>
-  )
-}
-
-function ValueProps() {
-  return (
-    <section className="bg-zinc-50 py-24">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-12 md:grid-cols-3">
-          {valueProps.map((item, index) => {
-            const Icon = item.icon
-
-            return (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="text-center"
-              >
-                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100">
-                  <Icon className="h-6 w-6 text-amber-600" />
-                </div>
-                <h3 className="mb-3 text-xl font-bold">{item.title}</h3>
-                <p className="leading-relaxed text-zinc-500">
-                  {item.description}
-                </p>
-              </motion.div>
-            )
-          })}
-        </div>
-      </div>
-    </section>
   )
 }
 
@@ -416,31 +410,221 @@ function HowItWorks() {
   )
 }
 
-function CallToAction({ authEnabled }: { authEnabled: boolean }) {
+function TryNowSection() {
+  const [selectedStep, setSelectedStep] = useState(1)
+  const [selectedVoicePath, setSelectedVoicePath] = useState<TtsProviderId>("browser")
+  const [draftText, setDraftText] = useState("")
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const timelineRef = useRef<HTMLDivElement | null>(null)
+  const previewTimeline: TimelineEntry[] = [
+    {
+      id: "user-preview-1",
+      role: "user",
+      title: "You",
+      text: "Give me a short hello in your new voice.",
+      meta: "preview",
+    },
+    {
+      id: "bot-preview-1",
+      role: "bot",
+      title: "SayHello Connector",
+      text: "Hello. I am ready to talk through your starter workspace.",
+      meta: "preview",
+    },
+  ]
+  const previewEntries = buildConversationEntries(previewTimeline, "SayHello Connector")
+  const voicePathOptions: VoicePathCardOption[] = TTS_PROVIDER_OPTIONS.map((option) => {
+    const meta = VOICE_PATH_META[option.id]
+
+    return {
+      id: option.id,
+      eyebrow: meta.eyebrow,
+      title: meta.title,
+      description: meta.description,
+      routeLabel: meta.routeLabel,
+      keywords: meta.keywords,
+      accentClassName: meta.accentClassName,
+      bars: meta.bars,
+      selected: selectedVoicePath === option.id,
+      onSelect: () => setSelectedVoicePath(option.id),
+    }
+  })
+  const installLines = [
+    {
+      id: "install",
+      prefix: "$",
+      code: `openclaw plugins install ${STARTER_CONNECTOR_PACKAGE}`,
+    },
+    {
+      id: "config",
+      prefix: "cfg",
+      code: buildConnectorConfigJson({
+        apiKey: "try_••••••••••••",
+      }),
+    },
+    {
+      id: "restart",
+      prefix: "$",
+      code: "openclaw gateway restart",
+    },
+  ]
+
+  function getCardStatus(cardId: number): StepStatus {
+    if (cardId === selectedStep) {
+      return "active"
+    }
+
+    if (cardId < selectedStep) {
+      return "done"
+    }
+
+    return "pending"
+  }
+
+  async function copyPreviewText(id: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedId(id)
+      window.setTimeout(() => {
+        setCopiedId((current) => (current === id ? null : current))
+      }, 1400)
+    } catch {
+      setCopiedId(null)
+    }
+  }
+
+  function openTryStudio() {
+    window.location.href = "/try"
+  }
+
   return (
-    <section id="get-started" className="bg-white py-32">
-      <div className="mx-auto max-w-5xl px-6">
-        <div className="relative overflow-hidden rounded-[3rem] bg-amber-500 p-12 text-center text-white shadow-2xl shadow-amber-500/40 lg:p-20">
-          <div className="absolute inset-0 h-full w-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+    <section id="try-now" className="bg-white py-32">
+      <div className="mx-auto max-w-7xl px-6">
+        <section className="relative overflow-hidden rounded-[2.75rem] border border-amber-100/80 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(249,115,22,0.10),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,249,240,0.98))] px-6 py-8 text-zinc-900 shadow-[0_40px_120px_rgba(24,24,27,0.12)] lg:px-8 lg:py-10">
+          <div className="relative z-10 grid gap-8 xl:grid-cols-[0.74fr_1.26fr]">
+            <div className="space-y-8">
+              <div className="space-y-5">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-100/70 px-4 py-1.5 text-sm font-medium text-amber-700">
+                  <Sparkles className="h-4 w-4" />
+                  Try now without login
+                </div>
 
-          <div className="relative z-10">
-            <h2 className="mb-8 text-4xl font-bold lg:text-6xl">
-              Try the live studio now.
-            </h2>
-            <p className="mx-auto mb-12 max-w-2xl text-xl text-amber-50 opacity-90 lg:text-2xl">
-              Your live room is already waiting. Open the studio, connect your
-              bot, choose a voice path, and start talking.
-            </p>
+                <div className="max-w-2xl">
+                  <h2 className="text-3xl leading-tight font-semibold tracking-tight text-zinc-900 lg:text-4xl">
+                    Three steps to make your agent speak.
+                  </h2>
+                </div>
+              </div>
 
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <LandingCallToActionControls authEnabled={authEnabled} />
+              <div className="space-y-4">
+                {tryCards.map((card) => (
+                  <StudioStepCard
+                    key={card.step}
+                    step={card.step}
+                    title={card.title}
+                    description={card.description}
+                    status={getCardStatus(card.id)}
+                    selected={selectedStep === card.id}
+                    onSelect={() => setSelectedStep(card.id)}
+                  />
+                ))}
+
+                <StudioSupportCard
+                  step="04"
+                  title="Give us support"
+                  action={
+                    <a
+                      href={productHuntBadge.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex overflow-hidden rounded-2xl shadow-sm transition-transform hover:-translate-y-0.5"
+                    >
+                      <img
+                        alt="VoicyClaw - specific voice of private agent | Product Hunt"
+                        width={250}
+                        height={54}
+                        src={productHuntBadge.image}
+                        className="h-[54px] w-[250px] max-w-full"
+                      />
+                    </a>
+                  }
+                />
+              </div>
             </div>
 
-            <p className="mt-10 font-medium text-amber-100 opacity-80">
-              Same live flow. Cleaner front door.
-            </p>
+            <div className="flex xl:pl-2">
+              {selectedStep === 1 ? (
+                <ConnectAgentCard
+                  title={STUDIO_STEPS[0].title}
+                  description="Run the install command, paste the starter config, restart OpenClaw, then confirm the bot is online."
+                  lines={installLines}
+                  copiedId={copiedId}
+                  onCopy={(id, text) => void copyPreviewText(id, text)}
+                  connectionTargetLabel="VoicyClaw Inbound Bot"
+                  workspaceName="Starter workspace"
+                  channelId="sayhello-demo"
+                  botId="openclaw-demo"
+                  starterBotOnline={false}
+                  connectionState="disconnected"
+                  botDisplayName="SayHello Connector"
+                  onCheck={openTryStudio}
+                  onContinue={() => setSelectedStep(2)}
+                  statusPanel={{
+                    label: "Bot status",
+                    value: "Waiting for bot",
+                    tone: "warning",
+                    actionLabel: "Check online",
+                    onAction: openTryStudio,
+                  }}
+                  hideSetupStats
+                  hideFooter
+                />
+              ) : selectedStep === 2 ? (
+                <VoicePathSelectorCard
+                  title={STUDIO_STEPS[1].title}
+                  description={STUDIO_STEPS[1].description}
+                  connectionReady={true}
+                  selectedLabel={
+                    TTS_PROVIDER_OPTIONS.find((option) => option.id === selectedVoicePath)?.label ??
+                    "Browser Voice Output"
+                  }
+                  options={voicePathOptions}
+                  onContinue={() => setSelectedStep(3)}
+                />
+              ) : selectedStep === 3 ? (
+                <ConversationCard
+                  draftText={draftText}
+                  setDraftText={setDraftText}
+                  isRecording={false}
+                  isBotThinking={false}
+                  isBotSpeaking={false}
+                  timelineRef={timelineRef}
+                  entries={previewEntries}
+                  quickPrompts={HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS}
+                  beginCapture={async () => undefined}
+                  finishCapture={() => undefined}
+                  sendTextUtterance={() => undefined}
+                  botDisplayName="SayHello Connector"
+                />
+              ) : (
+                <ConversationCard
+                  draftText={draftText}
+                  setDraftText={setDraftText}
+                  isRecording={false}
+                  isBotThinking={false}
+                  isBotSpeaking={false}
+                  timelineRef={timelineRef}
+                  entries={previewEntries}
+                  quickPrompts={HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS}
+                  beginCapture={async () => undefined}
+                  finishCapture={() => undefined}
+                  sendTextUtterance={() => undefined}
+                  botDisplayName="SayHello Connector"
+                />
+              )}
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     </section>
   )

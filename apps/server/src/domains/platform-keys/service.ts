@@ -6,6 +6,8 @@ import {
 } from "../../storage"
 import { findProjectByChannelId } from "../projects/service"
 
+const TRIAL_KEY_TTL_MS = 60 * 60 * 1000
+
 export async function findPlatformKeyByProjectIdAndType(
   projectId: string,
   keyType: PlatformKeyType,
@@ -33,6 +35,30 @@ export async function ensureStarterPlatformKey(input: {
   )
 }
 
+export async function ensureTrialPlatformKey(input: {
+  channelId: string
+  workspaceId: string
+  projectId: string
+  createdByUserId: string
+  label?: string | null
+}) {
+  const existing = await findPlatformKeyByProjectIdAndType(input.projectId, "trial")
+
+  if (existing && !isPlatformKeyExpired(existing)) {
+    return existing
+  }
+
+  return await issuePlatformKeyForChannel({
+    channelId: input.channelId,
+    label: input.label,
+    workspaceId: input.workspaceId,
+    projectId: input.projectId,
+    keyType: "trial",
+    createdByUserId: input.createdByUserId,
+    expiresAt: new Date(Date.now() + TRIAL_KEY_TTL_MS).toISOString(),
+  })
+}
+
 export async function issuePlatformKeyForChannel(input: {
   channelId: string
   label?: string | null
@@ -40,6 +66,7 @@ export async function issuePlatformKeyForChannel(input: {
   projectId?: string | null
   keyType?: PlatformKeyType
   createdByUserId?: string | null
+  expiresAt?: string | null
 }) {
   const project =
     input.projectId || input.workspaceId
@@ -51,6 +78,7 @@ export async function issuePlatformKeyForChannel(input: {
     projectId: input.projectId ?? project?.id ?? null,
     keyType: input.keyType,
     createdByUserId: input.createdByUserId ?? null,
+    expiresAt: input.expiresAt ?? null,
   })
 }
 
@@ -65,6 +93,10 @@ export type PlatformKeyAuthorization =
       ok: false
       reason: "not-found"
     }
+  | {
+      ok: false
+      reason: "expired"
+    }
 
 export async function authorizePlatformKey(
   token: string,
@@ -74,6 +106,13 @@ export async function authorizePlatformKey(
     return {
       ok: false,
       reason: "not-found",
+    }
+  }
+
+  if (isPlatformKeyExpired(key)) {
+    return {
+      ok: false,
+      reason: "expired",
     }
   }
 
@@ -87,4 +126,17 @@ export async function authorizePlatformKey(
 
 export async function markPlatformKeyUsed(platformKeyId: string) {
   await storage.platformKeys.touch(platformKeyId)
+}
+
+function isPlatformKeyExpired(key: PlatformKeyRecord) {
+  if (!key.expiresAt) {
+    return false
+  }
+
+  const expiresAt = Date.parse(key.expiresAt)
+  if (Number.isNaN(expiresAt)) {
+    return false
+  }
+
+  return expiresAt <= Date.now()
 }

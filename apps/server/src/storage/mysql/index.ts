@@ -165,6 +165,7 @@ async function initializeMysqlStorage() {
         key_type VARCHAR(32) NOT NULL DEFAULT 'standard',
         created_by_user_id VARCHAR(36) NULL,
         created_at VARCHAR(40) NOT NULL,
+        expires_at VARCHAR(40) NULL,
         last_used_at VARCHAR(40) NULL,
         CONSTRAINT fk_platform_keys_channel
           FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE,
@@ -254,9 +255,43 @@ async function initializeMysqlStorage() {
         KEY workspace_allowance_created_idx (workspace_id, created_at)
       )
     `)
+
+    await ensureMysqlColumn(
+      connection,
+      "platform_keys",
+      "expires_at",
+      "VARCHAR(40) NULL",
+    )
   } finally {
     connection.release()
   }
+}
+
+async function ensureMysqlColumn(
+  connection: PoolConnection,
+  tableName: string,
+  columnName: string,
+  definition: string,
+) {
+  const [rows] = await connection.query<RowDataPacket[]>(
+    `
+      SELECT 1
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+        AND COLUMN_NAME = ?
+      LIMIT 1
+    `,
+    [tableName, columnName],
+  )
+
+  if (rows.length > 0) {
+    return
+  }
+
+  await connection.query(
+    `ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`,
+  )
 }
 
 async function withConnection<T>(
@@ -649,9 +684,11 @@ export async function findPlatformKeyByProjectIdAndType(
         key_type AS keyType,
         created_by_user_id AS createdByUserId,
         created_at AS createdAt,
+        expires_at AS expiresAt,
         last_used_at AS lastUsedAt
       FROM platform_keys
       WHERE project_id = ? AND key_type = ?
+      ORDER BY created_at DESC
       LIMIT 1
     `,
     [projectId, keyType],
@@ -668,11 +705,13 @@ export async function createPlatformKey(
     projectId?: string | null
     keyType?: PlatformKeyType
     createdByUserId?: string | null
+    expiresAt?: string | null
   },
 ) {
   const now = new Date().toISOString()
   const keyType = options?.keyType ?? "standard"
-  const prefix = keyType === "starter" ? "vcs_" : "vc_"
+  const prefix =
+    keyType === "trial" ? "try_" : keyType === "starter" ? "vcs_" : "vc_"
   const record: PlatformKeyRecord = {
     id: randomUUID(),
     token: `${prefix}${randomUUID().replace(/-/g, "")}`,
@@ -683,6 +722,7 @@ export async function createPlatformKey(
     keyType,
     createdByUserId: options?.createdByUserId ?? null,
     createdAt: now,
+    expiresAt: options?.expiresAt ?? null,
     lastUsedAt: null,
   }
 
@@ -698,9 +738,10 @@ export async function createPlatformKey(
         key_type,
         created_by_user_id,
         created_at,
+        expires_at,
         last_used_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       record.id,
@@ -712,6 +753,7 @@ export async function createPlatformKey(
       record.keyType,
       record.createdByUserId,
       record.createdAt,
+      record.expiresAt,
       record.lastUsedAt,
     ],
   )
@@ -732,6 +774,7 @@ export async function findPlatformKeyByToken(token: string) {
         key_type AS keyType,
         created_by_user_id AS createdByUserId,
         created_at AS createdAt,
+        expires_at AS expiresAt,
         last_used_at AS lastUsedAt
       FROM platform_keys
       WHERE token = ?
