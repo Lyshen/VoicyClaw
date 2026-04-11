@@ -9,11 +9,17 @@ import {
   type HostedOnboardingRecord,
 } from "../lib/hosted-onboarding-shared"
 import {
+  clearCachedTrialBootstrap,
+  getOrCreateTrialSubject,
+  hasUsableTrialStarterKey,
+  parseTrialBootstrapRecord,
+  readCachedTrialBootstrap,
+  writeCachedTrialBootstrap,
+} from "../lib/trial-bootstrap-cache"
+import {
   buildWebRuntimePayload,
   type WebRuntimePayload,
 } from "../lib/web-runtime"
-
-const TRIAL_SUBJECT_STORAGE_KEY = "voicyclaw.try.subject"
 
 export function TrialStudioPage({ serverUrl }: { serverUrl: string }) {
   const [runtime, setRuntime] = useState<WebRuntimePayload | null>(null)
@@ -27,6 +33,16 @@ export function TrialStudioPage({ serverUrl }: { serverUrl: string }) {
       try {
         setError(null)
         const trialSubject = getOrCreateTrialSubject()
+        const cachedRecord = readCachedTrialBootstrap(trialSubject)
+
+        if (cachedRecord) {
+          if (!cancelled) {
+            setRuntime(buildRuntime(cachedRecord, serverUrl))
+          }
+
+          return
+        }
+
         const response = await fetch(new URL("/api/try/bootstrap", serverUrl), {
           method: "POST",
           headers: {
@@ -56,12 +72,15 @@ export function TrialStudioPage({ serverUrl }: { serverUrl: string }) {
           throw new Error(`Could not prepare your try workspace (${message}).`)
         }
 
-        const record = (await response.json()) as HostedOnboardingRecord
-        const onboarding = buildHostedOnboardingState(record, serverUrl)
-        const nextRuntime = buildWebRuntimePayload({
-          serverUrl,
-          onboarding,
-        })
+        const payload = (await response.json()) as HostedOnboardingRecord
+        const record = parseTrialBootstrapRecord(payload)
+
+        if (!record || !hasUsableTrialStarterKey(record)) {
+          throw new Error("Could not prepare your try workspace (trial token missing).")
+        }
+
+        writeCachedTrialBootstrap(trialSubject, record)
+        const nextRuntime = buildRuntime(record, serverUrl)
 
         if (!cancelled) {
           setRuntime(nextRuntime)
@@ -103,7 +122,10 @@ export function TrialStudioPage({ serverUrl }: { serverUrl: string }) {
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <button
             type="button"
-            onClick={() => setRetryToken((current) => current + 1)}
+            onClick={() => {
+              clearCachedTrialBootstrap()
+              setRetryToken((current) => current + 1)
+            }}
             className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
           >
             Try again
@@ -120,26 +142,11 @@ export function TrialStudioPage({ serverUrl }: { serverUrl: string }) {
   )
 }
 
-function getOrCreateTrialSubject() {
-  if (typeof window === "undefined") {
-    return buildTrialSubject()
-  }
+function buildRuntime(record: HostedOnboardingRecord, serverUrl: string) {
+  const onboarding = buildHostedOnboardingState(record, serverUrl)
 
-  const existing = window.localStorage.getItem(TRIAL_SUBJECT_STORAGE_KEY)?.trim()
-  if (existing) {
-    return existing
-  }
-
-  const trialSubject = buildTrialSubject()
-  window.localStorage.setItem(TRIAL_SUBJECT_STORAGE_KEY, trialSubject)
-  return trialSubject
-}
-
-function buildTrialSubject() {
-  const suffix =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`
-
-  return `try-session-${suffix}`
+  return buildWebRuntimePayload({
+    serverUrl,
+    onboarding,
+  })
 }

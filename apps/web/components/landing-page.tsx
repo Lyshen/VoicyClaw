@@ -9,7 +9,7 @@ import {
   Sparkles,
 } from "lucide-react"
 import { motion } from "motion/react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import {
   LandingHeroAuthControls,
@@ -33,10 +33,22 @@ import {
 } from "./product-studio-view"
 import { SiteHeader } from "./site-header"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
+import {
+  getOrCreateTrialSubject,
+  hasUsableTrialStarterKey,
+  parseTrialBootstrapRecord,
+  readCachedTrialBootstrap,
+  writeCachedTrialBootstrap,
+} from "../lib/trial-bootstrap-cache"
 import { TTS_PROVIDER_OPTIONS, type TtsProviderId } from "../lib/studio-provider-catalog"
-import type { TimelineEntry } from "../lib/voice-studio-session-helpers"
+import type {
+  ConnectionState,
+  TimelineEntry,
+} from "../lib/voice-studio-session-helpers"
+import { createTimelineEntry } from "../lib/voice-studio-session-helpers"
 import {
   buildConnectorConfigJson,
+  type HostedOnboardingRecord,
   STARTER_CONNECTOR_PACKAGE,
 } from "../lib/hosted-onboarding-shared"
 
@@ -136,7 +148,19 @@ const tryCards: TryCard[] = [
   },
 ]
 
-export function LandingPage({ authEnabled }: { authEnabled: boolean }) {
+const TRY_VOICE_PROVIDER_OPTIONS = TTS_PROVIDER_OPTIONS.filter(
+  (option) => option.id !== "browser" && option.id !== "demo",
+)
+const DEFAULT_TRY_VOICE_PROVIDER_ID: TtsProviderId =
+  TRY_VOICE_PROVIDER_OPTIONS[0]?.id ?? "azure-tts"
+
+export function LandingPage({
+  authEnabled,
+  serverUrl,
+}: {
+  authEnabled: boolean
+  serverUrl: string
+}) {
   return (
     <div className="min-h-screen bg-white text-zinc-900 [color-scheme:light] selection:bg-amber-200">
       <Navbar authEnabled={authEnabled} />
@@ -144,7 +168,7 @@ export function LandingPage({ authEnabled }: { authEnabled: boolean }) {
         <Hero authEnabled={authEnabled} />
         <HowItWorks />
         <Features />
-        <TryNowSection />
+        <TryNowSection serverUrl={serverUrl} />
       </main>
       <Footer />
     </div>
@@ -281,11 +305,6 @@ function Features() {
               Mic in, agent runs, voice out. The whole loop stays in one place.
             </p>
           </div>
-          <div className="hidden lg:block">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-6 py-3 font-semibold text-zinc-900">
-              Live Demo
-            </div>
-          </div>
         </div>
 
         <div className="grid gap-8 md:grid-cols-2">
@@ -410,30 +429,44 @@ function HowItWorks() {
   )
 }
 
-function TryNowSection() {
+function TryNowSection({ serverUrl }: { serverUrl: string }) {
   const [selectedStep, setSelectedStep] = useState(1)
-  const [selectedVoicePath, setSelectedVoicePath] = useState<TtsProviderId>("browser")
+  const [selectedVoicePath, setSelectedVoicePath] =
+    useState<TtsProviderId>(DEFAULT_TRY_VOICE_PROVIDER_ID)
   const [draftText, setDraftText] = useState("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [trialToken, setTrialToken] = useState<string | null>(null)
+  const [trialRecord, setTrialRecord] = useState<HostedOnboardingRecord | null>(null)
+  const [botStatus, setBotStatus] = useState<"idle" | "checking" | "online" | "offline" | "error">("idle")
+  const [previewTimeline, setPreviewTimeline] = useState<TimelineEntry[]>([])
+  const [isPreviewRecording, setIsPreviewRecording] = useState(false)
+  const [isPreviewBotThinking, setIsPreviewBotThinking] = useState(false)
+  const [isPreviewBotSpeaking, setIsPreviewBotSpeaking] = useState(false)
   const timelineRef = useRef<HTMLDivElement | null>(null)
-  const previewTimeline: TimelineEntry[] = [
-    {
-      id: "user-preview-1",
-      role: "user",
-      title: "You",
-      text: "Give me a short hello in your new voice.",
-      meta: "preview",
-    },
-    {
-      id: "bot-preview-1",
-      role: "bot",
-      title: "SayHello Connector",
-      text: "Hello. I am ready to talk through your starter workspace.",
-      meta: "preview",
-    },
-  ]
-  const previewEntries = buildConversationEntries(previewTimeline, "SayHello Connector")
-  const voicePathOptions: VoicePathCardOption[] = TTS_PROVIDER_OPTIONS.map((option) => {
+  const previewRecordingRef = useRef(false)
+  const previewEntries = buildConversationEntries(
+    previewTimeline,
+    trialRecord?.project.displayName ?? "SayHello Connector",
+  )
+  const hasSentPreviewMessage = previewEntries.length > 0
+  const starterBotOnline = botStatus === "online"
+  const connectionState: ConnectionState =
+    botStatus === "checking"
+      ? "connecting"
+      : botStatus === "online"
+        ? "connected"
+        : botStatus === "error"
+          ? "error"
+          : "disconnected"
+  const statusPanelValue =
+    botStatus === "online"
+      ? "Bot is online"
+      : botStatus === "checking"
+        ? "Checking connection"
+        : botStatus === "error"
+          ? "Status unavailable"
+          : "Waiting for bot"
+  const voicePathOptions: VoicePathCardOption[] = TRY_VOICE_PROVIDER_OPTIONS.map((option) => {
     const meta = VOICE_PATH_META[option.id]
 
     return {
@@ -449,6 +482,172 @@ function TryNowSection() {
       onSelect: () => setSelectedVoicePath(option.id),
     }
   })
+
+  function buildPreviewReply(input: string) {
+    const normalized = input.trim().toLowerCase()
+
+    if (normalized.includes("name")) {
+      return "I am SayHello Connector, your trial voice bot for this workspace preview."
+    }
+
+    if (normalized.includes("remember")) {
+      return "For this preview, I only keep the latest thing you asked so you can quickly test the flow."
+    }
+
+    if (normalized.includes("hello") || normalized.includes("intro")) {
+      return "Hello. I am ready to talk through your starter workspace."
+    }
+
+    return `Got it. Once your OpenClaw bot is online, VoicyClaw will speak replies back through ${TRY_VOICE_PROVIDER_OPTIONS.find((option) => option.id === selectedVoicePath)?.label ?? "your selected voice path"}.`
+  }
+
+  function scrollPreviewToBottom() {
+    if (!timelineRef.current) {
+      return
+    }
+
+    timelineRef.current.scrollTo({
+      top: timelineRef.current.scrollHeight,
+      behavior: "smooth",
+    })
+  }
+
+  function sendPreviewUtterance(overrideText?: string) {
+    const nextText = (overrideText ?? draftText).trim()
+
+    if (!nextText) {
+      return
+    }
+
+    const botDisplayName = trialRecord?.project.displayName ?? "SayHello Connector"
+    setDraftText("")
+    setPreviewTimeline((current) => [
+      ...current,
+      createTimelineEntry("user", "You", nextText),
+    ])
+    setIsPreviewBotThinking(true)
+    setSelectedStep(4)
+
+    window.setTimeout(() => {
+      setIsPreviewBotThinking(false)
+      setIsPreviewBotSpeaking(true)
+      setPreviewTimeline((current) => [
+        ...current,
+        createTimelineEntry("bot", botDisplayName, buildPreviewReply(nextText)),
+      ])
+
+      window.setTimeout(() => {
+        setIsPreviewBotSpeaking(false)
+      }, 900)
+    }, 520)
+  }
+
+  async function beginPreviewCapture() {
+    previewRecordingRef.current = true
+    setIsPreviewRecording(true)
+  }
+
+  function finishPreviewCapture() {
+    if (!previewRecordingRef.current) {
+      return
+    }
+
+    previewRecordingRef.current = false
+    setIsPreviewRecording(false)
+    sendPreviewUtterance("Give me a short hello in your new voice.")
+  }
+
+  async function refreshBotStatus(record: HostedOnboardingRecord) {
+    setTrialRecord(record)
+    setBotStatus("checking")
+
+    try {
+      const response = await fetch(
+        new URL(`/api/channels/${encodeURIComponent(record.project.channelId)}`, serverUrl),
+      )
+
+      if (!response.ok) {
+        throw new Error(`channel ${response.status}`)
+      }
+
+      const payload = (await response.json()) as {
+        botCount: number
+      }
+
+      setBotStatus(payload.botCount > 0 ? "online" : "offline")
+    } catch {
+      setBotStatus("error")
+    }
+  }
+
+  async function refreshTrialPreview(forceRefresh = false) {
+    const trialSubject = getOrCreateTrialSubject()
+
+    if (!trialSubject) {
+      setTrialToken(null)
+      setTrialRecord(null)
+      setBotStatus("error")
+      return null
+    }
+
+    const cachedRecord = forceRefresh ? null : readCachedTrialBootstrap(trialSubject)
+
+    if (cachedRecord && hasUsableTrialStarterKey(cachedRecord)) {
+      setTrialToken(cachedRecord.starterKey?.value ?? null)
+      await refreshBotStatus(cachedRecord)
+      return cachedRecord
+    }
+
+    try {
+      const response = await fetch(new URL("/api/try/bootstrap", serverUrl), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          trialSubject,
+          displayName: "Try now guest",
+        }),
+      })
+
+      if (!response.ok) {
+        return null
+      }
+
+      const payload = (await response.json()) as HostedOnboardingRecord
+      const record = parseTrialBootstrapRecord(payload)
+
+      if (!record || !hasUsableTrialStarterKey(record)) {
+        return null
+      }
+
+      writeCachedTrialBootstrap(trialSubject, record)
+      setTrialToken(record.starterKey?.value ?? null)
+      await refreshBotStatus(record)
+      return record
+    } catch {
+      setBotStatus("error")
+      return null
+    }
+  }
+
+  useEffect(() => {
+    function handleFocus() {
+      void refreshTrialPreview()
+    }
+
+    void refreshTrialPreview()
+    window.addEventListener("focus", handleFocus)
+
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+    }
+  }, [])
+
+  useEffect(() => {
+    scrollPreviewToBottom()
+  }, [previewEntries.length, isPreviewBotThinking])
+
   const installLines = [
     {
       id: "install",
@@ -459,7 +658,8 @@ function TryNowSection() {
       id: "config",
       prefix: "cfg",
       code: buildConnectorConfigJson({
-        apiKey: "try_••••••••••••",
+        apiKey: trialToken ?? "try_••••••••••••",
+        serverUrl,
       }),
     },
     {
@@ -470,6 +670,10 @@ function TryNowSection() {
   ]
 
   function getCardStatus(cardId: number): StepStatus {
+    if (cardId === 3 && hasSentPreviewMessage) {
+      return "done"
+    }
+
     if (cardId === selectedStep) {
       return "active"
     }
@@ -493,14 +697,17 @@ function TryNowSection() {
     }
   }
 
-  function openTryStudio() {
-    window.location.href = "/try"
+  function refreshTryNowSection() {
+    void refreshTrialPreview(true)
   }
 
   return (
-    <section id="try-now" className="bg-white py-32">
+    <section
+      id="try-now"
+      className="bg-[linear-gradient(180deg,rgba(255,247,237,0.92),rgba(255,251,245,0.98))] py-32"
+    >
       <div className="mx-auto max-w-7xl px-6">
-        <section className="relative overflow-hidden rounded-[2.75rem] border border-amber-100/80 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(249,115,22,0.10),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,249,240,0.98))] px-6 py-8 text-zinc-900 shadow-[0_40px_120px_rgba(24,24,27,0.12)] lg:px-8 lg:py-10">
+        <section className="relative overflow-hidden rounded-[2.75rem] border border-amber-200/80 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(249,115,22,0.14),transparent_24%),linear-gradient(180deg,rgba(255,252,248,0.98),rgba(255,245,230,0.98))] px-6 py-8 text-zinc-900 shadow-[0_40px_120px_rgba(24,24,27,0.12)] lg:px-8 lg:py-10">
           <div className="relative z-10 grid gap-8 xl:grid-cols-[0.74fr_1.26fr]">
             <div className="space-y-8">
               <div className="space-y-5">
@@ -532,6 +739,7 @@ function TryNowSection() {
                 <StudioSupportCard
                   step="04"
                   title="Give us support"
+                  highlighted={hasSentPreviewMessage}
                   action={
                     <a
                       href={productHuntBadge.href}
@@ -556,25 +764,22 @@ function TryNowSection() {
               {selectedStep === 1 ? (
                 <ConnectAgentCard
                   title={STUDIO_STEPS[0].title}
-                  description="Run the install command, paste the starter config, restart OpenClaw, then confirm the bot is online."
                   lines={installLines}
                   copiedId={copiedId}
                   onCopy={(id, text) => void copyPreviewText(id, text)}
                   connectionTargetLabel="VoicyClaw Inbound Bot"
                   workspaceName="Starter workspace"
-                  channelId="sayhello-demo"
-                  botId="openclaw-demo"
-                  starterBotOnline={false}
-                  connectionState="disconnected"
-                  botDisplayName="SayHello Connector"
-                  onCheck={openTryStudio}
+                  channelId={trialRecord?.project.channelId ?? "sayhello-demo"}
+                  botId={trialRecord?.project.botId ?? "openclaw-demo"}
+                  starterBotOnline={starterBotOnline}
+                  connectionState={connectionState}
+                  botDisplayName={trialRecord?.project.displayName ?? "SayHello Connector"}
+                  onCheck={refreshTryNowSection}
                   onContinue={() => setSelectedStep(2)}
                   statusPanel={{
                     label: "Bot status",
-                    value: "Waiting for bot",
-                    tone: "warning",
-                    actionLabel: "Check online",
-                    onAction: openTryStudio,
+                    value: statusPanelValue,
+                    tone: starterBotOnline ? "success" : "warning",
                   }}
                   hideSetupStats
                   hideFooter
@@ -582,44 +787,32 @@ function TryNowSection() {
               ) : selectedStep === 2 ? (
                 <VoicePathSelectorCard
                   title={STUDIO_STEPS[1].title}
-                  description={STUDIO_STEPS[1].description}
                   connectionReady={true}
                   selectedLabel={
-                    TTS_PROVIDER_OPTIONS.find((option) => option.id === selectedVoicePath)?.label ??
-                    "Browser Voice Output"
+                    TRY_VOICE_PROVIDER_OPTIONS.find((option) => option.id === selectedVoicePath)
+                      ?.label ?? "Azure Speech TTS (Unary)"
                   }
                   options={voicePathOptions}
                   onContinue={() => setSelectedStep(3)}
-                />
-              ) : selectedStep === 3 ? (
-                <ConversationCard
-                  draftText={draftText}
-                  setDraftText={setDraftText}
-                  isRecording={false}
-                  isBotThinking={false}
-                  isBotSpeaking={false}
-                  timelineRef={timelineRef}
-                  entries={previewEntries}
-                  quickPrompts={HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS}
-                  beginCapture={async () => undefined}
-                  finishCapture={() => undefined}
-                  sendTextUtterance={() => undefined}
-                  botDisplayName="SayHello Connector"
                 />
               ) : (
                 <ConversationCard
                   draftText={draftText}
                   setDraftText={setDraftText}
-                  isRecording={false}
-                  isBotThinking={false}
-                  isBotSpeaking={false}
+                  isRecording={isPreviewRecording}
+                  isBotThinking={isPreviewBotThinking}
+                  isBotSpeaking={isPreviewBotSpeaking}
                   timelineRef={timelineRef}
                   entries={previewEntries}
                   quickPrompts={HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS}
-                  beginCapture={async () => undefined}
-                  finishCapture={() => undefined}
-                  sendTextUtterance={() => undefined}
-                  botDisplayName="SayHello Connector"
+                  beginCapture={beginPreviewCapture}
+                  finishCapture={finishPreviewCapture}
+                  sendTextUtterance={sendPreviewUtterance}
+                  botDisplayName={trialRecord?.project.displayName ?? "SayHello Connector"}
+                  submitOnEnter
+                  hideSendButton
+                  emphasizeHoldToTalk
+                  showEntryLabels={false}
                 />
               )}
             </div>

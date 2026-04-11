@@ -165,19 +165,29 @@ export function StudioSupportCard({
   step,
   title,
   action,
+  highlighted = false,
 }: {
   step: string
   title: string
   action: ReactNode
+  highlighted?: boolean
 }) {
   return (
-    <div className="rounded-[2rem] border border-zinc-200/70 bg-white/55 p-5 text-left">
+    <div
+      className={`rounded-[2rem] border p-5 text-left transition ${
+        highlighted
+          ? "border-amber-300 bg-white ring-2 ring-amber-100 shadow-[0_24px_70px_rgba(245,158,11,0.12)]"
+          : "border-zinc-200/70 bg-white/55"
+      }`}
+    >
       <div className="flex items-start gap-5">
-        <div className="font-mono text-3xl font-bold text-zinc-300">{step}</div>
+        <div className={`font-mono text-3xl font-bold ${highlighted ? "text-amber-500" : "text-zinc-300"}`}>
+          {step}
+        </div>
 
         <div className="min-w-0 flex-1 space-y-4">
           <div className="flex items-center gap-2">
-            <MessageSquareText className="h-4 w-4 text-zinc-400" />
+            <MessageSquareText className={`h-4 w-4 ${highlighted ? "text-amber-500" : "text-zinc-400"}`} />
             <h2 className="text-lg font-semibold text-zinc-900 lg:text-xl">
               {title}
             </h2>
@@ -210,7 +220,7 @@ export function ConnectAgentCard({
   hideFooter = false,
 }: {
   title: string
-  description: string
+  description?: string
   lines: Array<{ id: string; prefix: string; code: string }>
   copiedId: string | null
   onCopy: (id: string, text: string) => void
@@ -227,8 +237,9 @@ export function ConnectAgentCard({
     label: string
     value: string
     tone: "success" | "warning"
-    actionLabel: string
-    onAction: () => void
+    helperText?: string
+    actionLabel?: string
+    onAction?: () => void
   }
   hideSetupStats?: boolean
   hideFooter?: boolean
@@ -261,9 +272,11 @@ export function ConnectAgentCard({
               <h3 className="text-3xl font-semibold tracking-tight text-white">
                 Bring your bot online
               </h3>
-              <p className="max-w-2xl text-sm leading-7 text-zinc-300">
-                {description}
-              </p>
+              {description ? (
+                <p className="max-w-2xl text-sm leading-7 text-zinc-300">
+                  {description}
+                </p>
+              ) : null}
             </div>
 
             {statusPanel ? (
@@ -310,19 +323,21 @@ export function ConnectAgentCard({
                   </span>
                 </div>
 
-                <div className="mt-3 text-xs leading-5 text-zinc-600">
-                  {statusPanel.tone === "success"
-                    ? "Your bot is online and ready for the next step."
-                    : "Finish setup, then run one online check from here."}
-                </div>
+                {statusPanel.helperText ? (
+                  <div className="mt-3 text-xs leading-5 text-zinc-600">
+                    {statusPanel.helperText}
+                  </div>
+                ) : null}
 
-                <button
-                  className="mt-4 inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-xs font-semibold text-white shadow-[0_12px_28px_rgba(24,24,27,0.16)] transition hover:bg-zinc-800"
-                  type="button"
-                  onClick={statusPanel.onAction}
-                >
-                  {statusPanel.actionLabel}
-                </button>
+                {statusPanel.actionLabel && statusPanel.onAction ? (
+                  <button
+                    className="mt-4 inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-xs font-semibold text-white shadow-[0_12px_28px_rgba(24,24,27,0.16)] transition hover:bg-zinc-800"
+                    type="button"
+                    onClick={statusPanel.onAction}
+                  >
+                    {statusPanel.actionLabel}
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -417,7 +432,7 @@ export function VoicePathSelectorCard({
   onContinue,
 }: {
   title: string
-  description: string
+  description?: string
   connectionReady: boolean
   selectedLabel: string
   options: VoicePathCardOption[]
@@ -439,9 +454,11 @@ export function VoicePathSelectorCard({
             <h3 className="text-3xl font-semibold tracking-tight text-white">
               Pick the voice path
             </h3>
-            <p className="max-w-2xl text-sm leading-7 text-zinc-300">
-              {description}
-            </p>
+            {description ? (
+              <p className="max-w-2xl text-sm leading-7 text-zinc-300">
+                {description}
+              </p>
+            ) : null}
           </div>
 
           <div className="rounded-[1.6rem] border border-emerald-200/60 bg-[linear-gradient(180deg,rgba(255,248,238,0.97),rgba(237,245,239,0.94))] px-4 py-2.5 text-right shadow-[0_20px_46px_rgba(16,185,129,0.12)]">
@@ -679,6 +696,10 @@ export function ConversationCard({
   finishCapture,
   sendTextUtterance,
   botDisplayName,
+  submitOnEnter = false,
+  hideSendButton = false,
+  emphasizeHoldToTalk = false,
+  showEntryLabels = true,
 }: {
   draftText: string
   setDraftText: (value: string) => void
@@ -692,7 +713,13 @@ export function ConversationCard({
   finishCapture: () => void
   sendTextUtterance: (overrideText?: string) => void
   botDisplayName: string
+  submitOnEnter?: boolean
+  hideSendButton?: boolean
+  emphasizeHoldToTalk?: boolean
+  showEntryLabels?: boolean
 }) {
+  const showPromptGuidance = entries.length === 0 && draftText.trim().length === 0
+
   return (
     <RoomShell
       statusLabel="Live"
@@ -710,7 +737,7 @@ export function ConversationCard({
           ref={timelineRef}
           className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1"
         >
-          {entries.length === 0 ? (
+          {showPromptGuidance ? (
             <article className="max-w-[90%] rounded-[1.9rem] border border-white/10 bg-white/[0.05] px-4 py-4">
               <p className="text-xs font-medium tracking-[0.22em] text-zinc-500 uppercase">
                 First prompt
@@ -735,17 +762,19 @@ export function ConversationCard({
                         : "border border-white/8 bg-white/[0.05] text-white"
                   }`}
                 >
-                  <p
-                    className={`text-xs font-medium tracking-[0.22em] uppercase ${
-                      entry.role === "user"
-                        ? "text-zinc-900/70"
-                        : entry.role === "preview"
-                          ? "text-amber-100/70"
-                          : "text-zinc-500"
-                    }`}
-                  >
-                    {entry.label}
-                  </p>
+                  {showEntryLabels ? (
+                    <p
+                      className={`text-xs font-medium tracking-[0.22em] uppercase ${
+                        entry.role === "user"
+                          ? "text-zinc-900/70"
+                          : entry.role === "preview"
+                            ? "text-amber-100/70"
+                            : "text-zinc-500"
+                      }`}
+                    >
+                      {entry.label}
+                    </p>
+                  ) : null}
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
                     {entry.text}
                   </p>
@@ -760,7 +789,7 @@ export function ConversationCard({
         </div>
 
         <div className="mt-4 shrink-0 border-t border-white/10 pt-4">
-          {entries.length === 0 ? (
+          {showPromptGuidance ? (
             <div className="mb-4 flex flex-wrap gap-2">
               {quickPrompts.map((prompt) => (
                 <button
@@ -780,6 +809,19 @@ export function ConversationCard({
               value={draftText}
               onChange={(event) => setDraftText(event.target.value)}
               onKeyDown={(event) => {
+                if (
+                  submitOnEnter &&
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.metaKey &&
+                  !event.ctrlKey &&
+                  !event.altKey
+                ) {
+                  event.preventDefault()
+                  sendTextUtterance()
+                  return
+                }
+
                 if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
                   event.preventDefault()
                   sendTextUtterance()
@@ -790,18 +832,24 @@ export function ConversationCard({
             />
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
-                type="button"
-                onClick={() => sendTextUtterance()}
-              >
-                Send message
-              </button>
+              {hideSendButton ? null : (
+                <button
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
+                  type="button"
+                  onClick={() => sendTextUtterance()}
+                >
+                  Send message
+                </button>
+              )}
               <button
                 className={`inline-flex min-h-11 items-center justify-center rounded-full border px-5 text-sm font-semibold transition ${
-                  isRecording
-                    ? "border-amber-300/30 bg-amber-500/14 text-amber-100"
-                    : "border-white/10 bg-white/[0.04] text-zinc-200 hover:border-amber-300/30 hover:bg-amber-500/10"
+                  emphasizeHoldToTalk
+                    ? isRecording
+                      ? "border-amber-200 bg-[linear-gradient(180deg,rgba(251,191,36,0.96),rgba(249,115,22,0.92))] text-zinc-950 shadow-[0_18px_50px_rgba(245,158,11,0.24)]"
+                      : "border-amber-200/80 bg-[linear-gradient(180deg,rgba(252,211,77,0.96),rgba(251,146,60,0.92))] text-zinc-950 shadow-[0_18px_50px_rgba(245,158,11,0.18)] hover:brightness-105"
+                    : isRecording
+                      ? "border-amber-300/30 bg-amber-500/14 text-amber-100"
+                      : "border-white/10 bg-white/[0.04] text-zinc-200 hover:border-amber-300/30 hover:bg-amber-500/10"
                 }`}
                 type="button"
                 onPointerDown={() => void beginCapture()}
