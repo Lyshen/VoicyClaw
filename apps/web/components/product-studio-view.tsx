@@ -181,13 +181,17 @@ export function StudioSupportCard({
       }`}
     >
       <div className="flex items-start gap-5">
-        <div className={`font-mono text-3xl font-bold ${highlighted ? "text-amber-500" : "text-zinc-300"}`}>
+        <div
+          className={`font-mono text-3xl font-bold ${highlighted ? "text-amber-500" : "text-zinc-300"}`}
+        >
           {step}
         </div>
 
         <div className="min-w-0 flex-1 space-y-4">
           <div className="flex items-center gap-2">
-            <MessageSquareText className={`h-4 w-4 ${highlighted ? "text-amber-500" : "text-zinc-400"}`} />
+            <MessageSquareText
+              className={`h-4 w-4 ${highlighted ? "text-amber-500" : "text-zinc-400"}`}
+            />
             <h2 className="text-lg font-semibold text-zinc-900 lg:text-xl">
               {title}
             </h2>
@@ -373,7 +377,9 @@ export function ConnectAgentCard({
                 value={workspaceName ?? "Starter workspace"}
               />
               <SetupStatCard label="Channel" value={channelId} mono />
-              {botId ? <SetupStatCard label="Bot ID" value={botId} mono /> : null}
+              {botId ? (
+                <SetupStatCard label="Bot ID" value={botId} mono />
+              ) : null}
               <SetupStatCard
                 label="Live room"
                 value={starterBotOnline ? botDisplayName : "Not connected yet"}
@@ -718,7 +724,8 @@ export function ConversationCard({
   emphasizeHoldToTalk?: boolean
   showEntryLabels?: boolean
 }) {
-  const showPromptGuidance = entries.length === 0 && draftText.trim().length === 0
+  const showPromptGuidance =
+    entries.length === 0 && draftText.trim().length === 0
 
   return (
     <RoomShell

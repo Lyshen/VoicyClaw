@@ -42,7 +42,10 @@ export async function ensureTrialPlatformKey(input: {
   createdByUserId: string
   label?: string | null
 }) {
-  const existing = await findPlatformKeyByProjectIdAndType(input.projectId, "trial")
+  const existing = await findPlatformKeyByProjectIdAndType(
+    input.projectId,
+    "trial",
+  )
 
   if (existing && !isPlatformKeyExpired(existing)) {
     return existing

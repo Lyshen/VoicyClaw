@@ -101,7 +101,10 @@ export function writeCachedTrialBootstrap(
     record,
   }
 
-  window.localStorage.setItem(TRIAL_BOOTSTRAP_STORAGE_KEY, JSON.stringify(payload))
+  window.localStorage.setItem(
+    TRIAL_BOOTSTRAP_STORAGE_KEY,
+    JSON.stringify(payload),
+  )
 }
 
 export function clearCachedTrialBootstrap() {
@@ -112,7 +115,9 @@ export function clearCachedTrialBootstrap() {
   window.localStorage.removeItem(TRIAL_BOOTSTRAP_STORAGE_KEY)
 }
 
-export function isHostedStarterKeyExpired(starterKey?: HostedStarterKey | null) {
+export function isHostedStarterKeyExpired(
+  starterKey?: HostedStarterKey | null,
+) {
   if (!starterKey?.value) {
     return true
   }

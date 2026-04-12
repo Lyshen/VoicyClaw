@@ -41,21 +41,24 @@ export function useStudioSettings(
     persistStudioSettings(settings, runtime.settingsNamespace)
   }, [hydrated, runtime.settingsNamespace, settings])
 
-  const updateSetting = useCallback(<Key extends keyof StudioSettings>(
-    key: Key,
-    value: StudioSettings[Key],
-  ) => {
-    setSettings((current) => {
-      if (current[key] === value) {
-        return current
-      }
+  const updateSetting = useCallback(
+    <Key extends keyof StudioSettings>(
+      key: Key,
+      value: StudioSettings[Key],
+    ) => {
+      setSettings((current) => {
+        if (current[key] === value) {
+          return current
+        }
 
-      return {
-        ...current,
-        [key]: value,
-      }
-    })
-  }, [])
+        return {
+          ...current,
+          [key]: value,
+        }
+      })
+    },
+    [],
+  )
 
   return {
     settings,

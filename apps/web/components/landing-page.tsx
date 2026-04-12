@@ -1,16 +1,28 @@
 "use client"
 
-import {
-  Bot,
-  Globe,
-  Layers,
-  Mic,
-  Radio,
-  Sparkles,
-} from "lucide-react"
+import { Bot, Globe, Layers, Mic, Radio, Sparkles } from "lucide-react"
 import { motion } from "motion/react"
-import { useEffect, useRef, useState } from "react"
-
+import { useEffect, useState } from "react"
+import {
+  buildConnectorConfigJson,
+  buildHostedOnboardingState,
+  type HostedOnboardingRecord,
+  STARTER_CONNECTOR_PACKAGE,
+} from "../lib/hosted-onboarding-shared"
+import {
+  TTS_PROVIDER_OPTIONS,
+  type TtsProviderId,
+} from "../lib/studio-provider-catalog"
+import {
+  getOrCreateTrialSubject,
+  hasUsableTrialStarterKey,
+  parseTrialBootstrapRecord,
+  readCachedTrialBootstrap,
+  writeCachedTrialBootstrap,
+} from "../lib/trial-bootstrap-cache"
+import { useVoiceStudioSession } from "../lib/use-voice-studio-session"
+import type { ConnectionState } from "../lib/voice-studio-session-helpers"
+import { buildWebRuntimePayload } from "../lib/web-runtime"
 import {
   LandingHeroAuthControls,
   LandingNavbarAuthControls,
@@ -25,31 +37,14 @@ import {
   ConnectAgentCard,
   ConversationCard,
   RoomConnectionCard,
+  type StepStatus,
   StudioStepCard,
   StudioSupportCard,
-  type StepStatus,
   type VoicePathCardOption,
   VoicePathSelectorCard,
 } from "./product-studio-view"
 import { SiteHeader } from "./site-header"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
-import {
-  getOrCreateTrialSubject,
-  hasUsableTrialStarterKey,
-  parseTrialBootstrapRecord,
-  readCachedTrialBootstrap,
-  writeCachedTrialBootstrap,
-} from "../lib/trial-bootstrap-cache"
-import { TTS_PROVIDER_OPTIONS, type TtsProviderId } from "../lib/studio-provider-catalog"
-import type { ConnectionState } from "../lib/voice-studio-session-helpers"
-import {
-  buildHostedOnboardingState,
-  buildConnectorConfigJson,
-  type HostedOnboardingRecord,
-  STARTER_CONNECTOR_PACKAGE,
-} from "../lib/hosted-onboarding-shared"
-import { useVoiceStudioSession } from "../lib/use-voice-studio-session"
-import { buildWebRuntimePayload } from "../lib/web-runtime"
 
 const waveformBars = Array.from({ length: 60 }, (_, index) => ({
   key: index,
@@ -430,12 +425,17 @@ function HowItWorks() {
 
 function TryNowSection({ serverUrl }: { serverUrl: string }) {
   const [selectedStep, setSelectedStep] = useState(1)
-  const [selectedVoicePath, setSelectedVoicePath] =
-    useState<TtsProviderId>(DEFAULT_TRY_VOICE_PROVIDER_ID)
+  const [selectedVoicePath, setSelectedVoicePath] = useState<TtsProviderId>(
+    DEFAULT_TRY_VOICE_PROVIDER_ID,
+  )
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [trialToken, setTrialToken] = useState<string | null>(null)
-  const [trialRecord, setTrialRecord] = useState<HostedOnboardingRecord | null>(null)
-  const [botStatus, setBotStatus] = useState<"idle" | "checking" | "online" | "offline" | "error">("idle")
+  const [trialRecord, setTrialRecord] = useState<HostedOnboardingRecord | null>(
+    null,
+  )
+  const [botStatus, setBotStatus] = useState<
+    "idle" | "checking" | "online" | "offline" | "error"
+  >("idle")
   const starterBotOnline = botStatus === "online"
   const connectionState: ConnectionState =
     botStatus === "checking"
@@ -453,22 +453,23 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
         : botStatus === "error"
           ? "Status unavailable"
           : "Waiting for bot"
-  const voicePathOptions: VoicePathCardOption[] = TRY_VOICE_PROVIDER_OPTIONS.map((option) => {
-    const meta = VOICE_PATH_META[option.id]
+  const voicePathOptions: VoicePathCardOption[] =
+    TRY_VOICE_PROVIDER_OPTIONS.map((option) => {
+      const meta = VOICE_PATH_META[option.id]
 
-    return {
-      id: option.id,
-      eyebrow: meta.eyebrow,
-      title: meta.title,
-      description: meta.description,
-      routeLabel: meta.routeLabel,
-      keywords: meta.keywords,
-      accentClassName: meta.accentClassName,
-      bars: meta.bars,
-      selected: selectedVoicePath === option.id,
-      onSelect: () => setSelectedVoicePath(option.id),
-    }
-  })
+      return {
+        id: option.id,
+        eyebrow: meta.eyebrow,
+        title: meta.title,
+        description: meta.description,
+        routeLabel: meta.routeLabel,
+        keywords: meta.keywords,
+        accentClassName: meta.accentClassName,
+        bars: meta.bars,
+        selected: selectedVoicePath === option.id,
+        onSelect: () => setSelectedVoicePath(option.id),
+      }
+    })
 
   async function refreshBotStatus(record: HostedOnboardingRecord) {
     setTrialRecord(record)
@@ -476,7 +477,10 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
 
     try {
       const response = await fetch(
-        new URL(`/api/channels/${encodeURIComponent(record.project.channelId)}`, serverUrl),
+        new URL(
+          `/api/channels/${encodeURIComponent(record.project.channelId)}`,
+          serverUrl,
+        ),
       )
 
       if (!response.ok) {
@@ -503,7 +507,9 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
       return null
     }
 
-    const cachedRecord = forceRefresh ? null : readCachedTrialBootstrap(trialSubject)
+    const cachedRecord = forceRefresh
+      ? null
+      : readCachedTrialBootstrap(trialSubject)
 
     if (cachedRecord && hasUsableTrialStarterKey(cachedRecord)) {
       setTrialToken(cachedRecord.starterKey?.value ?? null)
@@ -677,7 +683,9 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
                   botId={trialRecord?.project.botId ?? "openclaw-demo"}
                   starterBotOnline={starterBotOnline}
                   connectionState={connectionState}
-                  botDisplayName={trialRecord?.project.displayName ?? "SayHello Connector"}
+                  botDisplayName={
+                    trialRecord?.project.displayName ?? "SayHello Connector"
+                  }
                   onCheck={refreshTryNowSection}
                   onContinue={() => setSelectedStep(2)}
                   statusPanel={{
@@ -693,8 +701,9 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
                   title={STUDIO_STEPS[1].title}
                   connectionReady={true}
                   selectedLabel={
-                    TRY_VOICE_PROVIDER_OPTIONS.find((option) => option.id === selectedVoicePath)
-                      ?.label ?? "Azure Speech TTS (Unary)"
+                    TRY_VOICE_PROVIDER_OPTIONS.find(
+                      (option) => option.id === selectedVoicePath,
+                    )?.label ?? "Azure Speech TTS (Unary)"
                   }
                   options={voicePathOptions}
                   onContinue={() => setSelectedStep(3)}
@@ -793,7 +802,12 @@ function TryNowLiveConversation({
     if (settings.conversationBackend !== "local-bot") {
       updateSetting("conversationBackend", "local-bot")
     }
-  }, [selectedVoicePath, settings.conversationBackend, settings.ttsProvider, updateSetting])
+  }, [
+    selectedVoicePath,
+    settings.conversationBackend,
+    settings.ttsProvider,
+    updateSetting,
+  ])
 
   if (!starterBotOnline) {
     return (
@@ -818,10 +832,15 @@ function TryNowLiveConversation({
       timelineRef={timelineRef}
       entries={timeline
         .filter(
-          (entry): entry is typeof entry & { role: "user" | "bot" | "preview" } =>
+          (
+            entry,
+          ): entry is typeof entry & { role: "user" | "bot" | "preview" } =>
             entry.role !== "system",
         )
-        .filter((entry) => !(entry.role === "preview" && entry.text.trim().length === 0))
+        .filter(
+          (entry) =>
+            !(entry.role === "preview" && entry.text.trim().length === 0),
+        )
         .map((entry) => ({
           id: entry.id,
           role: entry.role,
@@ -833,7 +852,9 @@ function TryNowLiveConversation({
                 : botDisplayName,
           text: entry.text,
         }))}
-      quickPrompts={HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS}
+      quickPrompts={
+        HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS
+      }
       beginCapture={beginCapture}
       finishCapture={finishCapture}
       sendTextUtterance={sendTextUtterance}

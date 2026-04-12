@@ -20,9 +20,9 @@ import { createClientMessageHandler } from "./realtime-client-session"
 import {
   type ClientSession,
   createRealtimeRuntime,
+  DEFAULT_BOT_RESPONSE_TIMEOUT_MS,
   type RuntimeChannelSnapshot,
   type RuntimeHealthSnapshot,
-  DEFAULT_BOT_RESPONSE_TIMEOUT_MS,
 } from "./realtime-runtime"
 import {
   DEFAULT_CHANNEL_ID,

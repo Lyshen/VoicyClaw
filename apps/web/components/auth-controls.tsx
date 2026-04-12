@@ -44,7 +44,11 @@ export function LandingHeroAuthControls({
 }) {
   const actions = (
     <>
-      <ActionLink href={LANDING_TRY_NOW_URL} label="Try now" kind="hero-primary" />
+      <ActionLink
+        href={LANDING_TRY_NOW_URL}
+        label="Try now"
+        kind="hero-primary"
+      />
       <ActionLink
         href={GITHUB_REPO_URL}
         label="Open on GitHub"
@@ -71,7 +75,11 @@ export function LandingCallToActionControls({
 }) {
   const actions = (
     <>
-      <ActionLink href={LANDING_TRY_NOW_URL} label="Try now" kind="cta-primary" />
+      <ActionLink
+        href={LANDING_TRY_NOW_URL}
+        label="Try now"
+        kind="cta-primary"
+      />
       <ActionLink
         href={GITHUB_REPO_URL}
         label="Open on GitHub"

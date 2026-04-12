@@ -1,9 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-
-import { ProductStudio } from "./product-studio"
-import { StudioBootstrap } from "./product-studio-view"
 import {
   buildHostedOnboardingState,
   type HostedOnboardingRecord,
@@ -20,6 +17,8 @@ import {
   buildWebRuntimePayload,
   type WebRuntimePayload,
 } from "../lib/web-runtime"
+import { ProductStudio } from "./product-studio"
+import { StudioBootstrap } from "./product-studio-view"
 
 export function TrialStudioPage({ serverUrl }: { serverUrl: string }) {
   const [runtime, setRuntime] = useState<WebRuntimePayload | null>(null)
@@ -76,7 +75,9 @@ export function TrialStudioPage({ serverUrl }: { serverUrl: string }) {
         const record = parseTrialBootstrapRecord(payload)
 
         if (!record || !hasUsableTrialStarterKey(record)) {
-          throw new Error("Could not prepare your try workspace (trial token missing).")
+          throw new Error(
+            "Could not prepare your try workspace (trial token missing).",
+          )
         }
 
         writeCachedTrialBootstrap(trialSubject, record)
