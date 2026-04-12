@@ -36,7 +36,9 @@
     "plugin:voicyclaw:typecheck": "pnpm --dir ./extensions/voicyclaw typecheck",
     "plugin:voicyclaw:check": "pnpm plugin:voicyclaw:install && pnpm plugin:voicyclaw:lint && pnpm plugin:voicyclaw:test && pnpm plugin:voicyclaw:typecheck",
     "check": "pnpm lint && pnpm test && pnpm typecheck && pnpm plugin:voicyclaw:check && pnpm build",
-    "ci:check": "pnpm plugin:voicyclaw:check && pnpm db:generate && pnpm db:push && pnpm lint && pnpm test:coverage && pnpm typecheck && pnpm test:e2e"
+    "ci:quality": "pnpm plugin:voicyclaw:check && pnpm lint && pnpm test:coverage && pnpm typecheck",
+    "ci:e2e": "pnpm db:generate && pnpm db:push && pnpm test:e2e",
+    "ci:check": "pnpm ci:quality && pnpm ci:e2e"
   },
   "dependencies": {
     "@voicyclaw/config": "workspace:*"
