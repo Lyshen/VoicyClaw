@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import {
   defaultStudioSettings,
@@ -41,15 +41,21 @@ export function useStudioSettings(
     persistStudioSettings(settings, runtime.settingsNamespace)
   }, [hydrated, runtime.settingsNamespace, settings])
 
-  function updateSetting<Key extends keyof StudioSettings>(
+  const updateSetting = useCallback(<Key extends keyof StudioSettings>(
     key: Key,
     value: StudioSettings[Key],
-  ) {
-    setSettings((current) => ({
-      ...current,
-      [key]: value,
-    }))
-  }
+  ) => {
+    setSettings((current) => {
+      if (current[key] === value) {
+        return current
+      }
+
+      return {
+        ...current,
+        [key]: value,
+      }
+    })
+  }, [])
 
   return {
     settings,

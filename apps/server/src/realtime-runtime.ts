@@ -13,7 +13,11 @@ import WebSocket from "ws"
 
 import { AsyncIterableQueue } from "./lib/async-queue"
 
-const RESPONSE_TIMEOUT_MS = 15_000
+export const DEFAULT_BOT_RESPONSE_TIMEOUT_MS = 60_000
+
+type RealtimeRuntimeOptions = {
+  botResponseTimeoutMs?: number
+}
 
 export interface ActiveUtterance {
   utteranceId: string
@@ -102,7 +106,14 @@ export interface RealtimeRuntime {
 
 export function createRealtimeRuntime(
   logger: FastifyBaseLogger,
+  options: RealtimeRuntimeOptions = {},
 ): RealtimeRuntime {
+  const botResponseTimeoutMs =
+    typeof options.botResponseTimeoutMs === "number" &&
+    Number.isFinite(options.botResponseTimeoutMs) &&
+    options.botResponseTimeoutMs > 0
+      ? Math.trunc(options.botResponseTimeoutMs)
+      : DEFAULT_BOT_RESPONSE_TIMEOUT_MS
   const runtimeChannels = new Map<string, RuntimeChannel>()
 
   class BotConnection implements ConnectedBot {
@@ -146,10 +157,10 @@ export function createRealtimeRuntime(
       const timeout = globalThis.setTimeout(() => {
         queue.error(
           new Error(
-            `Bot ${this.botId} did not respond within ${RESPONSE_TIMEOUT_MS}ms`,
+            `Bot ${this.botId} did not respond within ${botResponseTimeoutMs}ms`,
           ),
         )
-      }, RESPONSE_TIMEOUT_MS)
+      }, botResponseTimeoutMs)
 
       logPipeline("BOT_REQUEST_SENT", {
         channelId: this.channelId,

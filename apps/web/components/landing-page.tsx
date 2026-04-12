@@ -22,9 +22,9 @@ import {
   VOICE_PATH_META,
 } from "./product-studio"
 import {
-  buildConversationEntries,
   ConnectAgentCard,
   ConversationCard,
+  RoomConnectionCard,
   StudioStepCard,
   StudioSupportCard,
   type StepStatus,
@@ -41,16 +41,15 @@ import {
   writeCachedTrialBootstrap,
 } from "../lib/trial-bootstrap-cache"
 import { TTS_PROVIDER_OPTIONS, type TtsProviderId } from "../lib/studio-provider-catalog"
-import type {
-  ConnectionState,
-  TimelineEntry,
-} from "../lib/voice-studio-session-helpers"
-import { createTimelineEntry } from "../lib/voice-studio-session-helpers"
+import type { ConnectionState } from "../lib/voice-studio-session-helpers"
 import {
+  buildHostedOnboardingState,
   buildConnectorConfigJson,
   type HostedOnboardingRecord,
   STARTER_CONNECTOR_PACKAGE,
 } from "../lib/hosted-onboarding-shared"
+import { useVoiceStudioSession } from "../lib/use-voice-studio-session"
+import { buildWebRuntimePayload } from "../lib/web-runtime"
 
 const waveformBars = Array.from({ length: 60 }, (_, index) => ({
   key: index,
@@ -433,22 +432,10 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
   const [selectedStep, setSelectedStep] = useState(1)
   const [selectedVoicePath, setSelectedVoicePath] =
     useState<TtsProviderId>(DEFAULT_TRY_VOICE_PROVIDER_ID)
-  const [draftText, setDraftText] = useState("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [trialToken, setTrialToken] = useState<string | null>(null)
   const [trialRecord, setTrialRecord] = useState<HostedOnboardingRecord | null>(null)
   const [botStatus, setBotStatus] = useState<"idle" | "checking" | "online" | "offline" | "error">("idle")
-  const [previewTimeline, setPreviewTimeline] = useState<TimelineEntry[]>([])
-  const [isPreviewRecording, setIsPreviewRecording] = useState(false)
-  const [isPreviewBotThinking, setIsPreviewBotThinking] = useState(false)
-  const [isPreviewBotSpeaking, setIsPreviewBotSpeaking] = useState(false)
-  const timelineRef = useRef<HTMLDivElement | null>(null)
-  const previewRecordingRef = useRef(false)
-  const previewEntries = buildConversationEntries(
-    previewTimeline,
-    trialRecord?.project.displayName ?? "SayHello Connector",
-  )
-  const hasSentPreviewMessage = previewEntries.length > 0
   const starterBotOnline = botStatus === "online"
   const connectionState: ConnectionState =
     botStatus === "checking"
@@ -482,80 +469,6 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
       onSelect: () => setSelectedVoicePath(option.id),
     }
   })
-
-  function buildPreviewReply(input: string) {
-    const normalized = input.trim().toLowerCase()
-
-    if (normalized.includes("name")) {
-      return "I am SayHello Connector, your trial voice bot for this workspace preview."
-    }
-
-    if (normalized.includes("remember")) {
-      return "For this preview, I only keep the latest thing you asked so you can quickly test the flow."
-    }
-
-    if (normalized.includes("hello") || normalized.includes("intro")) {
-      return "Hello. I am ready to talk through your starter workspace."
-    }
-
-    return `Got it. Once your OpenClaw bot is online, VoicyClaw will speak replies back through ${TRY_VOICE_PROVIDER_OPTIONS.find((option) => option.id === selectedVoicePath)?.label ?? "your selected voice path"}.`
-  }
-
-  function scrollPreviewToBottom() {
-    if (!timelineRef.current) {
-      return
-    }
-
-    timelineRef.current.scrollTo({
-      top: timelineRef.current.scrollHeight,
-      behavior: "smooth",
-    })
-  }
-
-  function sendPreviewUtterance(overrideText?: string) {
-    const nextText = (overrideText ?? draftText).trim()
-
-    if (!nextText) {
-      return
-    }
-
-    const botDisplayName = trialRecord?.project.displayName ?? "SayHello Connector"
-    setDraftText("")
-    setPreviewTimeline((current) => [
-      ...current,
-      createTimelineEntry("user", "You", nextText),
-    ])
-    setIsPreviewBotThinking(true)
-    setSelectedStep(4)
-
-    window.setTimeout(() => {
-      setIsPreviewBotThinking(false)
-      setIsPreviewBotSpeaking(true)
-      setPreviewTimeline((current) => [
-        ...current,
-        createTimelineEntry("bot", botDisplayName, buildPreviewReply(nextText)),
-      ])
-
-      window.setTimeout(() => {
-        setIsPreviewBotSpeaking(false)
-      }, 900)
-    }, 520)
-  }
-
-  async function beginPreviewCapture() {
-    previewRecordingRef.current = true
-    setIsPreviewRecording(true)
-  }
-
-  function finishPreviewCapture() {
-    if (!previewRecordingRef.current) {
-      return
-    }
-
-    previewRecordingRef.current = false
-    setIsPreviewRecording(false)
-    sendPreviewUtterance("Give me a short hello in your new voice.")
-  }
 
   async function refreshBotStatus(record: HostedOnboardingRecord) {
     setTrialRecord(record)
@@ -644,10 +557,6 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
     }
   }, [])
 
-  useEffect(() => {
-    scrollPreviewToBottom()
-  }, [previewEntries.length, isPreviewBotThinking])
-
   const installLines = [
     {
       id: "install",
@@ -670,10 +579,6 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
   ]
 
   function getCardStatus(cardId: number): StepStatus {
-    if (cardId === 3 && hasSentPreviewMessage) {
-      return "done"
-    }
-
     if (cardId === selectedStep) {
       return "active"
     }
@@ -739,7 +644,6 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
                 <StudioSupportCard
                   step="04"
                   title="Give us support"
-                  highlighted={hasSentPreviewMessage}
                   action={
                     <a
                       href={productHuntBadge.href}
@@ -796,23 +700,11 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
                   onContinue={() => setSelectedStep(3)}
                 />
               ) : (
-                <ConversationCard
-                  draftText={draftText}
-                  setDraftText={setDraftText}
-                  isRecording={isPreviewRecording}
-                  isBotThinking={isPreviewBotThinking}
-                  isBotSpeaking={isPreviewBotSpeaking}
-                  timelineRef={timelineRef}
-                  entries={previewEntries}
-                  quickPrompts={HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS}
-                  beginCapture={beginPreviewCapture}
-                  finishCapture={finishPreviewCapture}
-                  sendTextUtterance={sendPreviewUtterance}
-                  botDisplayName={trialRecord?.project.displayName ?? "SayHello Connector"}
-                  submitOnEnter
-                  hideSendButton
-                  emphasizeHoldToTalk
-                  showEntryLabels={false}
+                <TryNowConversationPanel
+                  record={trialRecord}
+                  serverUrl={serverUrl}
+                  selectedVoicePath={selectedVoicePath}
+                  onBackToSetup={() => setSelectedStep(1)}
                 />
               )}
             </div>
@@ -820,6 +712,137 @@ function TryNowSection({ serverUrl }: { serverUrl: string }) {
         </section>
       </div>
     </section>
+  )
+}
+
+function TryNowConversationPanel({
+  record,
+  serverUrl,
+  selectedVoicePath,
+  onBackToSetup,
+}: {
+  record: HostedOnboardingRecord | null
+  serverUrl: string
+  selectedVoicePath: TtsProviderId
+  onBackToSetup: () => void
+}) {
+  const runtime = record
+    ? buildWebRuntimePayload({
+        serverUrl,
+        onboarding: buildHostedOnboardingState(record, serverUrl),
+      })
+    : null
+
+  if (!runtime || !record) {
+    return (
+      <RoomConnectionCard
+        mode="talk"
+        starterBotOnline={false}
+        connectionState="disconnected"
+        botDisplayName="Waiting for bot"
+        onCheck={onBackToSetup}
+        onContinue={() => undefined}
+      />
+    )
+  }
+
+  return (
+    <TryNowLiveConversation
+      runtime={runtime}
+      selectedVoicePath={selectedVoicePath}
+      onBackToSetup={onBackToSetup}
+    />
+  )
+}
+
+function TryNowLiveConversation({
+  runtime,
+  selectedVoicePath,
+  onBackToSetup,
+}: {
+  runtime: ReturnType<typeof buildWebRuntimePayload>
+  selectedVoicePath: TtsProviderId
+  onBackToSetup: () => void
+}) {
+  const {
+    settings,
+    updateSetting,
+    connectionState,
+    timeline,
+    draftText,
+    setDraftText,
+    isRecording,
+    isBotThinking,
+    isBotSpeaking,
+    timelineRef,
+    botDisplayName,
+    starterBotOnline,
+    beginCapture,
+    finishCapture,
+    sendTextUtterance,
+  } = useVoiceStudioSession({
+    initialRuntime: runtime,
+    includeConnectionSummary: false,
+  })
+
+  useEffect(() => {
+    if (settings.ttsProvider !== selectedVoicePath) {
+      updateSetting("ttsProvider", selectedVoicePath)
+    }
+
+    if (settings.conversationBackend !== "local-bot") {
+      updateSetting("conversationBackend", "local-bot")
+    }
+  }, [selectedVoicePath, settings.conversationBackend, settings.ttsProvider, updateSetting])
+
+  if (!starterBotOnline) {
+    return (
+      <RoomConnectionCard
+        mode="talk"
+        starterBotOnline={starterBotOnline}
+        connectionState={connectionState}
+        botDisplayName={botDisplayName}
+        onCheck={onBackToSetup}
+        onContinue={() => undefined}
+      />
+    )
+  }
+
+  return (
+    <ConversationCard
+      draftText={draftText}
+      setDraftText={setDraftText}
+      isRecording={isRecording}
+      isBotThinking={isBotThinking}
+      isBotSpeaking={isBotSpeaking}
+      timelineRef={timelineRef}
+      entries={timeline
+        .filter(
+          (entry): entry is typeof entry & { role: "user" | "bot" | "preview" } =>
+            entry.role !== "system",
+        )
+        .filter((entry) => !(entry.role === "preview" && entry.text.trim().length === 0))
+        .map((entry) => ({
+          id: entry.id,
+          role: entry.role,
+          label:
+            entry.role === "user"
+              ? "You"
+              : entry.role === "preview"
+                ? `${botDisplayName} is speaking`
+                : botDisplayName,
+          text: entry.text,
+        }))}
+      quickPrompts={HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS}
+      beginCapture={beginCapture}
+      finishCapture={finishCapture}
+      sendTextUtterance={sendTextUtterance}
+      botDisplayName={botDisplayName}
+      submitOnEnter
+      hideSendButton
+      emphasizeHoldToTalk
+      showEntryLabels={false}
+    />
   )
 }
 
