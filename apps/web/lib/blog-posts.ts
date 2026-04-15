@@ -3,6 +3,8 @@ export type BlogPost = {
   title: string
   description: string
   publishedAt: string
+  author: string
+  editorialNote: string
   category: string
   readingTime: string
   hero: string
@@ -28,6 +30,8 @@ export const blogPosts: BlogPost[] = [
     description:
       "A launch worklog about polishing the VoicyClaw landing page, trial flow, plugin packaging, CI, and release artifacts before sharing it with the wider web.",
     publishedAt: "2026-04-15",
+    author: "Yaoshen Luo",
+    editorialNote: "Originally written by Yaoshen Luo and edited with GPT.",
     category: "Launch notes",
     readingTime: "5 min read",
     hero: "A small product launch still needs a real runway: onboarding, packaging, trust signals, and a path for people to hear the product immediately.",
@@ -65,6 +69,8 @@ export const blogPosts: BlogPost[] = [
     description:
       "The origin story behind VoicyClaw: a playful alien-dubbing idea, a movie-inspired demo, and the realization that private agents need their own voices.",
     publishedAt: "2026-04-15",
+    author: "Yaoshen Luo",
+    editorialNote: "Originally written by Yaoshen Luo and edited with GPT.",
     category: "Origin story",
     readingTime: "4 min read",
     hero: "The project began with a playful question: what if an agent could speak in a character voice quickly enough to feel alive?",
@@ -103,6 +109,8 @@ export const blogPosts: BlogPost[] = [
     description:
       "A candid English retrospective on a zero-vote launch: why trial friction killed the release, why friends should test before launch day, and what VoicyClaw changed next.",
     publishedAt: "2026-04-15",
+    author: "Yaoshen Luo",
+    editorialNote: "Originally written by Yaoshen Luo and edited with GPT.",
     category: "Retrospective",
     readingTime: "6 min read",
     hero: "The painful part was not only getting zero votes. The painful part was realizing that the product made interested people work too hard before they could feel anything.",

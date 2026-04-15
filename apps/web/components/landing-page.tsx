@@ -161,8 +161,8 @@ export function LandingPage({
       <Navbar authEnabled={authEnabled} />
       <main>
         <Hero authEnabled={authEnabled} />
-        <Features />
         <HowItWorks />
+        <Features />
         <TryNowSection serverUrl={serverUrl} />
       </main>
       <Footer />
@@ -191,7 +191,7 @@ function Navbar({ authEnabled }: { authEnabled: boolean }) {
 
 function Hero({ authEnabled }: { authEnabled: boolean }) {
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-amber-50 via-white to-white py-32 lg:py-40">
+    <section className="relative min-h-[calc(100vh+4rem)] overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-amber-50 via-white to-white pb-20 pt-32 lg:min-h-[calc(100vh+5rem)] lg:pb-40 lg:pt-48">
       <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -355,9 +355,9 @@ function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="relative overflow-hidden bg-[linear-gradient(180deg,#fff,#fff7ed)] py-32 text-zinc-900"
+      className="relative overflow-hidden bg-zinc-900 py-32 text-white"
     >
-      <div className="absolute top-0 right-0 h-full w-1/2 translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/20 blur-[120px]" />
+      <div className="absolute top-0 right-0 h-full w-1/2 translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500/10 blur-[120px]" />
 
       <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-20 px-6 lg:grid-cols-2">
         <div>
@@ -375,7 +375,7 @@ function HowItWorks() {
                 </div>
                 <div>
                   <h4 className="mb-3 text-2xl font-bold">{item.title}</h4>
-                  <p className="text-lg leading-relaxed text-zinc-500">
+                  <p className="text-lg leading-relaxed text-zinc-400">
                     {item.description}
                   </p>
                 </div>
@@ -385,8 +385,8 @@ function HowItWorks() {
         </div>
 
         <div className="relative">
-          <div className="rounded-[3rem] border border-amber-100 bg-white p-4 shadow-[0_40px_120px_rgba(24,24,27,0.10)]">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[2.2rem] bg-zinc-950 text-white">
+          <div className="rounded-[3rem] border border-white/10 bg-zinc-800 p-4 shadow-2xl">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2.2rem] bg-zinc-950">
               <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
                 <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-amber-500 shadow-2xl shadow-amber-500/50">
                   <Mic className="h-10 w-10 text-white" />

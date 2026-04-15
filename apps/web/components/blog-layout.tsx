@@ -93,6 +93,9 @@ export function BlogArticlePage({ post }: { post: BlogPost }) {
                 <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">
                   {post.category}
                 </span>
+                <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-zinc-700 shadow-sm">
+                  By {post.author}
+                </span>
                 <time dateTime={post.publishedAt}>{post.publishedAt}</time>
                 <span>{post.readingTime}</span>
               </div>
@@ -102,6 +105,14 @@ export function BlogArticlePage({ post }: { post: BlogPost }) {
               <p className="mt-8 text-xl leading-relaxed text-zinc-600">
                 {post.hero}
               </p>
+              <div className="mt-5 flex flex-wrap gap-3 text-sm font-medium">
+                <span className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-amber-800 shadow-sm">
+                  {post.author}
+                </span>
+                <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-zinc-700 shadow-sm">
+                  Edited with GPT
+                </span>
+              </div>
               {post.externalLink ? (
                 <a
                   href={post.externalLink.href}
