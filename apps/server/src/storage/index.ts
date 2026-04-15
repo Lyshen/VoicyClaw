@@ -96,6 +96,7 @@ export interface Storage {
         projectId?: string | null
         keyType?: PlatformKeyType
         createdByUserId?: string | null
+        expiresAt?: string | null
       },
     ): Awaitable<PlatformKeyRecord>
     findByToken(token: string): Awaitable<PlatformKeyRecord | undefined>

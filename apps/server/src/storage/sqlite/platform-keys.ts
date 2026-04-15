@@ -14,9 +14,10 @@ const insertPlatformKeyStatement = db.prepare(`
     key_type,
     created_by_user_id,
     created_at,
+    expires_at,
     last_used_at
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 const selectPlatformKeyByProjectAndTypeStatement = db.prepare(`
@@ -30,9 +31,11 @@ const selectPlatformKeyByProjectAndTypeStatement = db.prepare(`
     key_type AS keyType,
     created_by_user_id AS createdByUserId,
     created_at AS createdAt,
+    expires_at AS expiresAt,
     last_used_at AS lastUsedAt
   FROM platform_keys
   WHERE project_id = ? AND key_type = ?
+  ORDER BY created_at DESC
   LIMIT 1
 `)
 
@@ -47,6 +50,7 @@ const selectPlatformKeyByTokenStatement = db.prepare(`
     key_type AS keyType,
     created_by_user_id AS createdByUserId,
     created_at AS createdAt,
+    expires_at AS expiresAt,
     last_used_at AS lastUsedAt
   FROM platform_keys
   WHERE token = ?
@@ -76,11 +80,13 @@ export function createPlatformKey(
     projectId?: string | null
     keyType?: PlatformKeyType
     createdByUserId?: string | null
+    expiresAt?: string | null
   },
 ) {
   const now = new Date().toISOString()
   const keyType = options?.keyType ?? "standard"
-  const prefix = keyType === "starter" ? "vcs_" : "vc_"
+  const prefix =
+    keyType === "trial" ? "try_" : keyType === "starter" ? "vcs_" : "vc_"
   const record: PlatformKeyRecord = {
     id: randomUUID(),
     token: `${prefix}${randomUUID().replace(/-/g, "")}`,
@@ -91,6 +97,7 @@ export function createPlatformKey(
     keyType,
     createdByUserId: options?.createdByUserId ?? null,
     createdAt: now,
+    expiresAt: options?.expiresAt ?? null,
     lastUsedAt: null,
   }
 
@@ -104,6 +111,7 @@ export function createPlatformKey(
     record.keyType,
     record.createdByUserId,
     record.createdAt,
+    record.expiresAt,
     record.lastUsedAt,
   )
 

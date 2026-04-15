@@ -1,6 +1,6 @@
-export type AuthProvider = "clerk"
+export type AuthProvider = "clerk" | "trial"
 export type ProjectType = "starter" | "standard"
-export type PlatformKeyType = "starter" | "standard"
+export type PlatformKeyType = "starter" | "standard" | "trial"
 export type BillingFeature = "tts"
 export type BillingMetric = "input_chars" | "output_audio_ms"
 export type UsageStatus = "succeeded" | "failed"
@@ -54,6 +54,7 @@ export interface PlatformKeyRecord {
   keyType: PlatformKeyType
   createdByUserId: string | null
   createdAt: string
+  expiresAt: string | null
   lastUsedAt: string | null
 }
 

@@ -7,6 +7,7 @@ import {
 } from "./domains/billing/service"
 import { bootstrapHostedResources } from "./domains/hosted-bootstrap/service"
 import { issuePlatformKeyForChannel } from "./domains/platform-keys/service"
+import { bootstrapTrialResources } from "./domains/trial-bootstrap/service"
 import type { RealtimeGateway } from "./realtime-gateway"
 import {
   DEFAULT_CHANNEL_ID,
@@ -113,6 +114,28 @@ export function registerApiRoutes(
       firstName: body.firstName,
       fullName: body.fullName,
       username: body.username,
+    })
+  })
+
+  server.post("/api/try/bootstrap", async (request, reply) => {
+    const body =
+      (request.body as {
+        trialSubject?: string
+        displayName?: string | null
+      } | null) ?? {}
+    const trialSubject = body.trialSubject?.trim()
+
+    if (!trialSubject) {
+      reply.code(400)
+      return {
+        ok: false,
+        message: "trialSubject is required",
+      }
+    }
+
+    return await bootstrapTrialResources({
+      trialSubject,
+      displayName: body.displayName,
     })
   })
 

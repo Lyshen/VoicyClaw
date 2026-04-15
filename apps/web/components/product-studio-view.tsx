@@ -161,6 +161,49 @@ export function StudioStepCard({
   )
 }
 
+export function StudioSupportCard({
+  step,
+  title,
+  action,
+  highlighted = false,
+}: {
+  step: string
+  title: string
+  action: ReactNode
+  highlighted?: boolean
+}) {
+  return (
+    <div
+      className={`rounded-[2rem] border p-5 text-left transition ${
+        highlighted
+          ? "border-amber-300 bg-white ring-2 ring-amber-100 shadow-[0_24px_70px_rgba(245,158,11,0.12)]"
+          : "border-zinc-200/70 bg-white/55"
+      }`}
+    >
+      <div className="flex items-start gap-5">
+        <div
+          className={`font-mono text-3xl font-bold ${highlighted ? "text-amber-500" : "text-zinc-300"}`}
+        >
+          {step}
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-4">
+          <div className="flex items-center gap-2">
+            <MessageSquareText
+              className={`h-4 w-4 ${highlighted ? "text-amber-500" : "text-zinc-400"}`}
+            />
+            <h2 className="text-lg font-semibold text-zinc-900 lg:text-xl">
+              {title}
+            </h2>
+          </div>
+
+          {action}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ConnectAgentCard({
   title,
   description,
@@ -176,9 +219,12 @@ export function ConnectAgentCard({
   botDisplayName,
   onCheck,
   onContinue,
+  statusPanel,
+  hideSetupStats = false,
+  hideFooter = false,
 }: {
   title: string
-  description: string
+  description?: string
   lines: Array<{ id: string; prefix: string; code: string }>
   copiedId: string | null
   onCopy: (id: string, text: string) => void
@@ -191,6 +237,16 @@ export function ConnectAgentCard({
   botDisplayName: string
   onCheck: () => void
   onContinue: () => void
+  statusPanel?: {
+    label: string
+    value: string
+    tone: "success" | "warning"
+    helperText?: string
+    actionLabel?: string
+    onAction?: () => void
+  }
+  hideSetupStats?: boolean
+  hideFooter?: boolean
 }) {
   return (
     <section className="relative h-[760px] w-full overflow-hidden rounded-[3rem] border border-zinc-900/80 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.18),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(251,146,60,0.14),transparent_22%),linear-gradient(180deg,#1c1917,#09090b)] p-2 shadow-[0_40px_120px_rgba(24,24,27,0.32)]">
@@ -212,16 +268,82 @@ export function ConnectAgentCard({
         </div>
 
         <div className="relative flex min-h-0 flex-1 flex-col bg-[linear-gradient(180deg,rgba(40,37,34,0.18),rgba(16,17,21,0.10))] px-7 py-7">
-          <div className="mb-6 space-y-2">
-            <p className="text-xs font-semibold tracking-[0.22em] text-amber-200 uppercase">
-              {title}
-            </p>
-            <h3 className="text-3xl font-semibold tracking-tight text-white">
-              Bring your bot online
-            </h3>
-            <p className="max-w-2xl text-sm leading-7 text-zinc-300">
-              {description}
-            </p>
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold tracking-[0.22em] text-amber-200 uppercase">
+                {title}
+              </p>
+              <h3 className="text-3xl font-semibold tracking-tight text-white">
+                Bring your bot online
+              </h3>
+              {description ? (
+                <p className="max-w-2xl text-sm leading-7 text-zinc-300">
+                  {description}
+                </p>
+              ) : null}
+            </div>
+
+            {statusPanel ? (
+              <div
+                className={`min-w-[220px] rounded-[1.9rem] border px-4 py-4 text-left shadow-[0_24px_54px_rgba(16,185,129,0.10)] backdrop-blur-sm ${
+                  statusPanel.tone === "success"
+                    ? "border-emerald-200/60 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,0.20),transparent_36%),linear-gradient(180deg,rgba(255,250,244,0.98),rgba(237,245,239,0.95))]"
+                    : "border-amber-200/60 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.22),transparent_36%),linear-gradient(180deg,rgba(255,250,244,0.98),rgba(255,244,214,0.95))]"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div
+                      className={`text-[11px] font-semibold tracking-[0.18em] uppercase ${
+                        statusPanel.tone === "success"
+                          ? "text-emerald-700"
+                          : "text-amber-700"
+                      }`}
+                    >
+                      {statusPanel.label}
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <span
+                        className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                          statusPanel.tone === "success"
+                            ? "bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.14)]"
+                            : "bg-amber-500 shadow-[0_0_0_6px_rgba(245,158,11,0.14)]"
+                        }`}
+                      />
+                      <span className="text-sm font-semibold text-zinc-900">
+                        {statusPanel.value}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] uppercase ${
+                      statusPanel.tone === "success"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-amber-200 bg-white/70 text-amber-700"
+                    }`}
+                  >
+                    {statusPanel.tone === "success" ? "Live" : "Pending"}
+                  </span>
+                </div>
+
+                {statusPanel.helperText ? (
+                  <div className="mt-3 text-xs leading-5 text-zinc-600">
+                    {statusPanel.helperText}
+                  </div>
+                ) : null}
+
+                {statusPanel.actionLabel && statusPanel.onAction ? (
+                  <button
+                    className="mt-4 inline-flex min-h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-xs font-semibold text-white shadow-[0_12px_28px_rgba(24,24,27,0.16)] transition hover:bg-zinc-800"
+                    type="button"
+                    onClick={statusPanel.onAction}
+                  >
+                    {statusPanel.actionLabel}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-black/15 px-2">
@@ -238,46 +360,52 @@ export function ConnectAgentCard({
             ))}
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <SetupStatCard
-              label="Connection target"
-              value={connectionTargetLabel}
-              tone="neutral"
-            />
-            <SetupStatCard
-              label="Bot status"
-              value={starterBotOnline ? "Online" : "Waiting for bot"}
-              tone={starterBotOnline ? "success" : "warning"}
-            />
-            <SetupStatCard
-              label="Workspace"
-              value={workspaceName ?? "Starter workspace"}
-            />
-            <SetupStatCard label="Channel" value={channelId} mono />
-            {botId ? <SetupStatCard label="Bot ID" value={botId} mono /> : null}
-            <SetupStatCard
-              label="Live room"
-              value={starterBotOnline ? botDisplayName : "Not connected yet"}
-            />
-          </div>
+          {hideSetupStats ? null : (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <SetupStatCard
+                label="Connection target"
+                value={connectionTargetLabel}
+                tone="neutral"
+              />
+              <SetupStatCard
+                label="Bot status"
+                value={starterBotOnline ? "Online" : "Waiting for bot"}
+                tone={starterBotOnline ? "success" : "warning"}
+              />
+              <SetupStatCard
+                label="Workspace"
+                value={workspaceName ?? "Starter workspace"}
+              />
+              <SetupStatCard label="Channel" value={channelId} mono />
+              {botId ? (
+                <SetupStatCard label="Bot ID" value={botId} mono />
+              ) : null}
+              <SetupStatCard
+                label="Live room"
+                value={starterBotOnline ? botDisplayName : "Not connected yet"}
+              />
+            </div>
+          )}
 
-          <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
-            <p className="text-sm leading-7 text-zinc-300">
-              {starterBotOnline
-                ? `${botDisplayName} is online. Continue to voice selection.`
-                : getConnectionSummary(connectionState)}
-            </p>
+          {hideFooter ? null : (
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
+              <p className="text-sm leading-7 text-zinc-300">
+                {starterBotOnline
+                  ? `${botDisplayName} is online. Continue to voice selection.`
+                  : getConnectionSummary(connectionState)}
+              </p>
 
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
-              type="button"
-              onClick={starterBotOnline ? onContinue : onCheck}
-            >
-              {starterBotOnline
-                ? "Continue to voice paths"
-                : getCheckButtonLabel(connectionState, starterBotOnline)}
-            </button>
-          </div>
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
+                type="button"
+                onClick={starterBotOnline ? onContinue : onCheck}
+              >
+                {starterBotOnline
+                  ? "Continue to voice paths"
+                  : getCheckButtonLabel(connectionState, starterBotOnline)}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -310,7 +438,7 @@ export function VoicePathSelectorCard({
   onContinue,
 }: {
   title: string
-  description: string
+  description?: string
   connectionReady: boolean
   selectedLabel: string
   options: VoicePathCardOption[]
@@ -332,9 +460,11 @@ export function VoicePathSelectorCard({
             <h3 className="text-3xl font-semibold tracking-tight text-white">
               Pick the voice path
             </h3>
-            <p className="max-w-2xl text-sm leading-7 text-zinc-300">
-              {description}
-            </p>
+            {description ? (
+              <p className="max-w-2xl text-sm leading-7 text-zinc-300">
+                {description}
+              </p>
+            ) : null}
           </div>
 
           <div className="rounded-[1.6rem] border border-emerald-200/60 bg-[linear-gradient(180deg,rgba(255,248,238,0.97),rgba(237,245,239,0.94))] px-4 py-2.5 text-right shadow-[0_20px_46px_rgba(16,185,129,0.12)]">
@@ -572,6 +702,10 @@ export function ConversationCard({
   finishCapture,
   sendTextUtterance,
   botDisplayName,
+  submitOnEnter = false,
+  hideSendButton = false,
+  emphasizeHoldToTalk = false,
+  showEntryLabels = true,
 }: {
   draftText: string
   setDraftText: (value: string) => void
@@ -585,7 +719,14 @@ export function ConversationCard({
   finishCapture: () => void
   sendTextUtterance: (overrideText?: string) => void
   botDisplayName: string
+  submitOnEnter?: boolean
+  hideSendButton?: boolean
+  emphasizeHoldToTalk?: boolean
+  showEntryLabels?: boolean
 }) {
+  const showPromptGuidance =
+    entries.length === 0 && draftText.trim().length === 0
+
   return (
     <RoomShell
       statusLabel="Live"
@@ -603,7 +744,7 @@ export function ConversationCard({
           ref={timelineRef}
           className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1"
         >
-          {entries.length === 0 ? (
+          {showPromptGuidance ? (
             <article className="max-w-[90%] rounded-[1.9rem] border border-white/10 bg-white/[0.05] px-4 py-4">
               <p className="text-xs font-medium tracking-[0.22em] text-zinc-500 uppercase">
                 First prompt
@@ -628,17 +769,19 @@ export function ConversationCard({
                         : "border border-white/8 bg-white/[0.05] text-white"
                   }`}
                 >
-                  <p
-                    className={`text-xs font-medium tracking-[0.22em] uppercase ${
-                      entry.role === "user"
-                        ? "text-zinc-900/70"
-                        : entry.role === "preview"
-                          ? "text-amber-100/70"
-                          : "text-zinc-500"
-                    }`}
-                  >
-                    {entry.label}
-                  </p>
+                  {showEntryLabels ? (
+                    <p
+                      className={`text-xs font-medium tracking-[0.22em] uppercase ${
+                        entry.role === "user"
+                          ? "text-zinc-900/70"
+                          : entry.role === "preview"
+                            ? "text-amber-100/70"
+                            : "text-zinc-500"
+                      }`}
+                    >
+                      {entry.label}
+                    </p>
+                  ) : null}
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
                     {entry.text}
                   </p>
@@ -653,7 +796,7 @@ export function ConversationCard({
         </div>
 
         <div className="mt-4 shrink-0 border-t border-white/10 pt-4">
-          {entries.length === 0 ? (
+          {showPromptGuidance ? (
             <div className="mb-4 flex flex-wrap gap-2">
               {quickPrompts.map((prompt) => (
                 <button
@@ -673,6 +816,19 @@ export function ConversationCard({
               value={draftText}
               onChange={(event) => setDraftText(event.target.value)}
               onKeyDown={(event) => {
+                if (
+                  submitOnEnter &&
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.metaKey &&
+                  !event.ctrlKey &&
+                  !event.altKey
+                ) {
+                  event.preventDefault()
+                  sendTextUtterance()
+                  return
+                }
+
                 if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
                   event.preventDefault()
                   sendTextUtterance()
@@ -683,18 +839,24 @@ export function ConversationCard({
             />
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
-                type="button"
-                onClick={() => sendTextUtterance()}
-              >
-                Send message
-              </button>
+              {hideSendButton ? null : (
+                <button
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400"
+                  type="button"
+                  onClick={() => sendTextUtterance()}
+                >
+                  Send message
+                </button>
+              )}
               <button
                 className={`inline-flex min-h-11 items-center justify-center rounded-full border px-5 text-sm font-semibold transition ${
-                  isRecording
-                    ? "border-amber-300/30 bg-amber-500/14 text-amber-100"
-                    : "border-white/10 bg-white/[0.04] text-zinc-200 hover:border-amber-300/30 hover:bg-amber-500/10"
+                  emphasizeHoldToTalk
+                    ? isRecording
+                      ? "border-amber-200 bg-[linear-gradient(180deg,rgba(251,191,36,0.96),rgba(249,115,22,0.92))] text-zinc-950 shadow-[0_18px_50px_rgba(245,158,11,0.24)]"
+                      : "border-amber-200/80 bg-[linear-gradient(180deg,rgba(252,211,77,0.96),rgba(251,146,60,0.92))] text-zinc-950 shadow-[0_18px_50px_rgba(245,158,11,0.18)] hover:brightness-105"
+                    : isRecording
+                      ? "border-amber-300/30 bg-amber-500/14 text-amber-100"
+                      : "border-white/10 bg-white/[0.04] text-zinc-200 hover:border-amber-300/30 hover:bg-amber-500/10"
                 }`}
                 type="button"
                 onPointerDown={() => void beginCapture()}

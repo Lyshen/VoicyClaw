@@ -23,6 +23,19 @@ export async function upsertHostedUser(input: {
   return user
 }
 
+export async function upsertTrialUser(input: {
+  providerSubject: string
+  displayName?: string | null
+}) {
+  const { user } = await storage.users.upsertForIdentity({
+    provider: "trial",
+    providerSubject: input.providerSubject,
+    displayName: normalizeOptionalString(input.displayName) ?? "Try now guest",
+  })
+
+  return user
+}
+
 export function normalizeOptionalString(value: string | null | undefined) {
   if (typeof value !== "string") {
     return null

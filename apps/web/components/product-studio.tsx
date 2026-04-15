@@ -22,21 +22,21 @@ import {
   VoicePathSelectorCard,
 } from "./product-studio-view"
 
-const HOSTED_PROMPTS = [
+export const HOSTED_PROMPTS = [
   "What should I call you?",
   "What do you remember about me?",
   "Give me a short hello in your new voice.",
   "What can you help me do today?",
 ] as const
 
-const DEFAULT_PROMPTS = [
+export const DEFAULT_PROMPTS = [
   "Say hello in your new voice.",
   "What can you help me do?",
   "Give me a short intro.",
   "What should I test next?",
 ] as const
 
-const STUDIO_STEPS: StepDescription[] = [
+export const STUDIO_STEPS: StepDescription[] = [
   {
     step: "01",
     title: "Connect your agent",
@@ -55,7 +55,7 @@ const STUDIO_STEPS: StepDescription[] = [
   },
 ]
 
-const VOICE_PATH_META: Record<
+export const VOICE_PATH_META: Record<
   TtsProviderId,
   Omit<VoicePathCardOption, "id" | "selected" | "onSelect">
 > = {

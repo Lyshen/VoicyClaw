@@ -6,6 +6,7 @@ import type { ReactNode } from "react"
 import { useEffect, useId, useRef, useState } from "react"
 
 const GITHUB_REPO_URL = "https://github.com/Lyshen/VoicyClaw"
+const LANDING_TRY_NOW_URL = "/#try-now"
 
 export function AppShellAuthControls({
   authEnabled,
@@ -41,42 +42,28 @@ export function LandingHeroAuthControls({
 }: {
   authEnabled: boolean
 }) {
+  const actions = (
+    <>
+      <ActionLink
+        href={LANDING_TRY_NOW_URL}
+        label="Try now"
+        kind="hero-primary"
+      />
+      <ActionLink
+        href={GITHUB_REPO_URL}
+        label="Open on GitHub"
+        kind="hero-secondary"
+        external
+      />
+    </>
+  )
+
   return (
     <AuthControls
       authEnabled={authEnabled}
-      disabled={
-        <>
-          <ActionLink href="/studio" label="Try now" kind="hero-primary" />
-          <ActionLink
-            href={GITHUB_REPO_URL}
-            label="Open on GitHub"
-            kind="hero-secondary"
-            external
-          />
-        </>
-      }
-      signedIn={
-        <>
-          <ActionLink href="/studio" label="Open studio" kind="hero-primary" />
-          <ActionLink
-            href={GITHUB_REPO_URL}
-            label="Open on GitHub"
-            kind="hero-secondary"
-            external
-          />
-        </>
-      }
-      signedOut={
-        <>
-          <ActionLink href="/sign-in" label="Try now" kind="hero-primary" />
-          <ActionLink
-            href={GITHUB_REPO_URL}
-            label="Open on GitHub"
-            kind="hero-secondary"
-            external
-          />
-        </>
-      }
+      disabled={actions}
+      signedIn={actions}
+      signedOut={actions}
     />
   )
 }
@@ -86,42 +73,28 @@ export function LandingCallToActionControls({
 }: {
   authEnabled: boolean
 }) {
+  const actions = (
+    <>
+      <ActionLink
+        href={LANDING_TRY_NOW_URL}
+        label="Try now"
+        kind="cta-primary"
+      />
+      <ActionLink
+        href={GITHUB_REPO_URL}
+        label="Open on GitHub"
+        kind="cta-secondary"
+        external
+      />
+    </>
+  )
+
   return (
     <AuthControls
       authEnabled={authEnabled}
-      disabled={
-        <>
-          <ActionLink href="/studio" label="Try now" kind="cta-primary" />
-          <ActionLink
-            href={GITHUB_REPO_URL}
-            label="Open on GitHub"
-            kind="cta-secondary"
-            external
-          />
-        </>
-      }
-      signedIn={
-        <>
-          <ActionLink href="/studio" label="Open studio" kind="cta-primary" />
-          <ActionLink
-            href={GITHUB_REPO_URL}
-            label="Open on GitHub"
-            kind="cta-secondary"
-            external
-          />
-        </>
-      }
-      signedOut={
-        <>
-          <ActionLink href="/sign-in" label="Try now" kind="cta-primary" />
-          <ActionLink
-            href={GITHUB_REPO_URL}
-            label="Open on GitHub"
-            kind="cta-secondary"
-            external
-          />
-        </>
-      }
+      disabled={actions}
+      signedIn={actions}
+      signedOut={actions}
     />
   )
 }

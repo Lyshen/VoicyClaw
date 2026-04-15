@@ -20,6 +20,7 @@ import { createClientMessageHandler } from "./realtime-client-session"
 import {
   type ClientSession,
   createRealtimeRuntime,
+  DEFAULT_BOT_RESPONSE_TIMEOUT_MS,
   type RuntimeChannelSnapshot,
   type RuntimeHealthSnapshot,
 } from "./realtime-runtime"
@@ -37,10 +38,22 @@ export interface RealtimeGateway {
   getChannelSnapshot(channelId: string): RuntimeChannelSnapshot
 }
 
+type RealtimeGatewayOptions = {
+  botResponseTimeoutMs?: number
+}
+
 export function createRealtimeGateway(
   logger: FastifyBaseLogger,
+  options: RealtimeGatewayOptions = {},
 ): RealtimeGateway {
-  const runtime = createRealtimeRuntime(logger)
+  const runtime = createRealtimeRuntime(logger, {
+    botResponseTimeoutMs:
+      typeof options.botResponseTimeoutMs === "number" &&
+      Number.isFinite(options.botResponseTimeoutMs) &&
+      options.botResponseTimeoutMs > 0
+        ? Math.trunc(options.botResponseTimeoutMs)
+        : DEFAULT_BOT_RESPONSE_TIMEOUT_MS,
+  })
   const handleClientMessage = createClientMessageHandler(runtime)
 
   async function handleBotConnection(ws: WebSocket) {

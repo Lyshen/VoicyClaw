@@ -44,6 +44,7 @@ export interface HostedBootstrapRecord {
     value: string
     label: string
     createdAt: string
+    expiresAt?: string | null
   } | null
   allowance: {
     label: string
@@ -103,6 +104,7 @@ async function buildHostedBootstrapRecord(
       value: starterKey.token,
       label: starterKey.label ?? STARTER_KEY_LABEL,
       createdAt: starterKey.createdAt,
+      expiresAt: starterKey.expiresAt,
     },
     allowance,
   }

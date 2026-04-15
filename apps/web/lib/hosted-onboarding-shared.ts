@@ -21,6 +21,7 @@ export interface HostedStarterKey {
   value: string
   label: string
   createdAt?: string
+  expiresAt?: string | null
 }
 
 export interface HostedAllowance {
@@ -126,6 +127,7 @@ export function buildStarterOnboardingRecord(
           value: readString(starterKey.value) ?? "",
           label: readString(starterKey.label) ?? STARTER_KEY_LABEL,
           createdAt: readString(starterKey.createdAt),
+          expiresAt: readString(starterKey.expiresAt) ?? null,
         }
       : null,
     allowance: {
@@ -146,6 +148,7 @@ export function buildStarterOnboardingRecord(
 export function withHostedStarterKey(
   record: HostedOnboardingRecord,
   apiKey: string,
+  expiresAt?: string | null,
 ) {
   return {
     ...record,
@@ -153,6 +156,7 @@ export function withHostedStarterKey(
       value: apiKey,
       label: STARTER_KEY_LABEL,
       createdAt: new Date().toISOString(),
+      expiresAt: expiresAt ?? null,
     },
   } satisfies HostedOnboardingRecord
 }

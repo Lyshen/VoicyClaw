@@ -74,6 +74,7 @@ db.exec(`
     key_type TEXT NOT NULL DEFAULT 'standard',
     created_by_user_id TEXT,
     created_at TEXT NOT NULL,
+    expires_at TEXT,
     last_used_at TEXT,
     FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE
   );
@@ -160,6 +161,7 @@ ensureColumn("platform_keys", "workspace_id", "TEXT")
 ensureColumn("platform_keys", "project_id", "TEXT")
 ensureColumn("platform_keys", "key_type", "TEXT NOT NULL DEFAULT 'standard'")
 ensureColumn("platform_keys", "created_by_user_id", "TEXT")
+ensureColumn("platform_keys", "expires_at", "TEXT")
 
 db.exec(`
   CREATE INDEX IF NOT EXISTS platform_keys_project_type_idx

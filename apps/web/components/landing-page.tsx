@@ -1,23 +1,48 @@
 "use client"
 
-import {
-  Bot,
-  Globe,
-  Layers,
-  MessageSquare,
-  Mic,
-  Radio,
-  ShieldCheck,
-  Sparkles,
-  Zap,
-} from "lucide-react"
+import { Bot, Globe, Layers, Mic, Radio, Sparkles } from "lucide-react"
 import { motion } from "motion/react"
-
+import { useEffect, useState } from "react"
 import {
-  LandingCallToActionControls,
+  buildConnectorConfigJson,
+  buildHostedOnboardingState,
+  type HostedOnboardingRecord,
+  STARTER_CONNECTOR_PACKAGE,
+} from "../lib/hosted-onboarding-shared"
+import {
+  TTS_PROVIDER_OPTIONS,
+  type TtsProviderId,
+} from "../lib/studio-provider-catalog"
+import {
+  getOrCreateTrialSubject,
+  hasUsableTrialStarterKey,
+  parseTrialBootstrapRecord,
+  readCachedTrialBootstrap,
+  writeCachedTrialBootstrap,
+} from "../lib/trial-bootstrap-cache"
+import { useVoiceStudioSession } from "../lib/use-voice-studio-session"
+import type { ConnectionState } from "../lib/voice-studio-session-helpers"
+import { buildWebRuntimePayload } from "../lib/web-runtime"
+import {
   LandingHeroAuthControls,
   LandingNavbarAuthControls,
 } from "./auth-controls"
+import {
+  DEFAULT_PROMPTS,
+  HOSTED_PROMPTS,
+  STUDIO_STEPS,
+  VOICE_PATH_META,
+} from "./product-studio"
+import {
+  ConnectAgentCard,
+  ConversationCard,
+  RoomConnectionCard,
+  type StepStatus,
+  StudioStepCard,
+  StudioSupportCard,
+  type VoicePathCardOption,
+  VoicePathSelectorCard,
+} from "./product-studio-view"
 import { SiteHeader } from "./site-header"
 import { VoicyClawBrandIcon } from "./voicyclaw-brand-icon"
 
@@ -33,25 +58,6 @@ const productHuntBadge = {
   image:
     "https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1118669&theme=light&t=1775703142013",
 }
-
-const valueProps = [
-  {
-    icon: MessageSquare,
-    title: "Talk, don't type",
-    description: "Speak to your agent and hear it answer back.",
-  },
-  {
-    icon: Zap,
-    title: "Real-time replies",
-    description: "Replies can start playing before the full answer is done.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Your own keys",
-    description:
-      "Start with a starter key now, then bring your own provider keys when you are ready.",
-  },
-]
 
 const featureCards = [
   {
@@ -108,16 +114,55 @@ const footerGroups = [
   },
 ]
 
-export function LandingPage({ authEnabled }: { authEnabled: boolean }) {
+type TryCard = {
+  id: number
+  step: string
+  title: string
+  description: string
+}
+
+const tryCards: TryCard[] = [
+  {
+    id: 1,
+    step: STUDIO_STEPS[0].step,
+    title: STUDIO_STEPS[0].title,
+    description: STUDIO_STEPS[0].description,
+  },
+  {
+    id: 2,
+    step: STUDIO_STEPS[1].step,
+    title: STUDIO_STEPS[1].title,
+    description: STUDIO_STEPS[1].description,
+  },
+  {
+    id: 3,
+    step: STUDIO_STEPS[2].step,
+    title: STUDIO_STEPS[2].title,
+    description: STUDIO_STEPS[2].description,
+  },
+]
+
+const TRY_VOICE_PROVIDER_OPTIONS = TTS_PROVIDER_OPTIONS.filter(
+  (option) => option.id !== "browser" && option.id !== "demo",
+)
+const DEFAULT_TRY_VOICE_PROVIDER_ID: TtsProviderId =
+  TRY_VOICE_PROVIDER_OPTIONS[0]?.id ?? "azure-tts"
+
+export function LandingPage({
+  authEnabled,
+  serverUrl,
+}: {
+  authEnabled: boolean
+  serverUrl: string
+}) {
   return (
     <div className="min-h-screen bg-white text-zinc-900 [color-scheme:light] selection:bg-amber-200">
       <Navbar authEnabled={authEnabled} />
       <main>
         <Hero authEnabled={authEnabled} />
-        <ValueProps />
-        <Features />
         <HowItWorks />
-        <CallToAction authEnabled={authEnabled} />
+        <Features />
+        <TryNowSection serverUrl={serverUrl} />
       </main>
       <Footer />
     </div>
@@ -240,39 +285,6 @@ function Waveform() {
   )
 }
 
-function ValueProps() {
-  return (
-    <section className="bg-zinc-50 py-24">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-12 md:grid-cols-3">
-          {valueProps.map((item, index) => {
-            const Icon = item.icon
-
-            return (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="text-center"
-              >
-                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100">
-                  <Icon className="h-6 w-6 text-amber-600" />
-                </div>
-                <h3 className="mb-3 text-xl font-bold">{item.title}</h3>
-                <p className="leading-relaxed text-zinc-500">
-                  {item.description}
-                </p>
-              </motion.div>
-            )
-          })}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 function Features() {
   return (
     <section id="features" className="bg-white py-32">
@@ -286,11 +298,6 @@ function Features() {
             <p className="text-xl text-zinc-500">
               Mic in, agent runs, voice out. The whole loop stays in one place.
             </p>
-          </div>
-          <div className="hidden lg:block">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-6 py-3 font-semibold text-zinc-900">
-              Live Demo
-            </div>
           </div>
         </div>
 
@@ -416,33 +423,447 @@ function HowItWorks() {
   )
 }
 
-function CallToAction({ authEnabled }: { authEnabled: boolean }) {
+function TryNowSection({ serverUrl }: { serverUrl: string }) {
+  const [selectedStep, setSelectedStep] = useState(1)
+  const [selectedVoicePath, setSelectedVoicePath] = useState<TtsProviderId>(
+    DEFAULT_TRY_VOICE_PROVIDER_ID,
+  )
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [trialToken, setTrialToken] = useState<string | null>(null)
+  const [trialRecord, setTrialRecord] = useState<HostedOnboardingRecord | null>(
+    null,
+  )
+  const [botStatus, setBotStatus] = useState<
+    "idle" | "checking" | "online" | "offline" | "error"
+  >("idle")
+  const starterBotOnline = botStatus === "online"
+  const connectionState: ConnectionState =
+    botStatus === "checking"
+      ? "connecting"
+      : botStatus === "online"
+        ? "connected"
+        : botStatus === "error"
+          ? "error"
+          : "disconnected"
+  const statusPanelValue =
+    botStatus === "online"
+      ? "Bot is online"
+      : botStatus === "checking"
+        ? "Checking connection"
+        : botStatus === "error"
+          ? "Status unavailable"
+          : "Waiting for bot"
+  const voicePathOptions: VoicePathCardOption[] =
+    TRY_VOICE_PROVIDER_OPTIONS.map((option) => {
+      const meta = VOICE_PATH_META[option.id]
+
+      return {
+        id: option.id,
+        eyebrow: meta.eyebrow,
+        title: meta.title,
+        description: meta.description,
+        routeLabel: meta.routeLabel,
+        keywords: meta.keywords,
+        accentClassName: meta.accentClassName,
+        bars: meta.bars,
+        selected: selectedVoicePath === option.id,
+        onSelect: () => setSelectedVoicePath(option.id),
+      }
+    })
+
+  async function refreshBotStatus(record: HostedOnboardingRecord) {
+    setTrialRecord(record)
+    setBotStatus("checking")
+
+    try {
+      const response = await fetch(
+        new URL(
+          `/api/channels/${encodeURIComponent(record.project.channelId)}`,
+          serverUrl,
+        ),
+      )
+
+      if (!response.ok) {
+        throw new Error(`channel ${response.status}`)
+      }
+
+      const payload = (await response.json()) as {
+        botCount: number
+      }
+
+      setBotStatus(payload.botCount > 0 ? "online" : "offline")
+    } catch {
+      setBotStatus("error")
+    }
+  }
+
+  async function refreshTrialPreview(forceRefresh = false) {
+    const trialSubject = getOrCreateTrialSubject()
+
+    if (!trialSubject) {
+      setTrialToken(null)
+      setTrialRecord(null)
+      setBotStatus("error")
+      return null
+    }
+
+    const cachedRecord = forceRefresh
+      ? null
+      : readCachedTrialBootstrap(trialSubject)
+
+    if (cachedRecord && hasUsableTrialStarterKey(cachedRecord)) {
+      setTrialToken(cachedRecord.starterKey?.value ?? null)
+      await refreshBotStatus(cachedRecord)
+      return cachedRecord
+    }
+
+    try {
+      const response = await fetch(new URL("/api/try/bootstrap", serverUrl), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          trialSubject,
+          displayName: "Try now guest",
+        }),
+      })
+
+      if (!response.ok) {
+        return null
+      }
+
+      const payload = (await response.json()) as HostedOnboardingRecord
+      const record = parseTrialBootstrapRecord(payload)
+
+      if (!record || !hasUsableTrialStarterKey(record)) {
+        return null
+      }
+
+      writeCachedTrialBootstrap(trialSubject, record)
+      setTrialToken(record.starterKey?.value ?? null)
+      await refreshBotStatus(record)
+      return record
+    } catch {
+      setBotStatus("error")
+      return null
+    }
+  }
+
+  useEffect(() => {
+    function handleFocus() {
+      void refreshTrialPreview()
+    }
+
+    void refreshTrialPreview()
+    window.addEventListener("focus", handleFocus)
+
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+    }
+  }, [])
+
+  const installLines = [
+    {
+      id: "install",
+      prefix: "$",
+      code: `openclaw plugins install ${STARTER_CONNECTOR_PACKAGE}`,
+    },
+    {
+      id: "config",
+      prefix: "cfg",
+      code: buildConnectorConfigJson({
+        apiKey: trialToken ?? "try_••••••••••••",
+        serverUrl,
+      }),
+    },
+    {
+      id: "restart",
+      prefix: "$",
+      code: "openclaw gateway restart",
+    },
+  ]
+
+  function getCardStatus(cardId: number): StepStatus {
+    if (cardId === selectedStep) {
+      return "active"
+    }
+
+    if (cardId < selectedStep) {
+      return "done"
+    }
+
+    return "pending"
+  }
+
+  async function copyPreviewText(id: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedId(id)
+      window.setTimeout(() => {
+        setCopiedId((current) => (current === id ? null : current))
+      }, 1400)
+    } catch {
+      setCopiedId(null)
+    }
+  }
+
+  function refreshTryNowSection() {
+    void refreshTrialPreview(true)
+  }
+
   return (
-    <section id="get-started" className="bg-white py-32">
-      <div className="mx-auto max-w-5xl px-6">
-        <div className="relative overflow-hidden rounded-[3rem] bg-amber-500 p-12 text-center text-white shadow-2xl shadow-amber-500/40 lg:p-20">
-          <div className="absolute inset-0 h-full w-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+    <section
+      id="try-now"
+      className="bg-[linear-gradient(180deg,rgba(255,247,237,0.92),rgba(255,251,245,0.98))] py-32"
+    >
+      <div className="mx-auto max-w-7xl px-6">
+        <section className="relative overflow-hidden rounded-[2.75rem] border border-amber-200/80 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(249,115,22,0.14),transparent_24%),linear-gradient(180deg,rgba(255,252,248,0.98),rgba(255,245,230,0.98))] px-6 py-8 text-zinc-900 shadow-[0_40px_120px_rgba(24,24,27,0.12)] lg:px-8 lg:py-10">
+          <div className="relative z-10 grid gap-8 xl:grid-cols-[0.74fr_1.26fr]">
+            <div className="space-y-8">
+              <div className="space-y-5">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-100/70 px-4 py-1.5 text-sm font-medium text-amber-700">
+                  <Sparkles className="h-4 w-4" />
+                  Try now without login
+                </div>
 
-          <div className="relative z-10">
-            <h2 className="mb-8 text-4xl font-bold lg:text-6xl">
-              Try the live studio now.
-            </h2>
-            <p className="mx-auto mb-12 max-w-2xl text-xl text-amber-50 opacity-90 lg:text-2xl">
-              Your live room is already waiting. Open the studio, connect your
-              bot, choose a voice path, and start talking.
-            </p>
+                <div className="max-w-2xl">
+                  <h2 className="text-3xl leading-tight font-semibold tracking-tight text-zinc-900 lg:text-4xl">
+                    Three steps to make your agent speak.
+                  </h2>
+                </div>
+              </div>
 
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <LandingCallToActionControls authEnabled={authEnabled} />
+              <div className="space-y-4">
+                {tryCards.map((card) => (
+                  <StudioStepCard
+                    key={card.step}
+                    step={card.step}
+                    title={card.title}
+                    description={card.description}
+                    status={getCardStatus(card.id)}
+                    selected={selectedStep === card.id}
+                    onSelect={() => setSelectedStep(card.id)}
+                  />
+                ))}
+
+                <StudioSupportCard
+                  step="04"
+                  title="Give us support"
+                  action={
+                    <a
+                      href={productHuntBadge.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex overflow-hidden rounded-2xl shadow-sm transition-transform hover:-translate-y-0.5"
+                    >
+                      <img
+                        alt="VoicyClaw - specific voice of private agent | Product Hunt"
+                        width={250}
+                        height={54}
+                        src={productHuntBadge.image}
+                        className="h-[54px] w-[250px] max-w-full"
+                      />
+                    </a>
+                  }
+                />
+              </div>
             </div>
 
-            <p className="mt-10 font-medium text-amber-100 opacity-80">
-              Same live flow. Cleaner front door.
-            </p>
+            <div className="flex xl:pl-2">
+              {selectedStep === 1 ? (
+                <ConnectAgentCard
+                  title={STUDIO_STEPS[0].title}
+                  lines={installLines}
+                  copiedId={copiedId}
+                  onCopy={(id, text) => void copyPreviewText(id, text)}
+                  connectionTargetLabel="VoicyClaw Inbound Bot"
+                  workspaceName="Starter workspace"
+                  channelId={trialRecord?.project.channelId ?? "sayhello-demo"}
+                  botId={trialRecord?.project.botId ?? "openclaw-demo"}
+                  starterBotOnline={starterBotOnline}
+                  connectionState={connectionState}
+                  botDisplayName={
+                    trialRecord?.project.displayName ?? "SayHello Connector"
+                  }
+                  onCheck={refreshTryNowSection}
+                  onContinue={() => setSelectedStep(2)}
+                  statusPanel={{
+                    label: "Bot status",
+                    value: statusPanelValue,
+                    tone: starterBotOnline ? "success" : "warning",
+                  }}
+                  hideSetupStats
+                  hideFooter
+                />
+              ) : selectedStep === 2 ? (
+                <VoicePathSelectorCard
+                  title={STUDIO_STEPS[1].title}
+                  connectionReady={true}
+                  selectedLabel={
+                    TRY_VOICE_PROVIDER_OPTIONS.find(
+                      (option) => option.id === selectedVoicePath,
+                    )?.label ?? "Azure Speech TTS (Unary)"
+                  }
+                  options={voicePathOptions}
+                  onContinue={() => setSelectedStep(3)}
+                />
+              ) : (
+                <TryNowConversationPanel
+                  record={trialRecord}
+                  serverUrl={serverUrl}
+                  selectedVoicePath={selectedVoicePath}
+                  onBackToSetup={() => setSelectedStep(1)}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     </section>
+  )
+}
+
+function TryNowConversationPanel({
+  record,
+  serverUrl,
+  selectedVoicePath,
+  onBackToSetup,
+}: {
+  record: HostedOnboardingRecord | null
+  serverUrl: string
+  selectedVoicePath: TtsProviderId
+  onBackToSetup: () => void
+}) {
+  const runtime = record
+    ? buildWebRuntimePayload({
+        serverUrl,
+        onboarding: buildHostedOnboardingState(record, serverUrl),
+      })
+    : null
+
+  if (!runtime || !record) {
+    return (
+      <RoomConnectionCard
+        mode="talk"
+        starterBotOnline={false}
+        connectionState="disconnected"
+        botDisplayName="Waiting for bot"
+        onCheck={onBackToSetup}
+        onContinue={() => undefined}
+      />
+    )
+  }
+
+  return (
+    <TryNowLiveConversation
+      runtime={runtime}
+      selectedVoicePath={selectedVoicePath}
+      onBackToSetup={onBackToSetup}
+    />
+  )
+}
+
+function TryNowLiveConversation({
+  runtime,
+  selectedVoicePath,
+  onBackToSetup,
+}: {
+  runtime: ReturnType<typeof buildWebRuntimePayload>
+  selectedVoicePath: TtsProviderId
+  onBackToSetup: () => void
+}) {
+  const {
+    settings,
+    updateSetting,
+    connectionState,
+    timeline,
+    draftText,
+    setDraftText,
+    isRecording,
+    isBotThinking,
+    isBotSpeaking,
+    timelineRef,
+    botDisplayName,
+    starterBotOnline,
+    beginCapture,
+    finishCapture,
+    sendTextUtterance,
+  } = useVoiceStudioSession({
+    initialRuntime: runtime,
+    includeConnectionSummary: false,
+  })
+
+  useEffect(() => {
+    if (settings.ttsProvider !== selectedVoicePath) {
+      updateSetting("ttsProvider", selectedVoicePath)
+    }
+
+    if (settings.conversationBackend !== "local-bot") {
+      updateSetting("conversationBackend", "local-bot")
+    }
+  }, [
+    selectedVoicePath,
+    settings.conversationBackend,
+    settings.ttsProvider,
+    updateSetting,
+  ])
+
+  if (!starterBotOnline) {
+    return (
+      <RoomConnectionCard
+        mode="talk"
+        starterBotOnline={starterBotOnline}
+        connectionState={connectionState}
+        botDisplayName={botDisplayName}
+        onCheck={onBackToSetup}
+        onContinue={() => undefined}
+      />
+    )
+  }
+
+  return (
+    <ConversationCard
+      draftText={draftText}
+      setDraftText={setDraftText}
+      isRecording={isRecording}
+      isBotThinking={isBotThinking}
+      isBotSpeaking={isBotSpeaking}
+      timelineRef={timelineRef}
+      entries={timeline
+        .filter(
+          (
+            entry,
+          ): entry is typeof entry & { role: "user" | "bot" | "preview" } =>
+            entry.role !== "system",
+        )
+        .filter(
+          (entry) =>
+            !(entry.role === "preview" && entry.text.trim().length === 0),
+        )
+        .map((entry) => ({
+          id: entry.id,
+          role: entry.role,
+          label:
+            entry.role === "user"
+              ? "You"
+              : entry.role === "preview"
+                ? `${botDisplayName} is speaking`
+                : botDisplayName,
+          text: entry.text,
+        }))}
+      quickPrompts={
+        HOSTED_PROMPTS.length > 0 ? HOSTED_PROMPTS : DEFAULT_PROMPTS
+      }
+      beginCapture={beginCapture}
+      finishCapture={finishCapture}
+      sendTextUtterance={sendTextUtterance}
+      botDisplayName={botDisplayName}
+      submitOnEnter
+      hideSendButton
+      emphasizeHoldToTalk
+      showEntryLabels={false}
+    />
   )
 }
 

@@ -12,7 +12,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            extensions/voicyclaw/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run quality checks
+        run: pnpm ci:quality
+
+      - name: Publish coverage summary
+        if: always() && hashFiles('coverage/summary.md') != ''
+        run: cat coverage/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage artifact
+        if: always() && hashFiles('coverage/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+
+  e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -40,19 +79,8 @@ jobs:
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run CI checks
-        run: pnpm ci:check
-
-      - name: Publish coverage summary
-        if: always() && hashFiles('coverage/summary.md') != ''
-        run: cat coverage/summary.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload coverage artifact
-        if: always() && hashFiles('coverage/**') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage
+      - name: Run e2e checks
+        run: pnpm ci:e2e
 
       - name: Upload Playwright report
         if: always() && hashFiles('playwright-report/**') != ''

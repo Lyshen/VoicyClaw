@@ -5,8 +5,9 @@ export const dynamic = "force-dynamic"
 
 export default async function Page() {
   const {
+    serverUrl,
     auth: { isEnabled },
   } = await getWebRequestContext()
 
-  return <LandingPage authEnabled={isEnabled} />
+  return <LandingPage authEnabled={isEnabled} serverUrl={serverUrl} />
 }
