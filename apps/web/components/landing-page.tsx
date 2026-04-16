@@ -96,6 +96,7 @@ const footerGroups = [
   {
     title: "Resources",
     links: [
+      { label: "Blog", href: "/blog" },
       { label: "GitHub", href: "https://github.com/Lyshen/VoicyClaw" },
       {
         label: "README",
@@ -176,6 +177,7 @@ function Navbar({ authEnabled }: { authEnabled: boolean }) {
       navigation={[
         { href: "#features", label: "Features" },
         { href: "#how-it-works", label: "How it works" },
+        { href: "/blog", label: "Blog" },
         {
           href: "https://github.com/Lyshen/VoicyClaw",
           label: "GitHub",
@@ -189,7 +191,7 @@ function Navbar({ authEnabled }: { authEnabled: boolean }) {
 
 function Hero({ authEnabled }: { authEnabled: boolean }) {
   return (
-    <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-amber-50 via-white to-white pb-20 pt-32 lg:pb-40 lg:pt-48">
+    <section className="relative min-h-[calc(100vh+4rem)] overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-amber-50 via-white to-white pb-20 pt-32 lg:min-h-[calc(100vh+5rem)] lg:pb-40 lg:pt-48">
       <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
